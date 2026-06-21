@@ -42,3 +42,9 @@ Card size fixes:
 - Curso sin texto "Gumroad" en la card.
 - Cards de YouTube más compactas.
 - Cache actualizado a `/api/gumroad-products?v=cards4`.
+
+
+Tight card fixes:
+- Producto/archivo: descripción bloqueada a 2 líneas exactas, sin tercera línea asomando.
+- Tutoriales: cards más compactas y sin espacio muerto inferior.
+- Cache actualizado a `/api/gumroad-products?v=tight5`.

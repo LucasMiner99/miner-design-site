@@ -1774,3 +1774,84 @@ body {
     min-height: 310px !important;
   }
 }
+
+
+/* ------------------------------
+   Tight card final fixes
+   ------------------------------ */
+
+/* Evita que se vea una tercera línea cortada en productos/archivos */
+.card.product-card p,
+.card.file-card p {
+  line-height: 1.35 !important;
+  height: 2.7em !important;
+  min-height: 2.7em !important;
+  max-height: 2.7em !important;
+  margin: 0 0 14px 0 !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+/* Hacemos las cards de productos un poco más prolijas */
+.card.product-card,
+.card.file-card {
+  min-height: 360px !important;
+}
+
+.card.product-card h3,
+.card.file-card h3 {
+  line-height: 1.15 !important;
+  height: 2.3em !important;
+  min-height: 2.3em !important;
+  max-height: 2.3em !important;
+  margin: 0 0 12px 0 !important;
+  overflow: hidden !important;
+}
+
+/* Tutoriales: más compactos, sin espacio muerto abajo */
+.card.video-card {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.card.video-card .thumb {
+  flex: 0 0 145px !important;
+}
+
+.card.video-card h3 {
+  line-height: 1.12 !important;
+  height: 2.24em !important;
+  min-height: 2.24em !important;
+  max-height: 2.24em !important;
+  margin: 0 0 14px 0 !important;
+  overflow: hidden !important;
+}
+
+.card.video-card small {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Menos padding vertical en cards de YouTube */
+.card.video-card {
+  padding-bottom: 20px !important;
+}
+
+/* Por si alguna regla vieja forzaba stretch visual extra */
+.grid[data-youtube-grid] {
+  align-items: start !important;
+}
+
+@media (max-width: 760px) {
+  .card.video-card .thumb {
+    flex-basis: 135px !important;
+  }
+
+  .card.product-card,
+  .card.file-card {
+    min-height: 350px !important;
+  }
+}
