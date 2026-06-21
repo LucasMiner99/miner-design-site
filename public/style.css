@@ -1532,3 +1532,144 @@ a.card {
     linear-gradient(to top, rgba(0,0,0,0.82), transparent 62%),
     radial-gradient(circle at 50% 42%, rgba(255,255,255,0.08), transparent 32%);
 }
+
+
+/* ------------------------------
+   Final polish fixes
+   ------------------------------ */
+
+/* Fondo limpio para evitar la franja gris inferior en páginas internas */
+html,
+body {
+  background: #050505 !important;
+  min-height: 100%;
+}
+
+/* Hero: sin botones principales, Discord destacado */
+.hero-actions {
+  display: none !important;
+}
+
+.hero-social-row {
+  margin-top: 34px;
+}
+
+.community-button {
+  background: #fff !important;
+  color: #000 !important;
+  border-color: #fff !important;
+}
+
+.community-button svg,
+.community-button svg path {
+  stroke: #000 !important;
+}
+
+.community-button .discord-eye,
+.community-button .social-icon-cut {
+  fill: #000 !important;
+  stroke: none !important;
+}
+
+/* No mover logos ni iconos del footer en hover */
+.hero-brand img,
+.brand img,
+.footer-brand-lockup img,
+.footer-social-link,
+.footer-social-link svg {
+  transform: none !important;
+}
+
+.hero-brand:hover img,
+.brand:hover img,
+.footer-brand-lockup:hover img,
+.footer-social-link:hover,
+.footer-social-link:hover svg {
+  transform: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+.footer-social-link:hover {
+  opacity: .72;
+}
+
+/* Cards consistentes */
+.cards-4 {
+  align-items: stretch;
+}
+
+.card {
+  height: 100%;
+}
+
+.card.product-card,
+.card.file-card,
+.card.video-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 405px;
+}
+
+/* Las etiquetas quedan prolijas en el flujo de la card */
+.card .badge,
+.card .tag {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  align-self: flex-start;
+  margin: 0 0 10px 0;
+  z-index: 4;
+  line-height: 1;
+}
+
+/* Títulos y descripciones con límite para que todas las cards mantengan tamaño */
+.card h3 {
+  min-height: 42px;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card p {
+  min-height: 48px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card small {
+  display: block;
+  margin-top: 4px;
+}
+
+.card-footer {
+  min-height: 22px;
+  margin-top: 12px;
+}
+
+/* Botones siempre alineados abajo */
+.card .download {
+  margin-top: auto !important;
+}
+
+/* Thumbnail estable */
+.card .thumb {
+  flex: 0 0 150px;
+}
+
+/* En móvil bajamos un poco la altura mínima */
+@media (max-width: 760px) {
+  .card.product-card,
+  .card.file-card,
+  .card.video-card {
+    min-height: 390px;
+  }
+}

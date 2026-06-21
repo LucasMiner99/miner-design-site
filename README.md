@@ -27,3 +27,11 @@ Fix clean-products:
 - Páginas Cursos/Archivos reconstruidas sin cards placeholder.
 - Home muestra todos los cursos/archivos reales desde Gumroad.
 - Cache actualizado a `/api/gumroad-products?v=clean2`.
+
+
+Polish fixes:
+- Hero sin botones Ver Tutoriales / Explorar Cursos.
+- Botón Discord blanco con texto negro.
+- Sin movimiento hover en logos ni iconos del footer.
+- Cards con altura uniforme, texto cortado con ellipsis visual y botones alineados abajo.
+- Fondo interno limpio sin franja gris inferior.
