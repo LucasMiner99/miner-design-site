@@ -7,8 +7,11 @@ Estructura:
 
 APIs:
 - `/api/youtube` carga videos del canal @MinerDesign
-- `/api/gumroad-products` carga productos/portadas desde Gumroad
+- `/api/gumroad-products` carga productos desde la API real de Gumroad
 
-Productos activos:
-- Blender para Principiantes
-- Shader de Espuma Realista
+Cloudflare Secret necesario:
+- `GUMROAD_ACCESS_TOKEN`
+
+Importante:
+- No guardar el token en GitHub.
+- El token se carga como Secret en Cloudflare.
