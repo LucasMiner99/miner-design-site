@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miner Design — Contacto</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="brand">
+      <img src="assets/logo-miner.svg" alt="Miner Design Logo" />
+      <span class="brand-wordmark">
+        <span>MINER</span>
+        <span>DESIGN</span>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <a href="tutoriales.html" class="">Tutoriales</a>
+      <a href="cursos.html" class="">Cursos</a>
+      <a href="archivos.html" class="">Archivos</a>
+      <a href="contacto.html" class="nav-button active">Contacto</a>
+    </nav>
+  </header>
+  <main class="inner-page">
+    <section class="page-hero contact-hero">
+      <h1>Contacto</h1>
+      <p>Escribime por consultas, colaboraciones, cursos o recursos para la comunidad.</p>
+    </section>
+
+    <section class="contact-section">
+      <form class="contact-form" data-contact-form>
+        <div class="form-row">
+          <label for="name">Nombre</label>
+          <input id="name" name="name" type="text" placeholder="Tu nombre" required />
+        </div>
+
+        <div class="form-row">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="tu@email.com" required />
+        </div>
+
+        <div class="form-row">
+          <label for="subject">Asunto</label>
+          <input id="subject" name="subject" type="text" placeholder="Consulta desde Miner Design" />
+        </div>
+
+        <div class="form-row">
+          <label for="message">Mensaje</label>
+          <textarea id="message" name="message" rows="8" placeholder="Escribí tu mensaje..." required></textarea>
+        </div>
+
+        <button type="submit" class="button primary contact-submit">Enviar email</button>
+
+        <p class="contact-note">
+          Por ahora este formulario abre tu app de correo para enviarme el mensaje a
+          <strong>contact.miner3d@gmail.com</strong>.
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer" id="contacto">
+    <a href="index.html" class="brand footer-brand-lockup">
+      <img src="assets/logo-miner.svg" alt="Miner Design logo" />
+      <span class="brand-wordmark">
+        <span>MINER</span>
+        <span>DESIGN</span>
+      </span>
+    </a>
+
+    <div class="footer-socials">
+      <a href="#" class="footer-social-link" aria-label="YouTube">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M23 12s0-3.4-.4-5c-.2-1-.9-1.8-1.9-2C18.9 4.5 12 4.5 12 4.5s-6.9 0-8.7.5c-1 .2-1.7 1-1.9 2C1 8.6 1 12 1 12s0 3.4.4 5c.2 1 .9 1.8 1.9 2 1.8.5 8.7.5 8.7.5s6.9 0 8.7-.5c1-.2 1.7-1 1.9-2 .4-1.6.4-5 .4-5z"></path>
+          <path d="M10 15.5v-7l6 3.5-6 3.5z" class="social-icon-cut"></path>
+        </svg>
+      </a>
+
+      <a href="#" class="footer-social-link" aria-label="Instagram">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.5" ry="4.5"></rect>
+          <circle cx="12" cy="12" r="4.2"></circle>
+          <circle cx="17.4" cy="6.6" r="1.1"></circle>
+        </svg>
+      </a>
+
+      <a href="#" class="footer-social-link" aria-label="Discord">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19.7 5.8a15.8 15.8 0 0 0-4-1.3l-.2.4a13.8 13.8 0 0 1 3.7 1.3 13.1 13.1 0 0 0-3.6-1.2 13.3 13.3 0 0 0-7.2 0 13.2 13.2 0 0 0-3.6 1.2 13.8 13.8 0 0 1 3.7-1.3l-.2-.4a15.8 15.8 0 0 0-4 1.3S1.4 10.8 1 15.6a16 16 0 0 0 4.9 2.5l1.2-2a9.4 9.4 0 0 1-1.9-.9l.5-.4a11.4 11.4 0 0 0 12.7 0l.5.4a9.5 9.5 0 0 1-1.9.9l1.2 2a16 16 0 0 0 4.9-2.5c-.5-4.8-3.1-9.8-3.1-9.8z"></path>
+          <circle cx="9.3" cy="12.2" r="1.4" class="discord-eye"></circle>
+          <circle cx="14.7" cy="12.2" r="1.4" class="discord-eye"></circle>
+        </svg>
+      </a>
+    </div>
+  </footer>
+  <script>
+    const form = document.querySelector('[data-contact-form]');
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const name = document.querySelector('#name').value.trim();
+      const email = document.querySelector('#email').value.trim();
+      const subject = document.querySelector('#subject').value.trim() || 'Contacto desde Miner Design';
+      const message = document.querySelector('#message').value.trim();
+
+      const body = [
+        `Nombre: ${name}`,
+        `Email: ${email}`,
+        '',
+        message
+      ].join('\n');
+
+      const mailto = `mailto:contact.miner3d@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    });
+  </script>
+</body>
+</html>
