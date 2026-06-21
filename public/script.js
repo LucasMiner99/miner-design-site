@@ -68,3 +68,80 @@ function bindMouseGlow() {
 
 bindMouseGlow();
 loadYouTubeVideos();
+
+
+// Gumroad auto loader.
+// The Worker endpoint /api/gumroad-products reads product metadata and cover images from Gumroad.
+
+async function loadGumroadProducts() {
+  const grids = document.querySelectorAll("[data-gumroad-grid]");
+  if (!grids.length) return;
+
+  try {
+    const response = await fetch("/api/gumroad-products");
+    if (!response.ok) throw new Error("Gumroad API error");
+
+    const data = await response.json();
+    const products = Array.isArray(data.products) ? data.products : [];
+    if (!products.length) return;
+
+    grids.forEach((grid) => {
+      const type = grid.dataset.type;
+      const limit = Number(grid.dataset.limit) || 99;
+      const filtered = products
+        .filter((product) => !type || product.type === type)
+        .slice(0, limit);
+
+      if (!filtered.length) return;
+
+      grid.innerHTML = filtered.map(renderGumroadCard).join("");
+    });
+
+    bindMouseGlow();
+  } catch (error) {
+    console.warn("No se pudieron cargar los productos de Gumroad. Se dejan las cards fallback.", error);
+  }
+}
+
+function renderGumroadCard(product) {
+  const isCourse = product.type === "course";
+  const articleClass = isCourse ? "product-card" : "file-card";
+  const colorClass = isCourse ? "green" : "blue";
+  const buttonClass = isCourse ? "green-button" : "blue-button";
+  const labelClass = isCourse ? "badge green" : "tag blue";
+
+  const imageStyle = product.image
+    ? `style="background-image: url('${escapeHtml(product.image)}');"`
+    : "";
+
+  const fallbackClass = product.fallbackClass || (isCourse ? "thumb-lowpoly" : "thumb-materials");
+  const thumbClass = product.image ? "thumb gumroad-thumb" : `thumb ${fallbackClass}`;
+
+  const footer = isCourse
+    ? `
+          <div class="card-footer">
+            <small>${escapeHtml(product.meta || "")}</small>
+            <strong>Gumroad</strong>
+          </div>`
+    : "";
+
+  return `
+        <article class="card ${articleClass}">
+          <div class="${thumbClass}" ${imageStyle}></div>
+          <span class="${labelClass}">${escapeHtml(product.label || "")}</span>
+          <h3>${escapeHtml(product.title || "")}</h3>
+          <p>${escapeHtml(product.description || "")}</p>${footer}
+          <a href="${escapeHtml(product.url)}" class="download ${buttonClass}" target="_blank" rel="noopener noreferrer">
+            ${escapeHtml(product.cta || "Ver en Gumroad")}
+            <span class="icon icon-stroke">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14"></path>
+                <path d="m13 6 6 6-6 6"></path>
+              </svg>
+            </span>
+          </a>
+        </article>
+  `;
+}
+
+loadGumroadProducts();
