@@ -1673,3 +1673,104 @@ body {
     min-height: 390px;
   }
 }
+
+
+/* ------------------------------
+   Card text + tutorial size fixes
+   ------------------------------ */
+
+/* Producto/archivo: altura pareja y textos siempre cortados en 2 líneas */
+.card.product-card,
+.card.file-card {
+  min-height: 375px !important;
+}
+
+.card.product-card .thumb,
+.card.file-card .thumb {
+  flex: 0 0 150px !important;
+}
+
+.card.product-card h3,
+.card.file-card h3 {
+  min-height: 42px !important;
+  max-height: 42px !important;
+  line-height: 1.15 !important;
+  margin-bottom: 8px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.card.product-card p,
+.card.file-card p {
+  min-height: 46px !important;
+  max-height: 46px !important;
+  line-height: 1.45 !important;
+  margin-bottom: 12px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.card.product-card .card-footer {
+  min-height: 20px !important;
+  margin-top: 0 !important;
+}
+
+.card.product-card .card-footer small {
+  margin: 0 !important;
+}
+
+.card.product-card .download,
+.card.file-card .download {
+  margin-top: auto !important;
+}
+
+/* Curso: sin texto Gumroad a la derecha */
+.card.product-card .card-footer {
+  justify-content: flex-start !important;
+}
+
+/* Tutoriales: como no tienen descripción, son más compactas */
+.card.video-card {
+  min-height: 325px !important;
+}
+
+.card.video-card .thumb {
+  flex: 0 0 170px !important;
+}
+
+.card.video-card h3 {
+  min-height: 52px !important;
+  max-height: 52px !important;
+  line-height: 1.15 !important;
+  margin-bottom: 10px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.card.video-card p {
+  display: none !important;
+}
+
+.card.video-card small {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .card.product-card,
+  .card.file-card {
+    min-height: 365px !important;
+  }
+
+  .card.video-card {
+    min-height: 310px !important;
+  }
+}

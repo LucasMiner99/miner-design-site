@@ -78,7 +78,7 @@ async function loadGumroadProducts() {
   if (!grids.length) return;
 
   try {
-    const response = await fetch("/api/gumroad-products?v=polish3");
+    const response = await fetch("/api/gumroad-products?v=cards4");
     if (!response.ok) throw new Error("Gumroad API error");
 
     const data = await response.json();
@@ -121,7 +121,6 @@ function renderGumroadCard(product) {
     ? `
           <div class="card-footer">
             <small>${escapeHtml(product.meta || "")}</small>
-            <strong>Gumroad</strong>
           </div>`
     : "";
 

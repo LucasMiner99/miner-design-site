@@ -35,3 +35,10 @@ Polish fixes:
 - Sin movimiento hover en logos ni iconos del footer.
 - Cards con altura uniforme, texto cortado con ellipsis visual y botones alineados abajo.
 - Fondo interno limpio sin franja gris inferior.
+
+
+Card size fixes:
+- Descripciones de cursos/archivos limitadas a máximo 2 líneas.
+- Curso sin texto "Gumroad" en la card.
+- Cards de YouTube más compactas.
+- Cache actualizado a `/api/gumroad-products?v=cards4`.
