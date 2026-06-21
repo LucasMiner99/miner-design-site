@@ -1,5 +1,0 @@
-name = "miner-design-site"
-compatibility_date = "2026-06-20"
-
-[assets]
-directory = "./"
