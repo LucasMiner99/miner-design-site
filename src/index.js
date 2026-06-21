@@ -87,6 +87,8 @@ async function handleGumroadProducts(request, env) {
       .filter(Boolean)
       .filter((product) => product.url);
 
+    products = dedupeProducts(products);
+
     if (type) {
       products = products.filter((product) => product.type === type);
     }
@@ -95,7 +97,7 @@ async function handleGumroadProducts(request, env) {
     const enriched = await Promise.all(products.map(enrichGumroadImage));
 
     return json({ products: enriched }, 200, {
-      "Cache-Control": "public, max-age=1800",
+      "Cache-Control": "no-store",
     });
   } catch (error) {
     return json({
@@ -217,6 +219,48 @@ async function enrichGumroadImage(product) {
     return product;
   }
 }
+
+
+function dedupeProducts(products) {
+  const seen = new Set();
+  const output = [];
+
+  for (const product of products) {
+    const key = productKey(product);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    output.push(product);
+  }
+
+  return output;
+}
+
+function productKey(product) {
+  // Primero intentamos deduplicar por permalink/link.
+  // Si Gumroad duplicó productos con URLs distintas pero mismo título, usamos el título normalizado.
+  const permalink = normalizeKey(product.permalink || "");
+  const title = normalizeKey(product.title || "");
+
+  if (permalink) return `permalink:${permalink}`;
+  if (title) return `title:${title}`;
+
+  return `id:${product.id}`;
+}
+
+function normalizeKey(value) {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s*copy\s*\d*$/i, "")
+    .replace(/\s*copia\s*\d*$/i, "")
+    .replace(/\s*\(\s*copy\s*\d*\s*\)$/i, "")
+    .replace(/\s*\(\s*copia\s*\d*\s*\)$/i, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 
 function getPermalink(product) {
   const fromProduct =

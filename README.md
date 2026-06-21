@@ -15,3 +15,9 @@ Cloudflare Secret necesario:
 Importante:
 - No guardar el token en GitHub.
 - El token se carga como Secret en Cloudflare.
+
+
+Update:
+- Gumroad API real con deduplicado automático.
+- La web pide `/api/gumroad-products?v=dedupe1` para evitar cache viejo.
+- El endpoint devuelve `Cache-Control: no-store` para que los cambios se vean más rápido.
