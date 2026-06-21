@@ -1,0 +1,17 @@
+// Miner Design micro-interactions.
+// Updates CSS variables so hover glows follow the mouse.
+
+const hoverTargets = document.querySelectorAll(
+  ".card, .button, .community-button, .social-link, .nav-button, .download"
+);
+
+hoverTargets.forEach((element) => {
+  element.addEventListener("pointermove", (event) => {
+    const rect = element.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    element.style.setProperty("--mx", `${x}px`);
+    element.style.setProperty("--my", `${y}px`);
+  });
+});
