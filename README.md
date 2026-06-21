@@ -48,3 +48,10 @@ Tight card fixes:
 - Producto/archivo: descripción bloqueada a 2 líneas exactas, sin tercera línea asomando.
 - Tutoriales: cards más compactas y sin espacio muerto inferior.
 - Cache actualizado a `/api/gumroad-products?v=tight5`.
+
+
+Final today:
+- Favicon agregado desde `assets/favicon.png`.
+- Card de curso sin mini texto/meta.
+- Se evita usar favicon/avatar/icono de Gumroad como portada de producto.
+- Cache actualizado a `/api/gumroad-products?v=final6`.

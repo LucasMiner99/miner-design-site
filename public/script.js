@@ -78,7 +78,7 @@ async function loadGumroadProducts() {
   if (!grids.length) return;
 
   try {
-    const response = await fetch("/api/gumroad-products?v=tight5");
+    const response = await fetch("/api/gumroad-products?v=final6");
     if (!response.ok) throw new Error("Gumroad API error");
 
     const data = await response.json();
@@ -117,12 +117,7 @@ function renderGumroadCard(product) {
   const fallbackClass = product.fallbackClass || (isCourse ? "thumb-lowpoly" : "thumb-materials");
   const thumbClass = product.image ? "thumb gumroad-thumb" : `thumb ${fallbackClass}`;
 
-  const footer = isCourse
-    ? `
-          <div class="card-footer">
-            <small>${escapeHtml(product.meta || "")}</small>
-          </div>`
-    : "";
+  const footer = "";
 
   return `
         <article class="card ${articleClass}">

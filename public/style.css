@@ -1855,3 +1855,29 @@ body {
     min-height: 350px !important;
   }
 }
+
+
+/* ------------------------------
+   Final favicon + course cleanup
+   ------------------------------ */
+
+/* Curso sin mini texto/meta */
+.card.product-card .card-footer {
+  display: none !important;
+}
+
+.card.product-card .download {
+  margin-top: auto !important;
+}
+
+/* Si el curso no trae portada válida, usamos el fallback sin que parezca favicon roto */
+.card.product-card .thumb-lowpoly {
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,.18), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.55) 45%, rgba(8,8,8,.9) 100%);
+}
+
+.card.product-card .thumb-lowpoly::after {
+  background:
+    linear-gradient(to top, rgba(0,0,0,0.72), transparent 58%);
+}
