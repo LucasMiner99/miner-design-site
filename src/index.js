@@ -10,9 +10,9 @@ const PRODUCT_OVERRIDES = {
     title: "Blender para Principiantes",
     description: "Aprendé Blender desde cero con una guía clara para empezar a modelar, iluminar y renderizar tus primeras escenas.",
     label: "Curso",
-    meta: "Curso completo · Principiante",
+    meta: "",
     cta: "Ver curso",
-    fallbackClass: "thumb-lowpoly",
+    fallbackClass: "thumb-course-fallback",
   },
   espuma_shader: {
     type: "file",
@@ -244,7 +244,7 @@ function normalizeGumroadProduct(product) {
   const title = overrides.title || product.name || product.title || "Producto";
   const type = overrides.type || inferProductType(title, permalink);
   const url = product.short_url || product.url || product.long_url || product.preview_url || `https://minerdesign.gumroad.com/l/${permalink}`;
-  const image = overrides.forceFallbackImage ? "" : getImage(product);
+  const image = pickBestProductImage(getImageCandidatesFromProduct(product), { title, permalink });
 
   // Intentamos ocultar productos borradores/deshabilitados si Gumroad manda ese dato.
   if (product.deleted || product.archived || product.is_deleted) return null;
@@ -261,15 +261,13 @@ function normalizeGumroadProduct(product) {
     cta: overrides.cta || (type === "course" ? "Ver curso" : "Ver en Gumroad"),
     url,
     image,
-    skipPageImageFallback: Boolean(overrides.skipPageImageFallback),
-    forceFallbackImage: Boolean(overrides.forceFallbackImage),
     fallbackClass: overrides.fallbackClass || (type === "course" ? "thumb-lowpoly" : "thumb-materials"),
     price: product.formatted_price || product.price_formatted || "",
   };
 }
 
 async function enrichGumroadImage(product) {
-  if (product.image || !product.url) return product;
+  if (product.image || !product.url || product.forceNoImage || product.skipPageImageFallback) return product;
 
   try {
     const response = await fetch(product.url, {
@@ -358,28 +356,214 @@ function getPermalink(product) {
   return match ? match[1] : "";
 }
 
-function getImage(product) {
-  const candidates = [
-    product.thumbnail_url,
-    product.cover_url,
-    product.cover_image_url,
-    product.preview_url,
-    product.image_url,
-    product.picture_url,
-    product.customizable_price_image_url,
+function getImageCandidatesFromProduct(product) {
+  const candidates = [];
+
+  const directKeys = [
+    "thumbnail_url",
+    "cover_url",
+    "cover_image_url",
+    "image_url",
+    "picture_url",
+    "customizable_price_image_url",
   ];
 
+  for (const key of directKeys) {
+    addImageCandidate(candidates, product[key], `api:${key}`);
+  }
+
+  collectImageUrls(product.previews, candidates, "api:previews");
+  collectImageUrls(product.covers, candidates, "api:covers");
+  collectImageUrls(product.images, candidates, "api:images");
+  collectImageUrls(product.product_images, candidates, "api:product_images");
+  collectImageUrls(product.preview_images, candidates, "api:preview_images");
+  collectImageUrls(product.content, candidates, "api:content");
+
+  return candidates;
+}
+
+function getImageCandidatesFromHtml(html) {
+  const candidates = [];
+
+  addImageCandidate(candidates, meta(html, "og:image"), "html:og:image");
+  addImageCandidate(candidates, meta(html, "twitter:image"), "html:twitter:image");
+  addImageCandidate(candidates, meta(html, "thumbnail"), "html:thumbnail");
+
+  const attrRegex = /(src|href|content)=["']([^"']+\.(?:png|jpe?g|webp)(?:\?[^"']*)?)["']/gi;
+  let attrMatch;
+
+  while ((attrMatch = attrRegex.exec(html))) {
+    addImageCandidate(candidates, decodeHtmlUrl(attrMatch[2]), `html:${attrMatch[1]}`);
+  }
+
+  const srcsetRegex = /srcset=["']([^"']+)["']/gi;
+  let srcsetMatch;
+
+  while ((srcsetMatch = srcsetRegex.exec(html))) {
+    const parts = srcsetMatch[1].split(",");
+    for (const part of parts) {
+      const url = part.trim().split(/\s+/)[0];
+      addImageCandidate(candidates, decodeHtmlUrl(url), "html:srcset");
+    }
+  }
+
+  const escapedRegex = /https?:\\\/\\\/[^"'\\]+?(?:png|jpe?g|webp)(?:\\\?[^"'\\]*)?/gi;
+  let escapedMatch;
+
+  while ((escapedMatch = escapedRegex.exec(html))) {
+    addImageCandidate(candidates, decodeHtmlUrl(escapedMatch[0]), "html:json-escaped");
+  }
+
+  const plainRegex = /https?:\/\/[^"'<>\\]+?(?:png|jpe?g|webp)(?:\?[^"'<>\\]*)?/gi;
+  let plainMatch;
+
+  while ((plainMatch = plainRegex.exec(html))) {
+    addImageCandidate(candidates, decodeHtmlUrl(plainMatch[0]), "html:script-url");
+  }
+
+  return candidates;
+}
+
+function collectImageUrls(value, candidates, source = "api:nested") {
+  if (!value) return;
+
+  if (typeof value === "string") {
+    addImageCandidate(candidates, value, source);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectImageUrls(item, candidates, `${source}[${index}]`));
+    return;
+  }
+
+  if (typeof value === "object") {
+    const keys = [
+      "url",
+      "src",
+      "image",
+      "image_url",
+      "thumbnail_url",
+      "cover_url",
+      "cover_image_url",
+      "large_url",
+      "original_url",
+      "file_url",
+    ];
+
+    for (const key of keys) {
+      addImageCandidate(candidates, value[key], `${source}.${key}`);
+    }
+
+    for (const [key, nested] of Object.entries(value)) {
+      if (/image|thumb|cover|preview|asset|file/i.test(key)) {
+        collectImageUrls(nested, candidates, `${source}.${key}`);
+      }
+    }
+  }
+}
+
+function addImageCandidate(candidates, value, source = "") {
+  if (!value || typeof value !== "string") return;
+
+  const url = decodeHtmlUrl(value).trim();
+
+  if (!/^https?:\/\//i.test(url)) return;
+  if (!/\.(png|jpe?g|webp)(\?|#|$)/i.test(url) && !/gumlet|cloudfront|s3|public-files/i.test(url)) return;
+
+  candidates.push({ url, source });
+}
+
+function pickBestProductImage(candidates, product = {}) {
+  const unique = new Map();
+
   for (const candidate of candidates) {
-    if (candidate && /^https?:\/\//i.test(candidate)) return candidate;
+    if (!candidate || !candidate.url) continue;
+    const clean = cleanupImageUrl(candidate.url);
+    if (!clean) continue;
+    if (!unique.has(clean)) unique.set(clean, { ...candidate, url: clean });
   }
 
-  if (Array.isArray(product.previews) && product.previews.length) {
-    const preview = product.previews[0];
-    if (typeof preview === "string") return preview;
-    if (preview && preview.url) return preview.url;
+  let best = null;
+  let bestScore = -9999;
+
+  for (const candidate of unique.values()) {
+    const score = scoreProductImage(candidate.url, product, candidate.source || "");
+
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
   }
 
-  return "";
+  return best && bestScore >= 25 ? best.url : "";
+}
+
+function scoreProductImage(url, product = {}, source = "") {
+  const clean = String(url).toLowerCase();
+  const sourceClean = String(source).toLowerCase();
+  const permalink = normalizeKey(product.permalink || "");
+  const title = normalizeKey(product.title || "");
+  const dimensions = getImageDimensionsFromUrl(clean);
+
+  let score = 0;
+
+  if (/gumroad|gumlet|cloudfront|s3|public-files/.test(clean)) score += 25;
+
+  if (/cover|preview|product|asset|image/.test(clean)) score += 30;
+  if (/cover|preview|product|asset|image/.test(sourceClean)) score += 20;
+
+  if (permalink && clean.includes(permalink)) score += 35;
+  if (title && clean.includes(title)) score += 15;
+
+  if (dimensions.width || dimensions.height) {
+    const maxSide = Math.max(dimensions.width || 0, dimensions.height || 0);
+    const minSide = Math.min(dimensions.width || 9999, dimensions.height || 9999);
+
+    if (maxSide >= 900) score += 45;
+    else if (maxSide >= 600) score += 35;
+    else if (maxSide >= 320) score += 18;
+    else score -= 80;
+
+    if (minSide && minSide <= 180) score -= 45;
+  }
+
+  if (/\.(ico|svg)(\?|#|$)/.test(clean)) score -= 200;
+  if (/favicon|avatar|profile|userpic|apple-touch-icon|\/icons?\//.test(clean)) score -= 160;
+
+  if (/logo/.test(clean)) score -= 45;
+  if (/thumb|thumbnail/.test(clean)) score -= dimensions.width && dimensions.width < 500 ? 55 : 10;
+
+  return score;
+}
+
+function getImageDimensionsFromUrl(url) {
+  const widthMatch = url.match(/[?&](?:w|width)=([0-9]+)/i) || url.match(/(?:_|-)([0-9]{3,4})x[0-9]{3,4}/i);
+  const heightMatch = url.match(/[?&](?:h|height)=([0-9]+)/i) || url.match(/(?:_|-)[0-9]{3,4}x([0-9]{3,4})/i);
+
+  return {
+    width: widthMatch ? Number(widthMatch[1]) : 0,
+    height: heightMatch ? Number(heightMatch[1]) : 0,
+  };
+}
+
+function cleanupImageUrl(url) {
+  return decodeHtmlUrl(url)
+    .replace(/\\u0026/g, "&")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+function decodeHtmlUrl(value) {
+  return String(value)
+    .replace(/\\\//g, "/")
+    .replace(/\\u002F/gi, "/")
+    .replace(/\\u0026/gi, "&")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#47;/g, "/")
+    .replace(/&quot;/g, '"');
 }
 
 function getMeta(product, type) {

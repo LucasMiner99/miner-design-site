@@ -1881,3 +1881,33 @@ body {
   background:
     linear-gradient(to top, rgba(0,0,0,0.72), transparent 58%);
 }
+
+
+/* ------------------------------
+   Hard course image fix
+   ------------------------------ */
+
+.card.product-card .card-footer {
+  display: none !important;
+}
+
+.thumb-course-fallback {
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255,255,255,.18), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.52) 46%, rgba(7,7,7,.94) 100%) !important;
+}
+
+.thumb-course-fallback::before {
+  content: "";
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, transparent 0 37%, rgba(0,0,0,.85) 37% 48%, transparent 48%),
+    linear-gradient(45deg, transparent 0 42%, rgba(0,0,0,.75) 42% 53%, transparent 53%);
+  opacity: .28;
+}
+
+.thumb-course-fallback::after {
+  background: linear-gradient(to top, rgba(0,0,0,.72), transparent 58%) !important;
+}

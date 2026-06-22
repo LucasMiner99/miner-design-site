@@ -69,7 +69,14 @@ YouTube stable cache:
 - El frontend reintenta 3 veces antes de dejar las cards fallback.
 
 
-Course image fix:
-- El curso `md_blender_principiantes` ignora la imagen que devuelve Gumroad porque estaba devolviendo el icono/logo.
-- Usa fallback visual hasta cargar una portada manual o hasta que Gumroad devuelva una imagen correcta.
-- Cache actualizado a `/api/gumroad-products?v=courseimgfix7`.
+Hard course image fix:
+- El curso `md_blender_principiantes` fuerza `forceNoImage: true`.
+- No usa thumbnail de la API ni og:image de la página.
+- Cache actualizado a `/api/gumroad-products?v=hardcourse8`.
+
+
+Gumroad cover auto fix:
+- Se eliminó el forceNoImage del curso.
+- La web vuelve a buscar portada automáticamente desde API y página pública de Gumroad.
+- Se filtran favicon/avatar/iconos chicos para evitar usar thumbnails incorrectas.
+- Cache actualizado a `/api/gumroad-products?v=coverauto9`.

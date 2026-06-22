@@ -78,7 +78,7 @@ async function loadGumroadProducts() {
   if (!grids.length) return;
 
   try {
-    const response = await fetch("/api/gumroad-products?v=courseimgfix7");
+    const response = await fetch("/api/gumroad-products?v=coverauto9");
     if (!response.ok) throw new Error("Gumroad API error");
 
     const data = await response.json();
