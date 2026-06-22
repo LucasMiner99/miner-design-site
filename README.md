@@ -55,3 +55,9 @@ Final today:
 - Card de curso sin mini texto/meta.
 - Se evita usar favicon/avatar/icono de Gumroad como portada de producto.
 - Cache actualizado a `/api/gumroad-products?v=final6`.
+
+
+YouTube fix:
+- Endpoint `/api/youtube` ahora usa `Cache-Control: no-store`.
+- La web llama `/api/youtube?limit=8&v=ytfix1`.
+- Si falla el RSS de YouTube, el Worker intenta leer la página `/@MinerDesign/videos` como fallback.

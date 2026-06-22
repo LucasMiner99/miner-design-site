@@ -44,30 +44,93 @@ export default {
 async function handleYouTube(request) {
   try {
     const limit = clamp(Number(new URL(request.url).searchParams.get("limit")) || 8, 1, 12);
-    const response = await fetch(FEED_URL, {
-      headers: {
-        "User-Agent": "MinerDesignWebsite/1.0",
-        "Accept": "application/rss+xml, application/xml, text/xml",
-      },
-      cf: {
-        cacheTtl: 1800,
-        cacheEverything: true,
-      },
-    });
 
-    if (!response.ok) {
-      return json({ error: "No se pudo leer el feed de YouTube." }, 502);
+    let videos = await fetchYouTubeFromFeed(limit);
+
+    // Fallback: si el RSS falla o viene vacío, intentamos leer la página de videos del canal.
+    if (!videos.length) {
+      videos = await fetchYouTubeFromChannelPage(limit);
     }
 
-    const xml = await response.text();
-    const videos = parseYouTubeFeed(xml).slice(0, limit);
+    if (!videos.length) {
+      return json({ error: "No se encontraron videos de YouTube.", videos: [] }, 502, {
+        "Cache-Control": "no-store",
+      });
+    }
 
     return json({ videos }, 200, {
-      "Cache-Control": "public, max-age=1800",
+      "Cache-Control": "no-store",
     });
   } catch (error) {
-    return json({ error: "Error cargando videos de YouTube." }, 500);
+    return json({
+      error: "Error cargando videos de YouTube.",
+      detail: error && error.message ? error.message : String(error),
+      videos: [],
+    }, 500, {
+      "Cache-Control": "no-store",
+    });
   }
+}
+
+async function fetchYouTubeFromFeed(limit) {
+  const response = await fetch(FEED_URL, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 MinerDesignWebsite/1.0",
+      "Accept": "application/rss+xml, application/xml, text/xml,*/*",
+    },
+    cf: {
+      cacheTtl: 0,
+      cacheEverything: false,
+    },
+  });
+
+  if (!response.ok) return [];
+
+  const xml = await response.text();
+  return parseYouTubeFeed(xml).slice(0, limit);
+}
+
+async function fetchYouTubeFromChannelPage(limit) {
+  const response = await fetch("https://www.youtube.com/@MinerDesign/videos", {
+    headers: {
+      "User-Agent": "Mozilla/5.0 MinerDesignWebsite/1.0",
+      "Accept": "text/html,*/*",
+      "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+    },
+    cf: {
+      cacheTtl: 0,
+      cacheEverything: false,
+    },
+  });
+
+  if (!response.ok) return [];
+
+  const html = await response.text();
+  const videos = [];
+  const seen = new Set();
+
+  const regex = /"videoId":"([^"]+)"[\s\S]{0,900}?"title":\{"runs":\[\{"text":"([^"]+)"/g;
+  let match;
+
+  while ((match = regex.exec(html)) && videos.length < limit) {
+    const id = match[1];
+    const title = decode(match[2]);
+
+    if (!id || !title || seen.has(id)) continue;
+
+    seen.add(id);
+    videos.push({
+      id,
+      title,
+      author: "MinerDesign",
+      url: `https://www.youtube.com/watch?v=${id}`,
+      thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      published: "",
+      publishedText: "",
+    });
+  }
+
+  return videos;
 }
 
 async function handleGumroadProducts(request, env) {

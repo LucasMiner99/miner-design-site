@@ -7,7 +7,7 @@ async function loadYouTubeVideos() {
   if (!grids.length) return;
 
   try {
-    const response = await fetch("/api/youtube?limit=8");
+    const response = await fetch("/api/youtube?limit=8&v=ytfix1");
     if (!response.ok) throw new Error("YouTube API error");
 
     const data = await response.json();
