@@ -61,3 +61,15 @@ YouTube fix:
 - Endpoint `/api/youtube` ahora usa `Cache-Control: no-store`.
 - La web llama `/api/youtube?limit=8&v=ytfix1`.
 - Si falla el RSS de YouTube, el Worker intenta leer la página `/@MinerDesign/videos` como fallback.
+
+
+YouTube stable cache:
+- `/api/youtube` guarda la última respuesta buena en Cache API de Cloudflare.
+- Si YouTube falla intermitentemente, devuelve la versión cacheada en vez de caer a placeholders.
+- El frontend reintenta 3 veces antes de dejar las cards fallback.
+
+
+Course image fix:
+- El curso `md_blender_principiantes` ignora la imagen que devuelve Gumroad porque estaba devolviendo el icono/logo.
+- Usa fallback visual hasta cargar una portada manual o hasta que Gumroad devuelva una imagen correcta.
+- Cache actualizado a `/api/gumroad-products?v=courseimgfix7`.

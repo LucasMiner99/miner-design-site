@@ -30,7 +30,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/youtube") {
-      return handleYouTube(request);
+      return handleYouTube(request, ctx);
     }
 
     if (url.pathname === "/api/gumroad-products") {
@@ -41,10 +41,15 @@ export default {
   },
 };
 
-async function handleYouTube(request) {
-  try {
-    const limit = clamp(Number(new URL(request.url).searchParams.get("limit")) || 8, 1, 12);
+async function handleYouTube(request, ctx) {
+  const url = new URL(request.url);
+  const limit = clamp(Number(url.searchParams.get("limit")) || 8, 1, 12);
 
+  const cache = caches.default;
+  const cacheKey = new Request(`https://minerdesign.local/youtube-cache-stable-v2?limit=${limit}`);
+  const cached = await cache.match(cacheKey);
+
+  try {
     let videos = await fetchYouTubeFromFeed(limit);
 
     // Fallback: si el RSS falla o viene vacío, intentamos leer la página de videos del canal.
@@ -52,24 +57,34 @@ async function handleYouTube(request) {
       videos = await fetchYouTubeFromChannelPage(limit);
     }
 
-    if (!videos.length) {
-      return json({ error: "No se encontraron videos de YouTube.", videos: [] }, 502, {
-        "Cache-Control": "no-store",
+    if (videos.length) {
+      const response = json({ videos, source: "live" }, 200, {
+        "Cache-Control": "public, max-age=600, stale-while-revalidate=86400",
       });
-    }
 
-    return json({ videos }, 200, {
-      "Cache-Control": "no-store",
-    });
+      if (ctx && ctx.waitUntil) {
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      } else {
+        await cache.put(cacheKey, response.clone());
+      }
+
+      return response;
+    }
   } catch (error) {
-    return json({
-      error: "Error cargando videos de YouTube.",
-      detail: error && error.message ? error.message : String(error),
-      videos: [],
-    }, 500, {
-      "Cache-Control": "no-store",
-    });
+    // Si YouTube falla, seguimos abajo y usamos la última respuesta buena cacheada.
   }
+
+  if (cached) {
+    return cached;
+  }
+
+  return json({
+    error: "No se encontraron videos de YouTube y todavía no hay cache guardado.",
+    videos: [],
+    source: "empty",
+  }, 200, {
+    "Cache-Control": "no-store",
+  });
 }
 
 async function fetchYouTubeFromFeed(limit) {
@@ -79,8 +94,8 @@ async function fetchYouTubeFromFeed(limit) {
       "Accept": "application/rss+xml, application/xml, text/xml,*/*",
     },
     cf: {
-      cacheTtl: 0,
-      cacheEverything: false,
+      cacheTtl: 600,
+      cacheEverything: true,
     },
   });
 
@@ -98,8 +113,8 @@ async function fetchYouTubeFromChannelPage(limit) {
       "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
     },
     cf: {
-      cacheTtl: 0,
-      cacheEverything: false,
+      cacheTtl: 600,
+      cacheEverything: true,
     },
   });
 
@@ -229,7 +244,7 @@ function normalizeGumroadProduct(product) {
   const title = overrides.title || product.name || product.title || "Producto";
   const type = overrides.type || inferProductType(title, permalink);
   const url = product.short_url || product.url || product.long_url || product.preview_url || `https://minerdesign.gumroad.com/l/${permalink}`;
-  const image = getImage(product);
+  const image = overrides.forceFallbackImage ? "" : getImage(product);
 
   // Intentamos ocultar productos borradores/deshabilitados si Gumroad manda ese dato.
   if (product.deleted || product.archived || product.is_deleted) return null;
@@ -246,6 +261,8 @@ function normalizeGumroadProduct(product) {
     cta: overrides.cta || (type === "course" ? "Ver curso" : "Ver en Gumroad"),
     url,
     image,
+    skipPageImageFallback: Boolean(overrides.skipPageImageFallback),
+    forceFallbackImage: Boolean(overrides.forceFallbackImage),
     fallbackClass: overrides.fallbackClass || (type === "course" ? "thumb-lowpoly" : "thumb-materials"),
     price: product.formatted_price || product.price_formatted || "",
   };
