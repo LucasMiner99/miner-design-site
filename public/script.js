@@ -7,10 +7,7 @@ async function loadYouTubeVideos() {
   if (!grids.length) return;
 
   try {
-    const response = await fetch("/api/youtube?limit=8&v=ytfix1");
-    if (!response.ok) throw new Error("YouTube API error");
-
-    const data = await response.json();
+    const data = await fetchJsonWithRetry("/api/youtube?limit=8&v=ytapi1", 3);
     const videos = Array.isArray(data.videos) ? data.videos : [];
     if (!videos.length) return;
 
@@ -23,6 +20,27 @@ async function loadYouTubeVideos() {
   } catch (error) {
     console.warn("No se pudieron cargar los videos automáticos. Se dejan las cards de ejemplo.", error);
   }
+}
+
+async function fetchJsonWithRetry(url, attempts = 3) {
+  let lastError;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      if (data && Array.isArray(data.videos)) return data;
+
+      throw new Error("Respuesta inválida");
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 450 * (i + 1)));
+    }
+  }
+
+  throw lastError || new Error("Fetch error");
 }
 
 function renderVideoCard(video) {

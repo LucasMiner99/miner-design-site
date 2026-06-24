@@ -80,3 +80,10 @@ Gumroad cover auto fix:
 - La web vuelve a buscar portada automáticamente desde API y página pública de Gumroad.
 - Se filtran favicon/avatar/iconos chicos para evitar usar thumbnails incorrectas.
 - Cache actualizado a `/api/gumroad-products?v=coverauto9`.
+
+
+YouTube Data API:
+- `/api/youtube` usa `YOUTUBE_API_KEY` desde Cloudflare Secrets.
+- Usa la playlist de uploads `UU7ICe-QlKsiyClI3uA8WU3g`.
+- Mantiene fallback RSS/scrape y cache de última respuesta buena.
+- La web llama `/api/youtube?limit=8&v=ytapi1`.

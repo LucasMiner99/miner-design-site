@@ -1,5 +1,7 @@
 const CHANNEL_ID = "UC7ICe-QlKsiyClI3uA8WU3g";
 const FEED_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
+const YOUTUBE_UPLOADS_PLAYLIST_ID = "UU7ICe-QlKsiyClI3uA8WU3g";
+const YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/playlistItems";
 const GUMROAD_API_URL = "https://api.gumroad.com/v2/products";
 
 // Ajustes manuales por producto.
@@ -30,7 +32,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/youtube") {
-      return handleYouTube(request, ctx);
+      return handleYouTube(request, env, ctx);
     }
 
     if (url.pathname === "/api/gumroad-products") {
@@ -41,25 +43,33 @@ export default {
   },
 };
 
-async function handleYouTube(request, ctx) {
+async function handleYouTube(request, env, ctx) {
   const url = new URL(request.url);
   const limit = clamp(Number(url.searchParams.get("limit")) || 8, 1, 12);
 
   const cache = caches.default;
-  const cacheKey = new Request(`https://minerdesign.local/youtube-cache-stable-v2?limit=${limit}`);
+  const cacheKey = new Request(`https://minerdesign.local/youtube-api-cache-v1?limit=${limit}`);
   const cached = await cache.match(cacheKey);
 
   try {
-    let videos = await fetchYouTubeFromFeed(limit);
+    let videos = [];
 
-    // Fallback: si el RSS falla o viene vacío, intentamos leer la página de videos del canal.
+    if (env.YOUTUBE_API_KEY) {
+      videos = await fetchYouTubeFromDataAPI(limit, env.YOUTUBE_API_KEY);
+    }
+
+    // Fallbacks por si hay algún problema temporal con la API/key.
+    if (!videos.length) {
+      videos = await fetchYouTubeFromFeed(limit);
+    }
+
     if (!videos.length) {
       videos = await fetchYouTubeFromChannelPage(limit);
     }
 
     if (videos.length) {
-      const response = json({ videos, source: "live" }, 200, {
-        "Cache-Control": "public, max-age=600, stale-while-revalidate=86400",
+      const response = json({ videos, source: env.YOUTUBE_API_KEY ? "youtube-data-api" : "fallback" }, 200, {
+        "Cache-Control": "public, max-age=1800, stale-while-revalidate=86400",
       });
 
       if (ctx && ctx.waitUntil) {
@@ -71,7 +81,7 @@ async function handleYouTube(request, ctx) {
       return response;
     }
   } catch (error) {
-    // Si YouTube falla, seguimos abajo y usamos la última respuesta buena cacheada.
+    // Si algo falla, usamos última respuesta buena cacheada.
   }
 
   if (cached) {
@@ -79,12 +89,72 @@ async function handleYouTube(request, ctx) {
   }
 
   return json({
-    error: "No se encontraron videos de YouTube y todavía no hay cache guardado.",
+    error: "No se pudieron cargar videos de YouTube y todavía no hay cache guardado.",
     videos: [],
     source: "empty",
   }, 200, {
     "Cache-Control": "no-store",
   });
+}
+
+async function fetchYouTubeFromDataAPI(limit, apiKey) {
+  const apiUrl = new URL(YOUTUBE_API_URL);
+  apiUrl.searchParams.set("part", "snippet,contentDetails");
+  apiUrl.searchParams.set("playlistId", YOUTUBE_UPLOADS_PLAYLIST_ID);
+  apiUrl.searchParams.set("maxResults", String(limit));
+  apiUrl.searchParams.set("key", apiKey);
+
+  const response = await fetch(apiUrl.toString(), {
+    headers: {
+      "Accept": "application/json",
+    },
+    cf: {
+      cacheTtl: 1800,
+      cacheEverything: true,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`YouTube Data API respondió ${response.status}: ${errorText.slice(0, 180)}`);
+  }
+
+  const data = await response.json();
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  return items
+    .map((item) => {
+      const snippet = item.snippet || {};
+      const contentDetails = item.contentDetails || {};
+      const videoId = contentDetails.videoId || (snippet.resourceId && snippet.resourceId.videoId) || "";
+      const title = snippet.title || "";
+      const thumbnail =
+        getBestYouTubeThumbnail(snippet.thumbnails) ||
+        (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "");
+
+      return {
+        id: videoId,
+        title,
+        author: snippet.channelTitle || "MinerDesign",
+        url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : "",
+        thumbnail,
+        published: snippet.publishedAt || "",
+        publishedText: relativeDate(snippet.publishedAt || ""),
+      };
+    })
+    .filter((video) => video.id && video.title && video.title !== "Private video" && video.title !== "Deleted video")
+    .slice(0, limit);
+}
+
+function getBestYouTubeThumbnail(thumbnails = {}) {
+  return (
+    thumbnails.maxres?.url ||
+    thumbnails.standard?.url ||
+    thumbnails.high?.url ||
+    thumbnails.medium?.url ||
+    thumbnails.default?.url ||
+    ""
+  );
 }
 
 async function fetchYouTubeFromFeed(limit) {
