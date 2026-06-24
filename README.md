@@ -87,3 +87,9 @@ YouTube Data API:
 - Usa la playlist de uploads `UU7ICe-QlKsiyClI3uA8WU3g`.
 - Mantiene fallback RSS/scrape y cache de última respuesta buena.
 - La web llama `/api/youtube?limit=8&v=ytapi1`.
+
+
+X + Videos update:
+- Agregado link a X: https://x.com/LucasMiner34927
+- Agregado icono de X en hero y footer.
+- Texto visible "Tutoriales" cambiado a "Videos".

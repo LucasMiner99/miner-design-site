@@ -1911,3 +1911,17 @@ body {
 .thumb-course-fallback::after {
   background: linear-gradient(to top, rgba(0,0,0,.72), transparent 58%) !important;
 }
+
+
+/* X social icon */
+.social-link[aria-label="X"] svg,
+.footer-social-link[aria-label="X"] svg {
+  width: 17px;
+  height: 17px;
+}
+
+.social-link[aria-label="X"] .social-icon-cut,
+.footer-social-link[aria-label="X"] .social-icon-cut {
+  fill: #f1f1f1;
+  stroke: none;
+}
