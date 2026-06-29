@@ -93,3 +93,7 @@ X + Videos update:
 - Agregado link a X: https://x.com/LucasMiner34927
 - Agregado icono de X en hero y footer.
 - Texto visible "Tutoriales" cambiado a "Videos".
+
+
+Home order update:
+- Home reordenada: Videos → Archivos → Cursos.
