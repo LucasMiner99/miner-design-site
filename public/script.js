@@ -66,7 +66,7 @@ function escapeHtml(value) {
 
 function bindMouseGlow() {
   const hoverTargets = document.querySelectorAll(
-    ".card, .button, .community-button, .social-link, .nav-button, .download"
+    ".card, .portfolio-project-card, .portfolio-shot, .button, .community-button, .social-link, .nav-button, .download"
   );
 
   hoverTargets.forEach((element) => {
