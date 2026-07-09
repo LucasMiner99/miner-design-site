@@ -103,3 +103,7 @@ Portfolio update:
 - Agregada página `public/portfolio.html` con proyectos Subliminal, Thompson y GTA VI inspired scene.
 - Agregado link Portfolio en navegación y sección preview en Home.
 - Imágenes optimizadas en `public/assets/portfolio/` como WebP.
+
+
+Home order update:
+- Portfolio movido debajo de Cursos en la página principal.
