@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <title>Miner Share</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section id="homeView" class="panel home-panel">
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div>
+          <h1>Miner Share</h1>
+          <p>Simple P2P screen sharing.</p>
+        </div>
+      </div>
+
+      <div class="home-actions">
+        <button id="showHostBtn" class="primary big-btn">Host</button>
+        <button id="showJoinBtn" class="secondary big-btn">Join</button>
+      </div>
+
+      <p class="small-note">No accounts. Nothing is saved.</p>
+    </section>
+
+    <section id="hostView" class="panel hidden">
+      <div class="panel-header">
+        <button class="back-btn" data-back aria-label="Back">←</button>
+        <div>
+          <h2>Host a screen</h2>
+          <p>Choose your stream quality.</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <label class="setting">
+          <span>Resolution</span>
+          <select id="resolutionSelect">
+            <option value="720">720p</option>
+            <option value="1080" selected>1080p</option>
+            <option value="original">Original</option>
+          </select>
+        </label>
+
+        <label class="setting">
+          <span>FPS</span>
+          <select id="fpsSelect">
+            <option value="30">30 FPS</option>
+            <option value="60" selected>60 FPS</option>
+          </select>
+        </label>
+
+        <label class="setting">
+          <span>Bitrate</span>
+          <select id="bitrateSelect">
+            <option value="5000">5 Mbps</option>
+            <option value="10000">10 Mbps</option>
+            <option value="15000" selected>15 Mbps</option>
+            <option value="20000">20 Mbps</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="audio-info">
+        <span class="audio-icon">♪</span>
+        <div>
+          <strong>System audio</strong>
+          <p>Enable “Share system audio” in your browser's share dialog.</p>
+        </div>
+      </div>
+
+      <button id="startHostBtn" class="primary wide-btn">Start sharing</button>
+
+      <div id="hostLiveCard" class="live-card hidden">
+        <div class="live-row">
+          <div>
+            <span class="live-label"><i></i> LIVE</span>
+            <h3 id="hostQualityText">1080p · 60 FPS</h3>
+          </div>
+          <button id="stopHostBtn" class="danger-btn">Stop</button>
+        </div>
+
+        <div class="room-box">
+          <div>
+            <span>Room code</span>
+            <strong id="roomCodeText">—</strong>
+          </div>
+          <button id="copyLinkBtn" class="secondary">Copy link</button>
+        </div>
+
+        <div class="status-line">
+          <span id="hostStatusDot" class="status-dot waiting"></span>
+          <span id="hostStatusText">Waiting for viewer…</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="joinView" class="panel hidden">
+      <div class="panel-header">
+        <button class="back-btn" data-back aria-label="Back">←</button>
+        <div>
+          <h2>Join a screen</h2>
+          <p>Enter the room code.</p>
+        </div>
+      </div>
+
+      <label class="join-field">
+        <span>Room code or link</span>
+        <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH" />
+      </label>
+
+      <button id="joinBtn" class="primary wide-btn">Join</button>
+
+      <div id="joinStatus" class="status-box hidden"></div>
+    </section>
+
+    <section id="viewerView" class="viewer-view hidden">
+      <div class="viewer-topbar">
+        <div class="viewer-brand">Miner Share</div>
+        <div id="viewerStatus" class="viewer-status"><span></span> Connecting…</div>
+        <button id="leaveBtn" class="viewer-leave">Leave</button>
+      </div>
+
+      <div class="video-wrap">
+        <video id="remoteVideo" autoplay playsinline controls></video>
+        <div id="videoPlaceholder" class="video-placeholder">
+          <div class="spinner"></div>
+          <p>Waiting for stream…</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"
+    integrity="sha512-XEKeWX+mI3Ov+tg2evDlVQFzVOIp4T8J3cNcCEPaEUGpxJV3eZaN8rHuvnFPvQpGJBHPmrozJDMpm2xcDvtmyQ=="
+    crossorigin="anonymous"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
