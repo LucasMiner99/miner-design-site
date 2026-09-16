@@ -6,3 +6,10 @@ compatibility_date = "2026-06-20"
 directory = "./public/"
 binding = "ASSETS"
 run_worker_first = ["/api/*"]
+
+# MinerBot: create a D1 database named "miner-streambot" and then uncomment this block.
+# Replace database_id with the ID Cloudflare gives you.
+# [[d1_databases]]
+# binding = "STREAMBOT_DB"
+# database_name = "miner-streambot"
+# database_id = "PASTE_D1_DATABASE_ID_HERE"

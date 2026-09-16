@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex,nofollow,noarchive" />
+<title>MinerBot TTS Overlay</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.stage{position:fixed;inset:0;pointer-events:none}.badge{position:absolute;left:36px;bottom:36px;display:flex;align-items:center;gap:10px;background:rgba(10,12,15,.92);color:#fff;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:10px 14px 10px 10px;box-shadow:0 10px 32px rgba(0,0,0,.28);opacity:0;transform:translateY(12px) scale(.97);transition:opacity .2s ease,transform .2s ease}.badge.show{opacity:1;transform:translateY(0) scale(1)}.icon{width:30px;height:30px;border-radius:9px;background:#53fc18;color:#071006;display:grid;place-items:center}.icon svg{width:18px;height:18px;fill:currentColor}.icon svg path:nth-child(n+2){fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}.name{font-size:15px;font-weight:800;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bars{display:flex;align-items:center;gap:2px;height:14px;margin-left:2px}.bars i{width:2px;height:5px;background:#53fc18;border-radius:2px;animation:wave .65s ease-in-out infinite alternate}.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.08s}@keyframes wave{to{height:14px}}
+</style>
+</head>
+<body>
+<div class="stage"><div id="badge" class="badge"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span><span id="name" class="name">@usuario</span><span class="bars"><i></i><i></i><i></i><i></i></span></div></div>
+<script>
+const key=new URLSearchParams(location.search).get('key')||'';const badge=document.getElementById('badge');const nameEl=document.getElementById('name');let busy=false;let timer=null;
+async function poll(){if(busy||!key)return;try{const r=await fetch(`/api/streambot/overlay/next?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.item)play(d.item)}catch{}}
+async function complete(id){try{await fetch(`/api/streambot/overlay/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})}catch{}}
+async function play(item){busy=true;nameEl.textContent='@'+String(item.username||'viewer').replace(/^@/,'');badge.classList.add('show');const audio=new Audio(item.audioUrl);audio.volume=Math.max(0,Math.min(1,Number(item.volume??.85)));let ended=false;const finish=async()=>{if(ended)return;ended=true;badge.classList.remove('show');await complete(item.id);busy=false;setTimeout(poll,300)};audio.addEventListener('ended',finish,{once:true});audio.addEventListener('error',finish,{once:true});try{await audio.play()}catch{finish()}}
+timer=setInterval(poll,1200);poll();
+</script>
+</body>
+</html>

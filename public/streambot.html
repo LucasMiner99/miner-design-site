@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>MinerBot Dashboard</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="streambot.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <img src="assets/logo-miner.svg" alt="" />
+        <div><strong>MINERBOT</strong><span>stream dashboard</span></div>
+      </div>
+      <nav>
+        <button class="nav-link active" data-section="general">General</button>
+        <button class="nav-link" data-section="tts">TTS</button>
+        <button class="nav-link" data-section="commands">Comandos</button>
+        <button class="nav-link" data-section="logs">Actividad</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span id="sidebarStatus" class="connection-dot">Sin conectar</span>
+        <button id="lockButton" class="ghost-button">Bloquear dashboard</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PRIVATE DASHBOARD</p>
+          <h1>MinerBot</h1>
+        </div>
+        <button id="saveButton" class="primary-button">Guardar cambios</button>
+      </header>
+
+      <div id="notice" class="notice hidden"></div>
+
+      <section id="section-general" class="panel-section active">
+        <div class="status-grid">
+          <article class="status-card">
+            <span>Kick</span><strong id="kickStatus">Desconectado</strong><small id="kickUser">—</small>
+          </article>
+          <article class="status-card">
+            <span>ElevenLabs</span><strong id="elevenStatus">Sin configurar</strong><small>API TTS</small>
+          </article>
+          <article class="status-card">
+            <span>Recompensa TTS</span><strong id="rewardStatus">Sin crear</strong><small>Channel Points</small>
+          </article>
+          <article class="status-card">
+            <span>Cola</span><strong id="queueStatus">0</strong><small>TTS pendientes</small>
+          </article>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Conexión con Kick</h2><p>OAuth oficial + webhooks.</p></div></div>
+          <div class="button-row">
+            <button id="connectKick" class="primary-button">Conectar Kick</button>
+            <button id="syncEvents" class="secondary-button">Sincronizar eventos</button>
+            <button id="testChat" class="secondary-button">Probar mensaje del bot</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Bot automático</h2><p>Mensajes en el chat cuando pasan eventos.</p></div></div>
+          <label class="toggle-row"><span><b>Bot activo</b><small>Apaga todo sin desconectar Kick.</small></span><input id="bot_enabled" type="checkbox"><i></i></label>
+          <label class="toggle-row"><span><b>Agradecer follows</b><small>Responde cuando alguien te sigue.</small></span><input id="follows_enabled" type="checkbox"><i></i></label>
+          <label class="field"><span>Mensaje de follow</span><input id="follow_message" type="text" maxlength="500" /></label>
+          <label class="toggle-row"><span><b>Agradecer subs</b><small>Subs nuevos.</small></span><input id="subs_enabled" type="checkbox"><i></i></label>
+          <label class="field"><span>Mensaje de sub</span><input id="sub_message" type="text" maxlength="500" /></label>
+          <label class="toggle-row"><span><b>Agradecer renovaciones</b><small>Dejalo apagado si no querés demasiado chat automático.</small></span><input id="renewals_enabled" type="checkbox"><i></i></label>
+          <label class="field"><span>Mensaje de renovación</span><input id="renewal_message" type="text" maxlength="500" /></label>
+          <label class="toggle-row"><span><b>Agradecer gifted subs</b><small>Usá {count} para la cantidad.</small></span><input id="gifts_enabled" type="checkbox"><i></i></label>
+          <label class="field"><span>Mensaje de gifted subs</span><input id="gift_message" type="text" maxlength="500" /></label>
+          <p class="hint">Variables disponibles: <code>{user}</code> y, para gifts, <code>{count}</code>.</p>
+        </div>
+      </section>
+
+      <section id="section-tts" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>TTS con Channel Points</h2><p>Kick cobra puntos → ElevenLabs genera la voz → OBS la reproduce.</p></div></div>
+          <label class="toggle-row"><span><b>TTS activo</b><small>Pausa la recompensa sin borrarla.</small></span><input id="tts_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre de la recompensa</span><input id="tts_reward_title" type="text" maxlength="50" /></label>
+            <label class="field"><span>Costo en puntos</span><input id="tts_reward_cost" type="number" min="1" step="1" /></label>
+            <label class="field"><span>Máximo de caracteres</span><input id="tts_max_chars" type="number" min="1" max="500" /></label>
+            <label class="field"><span>Límite diario de caracteres</span><input id="tts_daily_chars" type="number" min="1" /></label>
+            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_id" type="text" /></label>
+            <label class="field"><span>Volumen OBS</span><input id="tts_volume" type="number" min="0" max="1" step="0.05" /></label>
+          </div>
+          <div class="button-row">
+            <button id="syncReward" class="primary-button">Crear / actualizar recompensa</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Widget de OBS</h2><p>Browser Source transparente. El cartel aparece únicamente mientras habla el TTS.</p></div></div>
+          <div class="copy-row"><input id="overlayUrl" type="text" readonly /><button id="copyOverlay" class="secondary-button">Copiar URL</button></div>
+          <p class="hint">OBS → Fuentes → Navegador → pegá esta URL. Recomendado: 1920×1080, audio del navegador activado.</p>
+          <div class="tts-preview">
+            <div class="audio-badge">
+              <span class="audio-icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
+              <strong>@usuario</strong>
+            </div>
+            <small>Así se ve el cartel.</small>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Prueba rápida</h2><p>Genera un TTS real y lo manda al widget de OBS.</p></div></div>
+          <div class="copy-row"><input id="testTtsText" type="text" value="Prueba de texto a voz de MinerBot." maxlength="200" /><button id="testTts" class="secondary-button">Mandar TTS</button></div>
+        </div>
+      </section>
+
+      <section id="section-commands" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>Comandos del chat</h2><p>Ejemplo: <code>!instagram</code> o <code>!discord</code>.</p></div><button id="addCommand" class="primary-button small">+ Agregar</button></div>
+          <div id="commandsList" class="commands-list"></div>
+        </div>
+      </section>
+
+      <section id="section-logs" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>Actividad</h2><p>Últimos eventos procesados por el bot.</p></div><button id="refreshLogs" class="secondary-button small">Actualizar</button></div>
+          <div id="logsList" class="logs-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="lockScreen" class="lock-screen">
+    <div class="lock-card">
+      <img src="assets/logo-miner.svg" alt="" />
+      <p class="eyebrow">PRIVATE DASHBOARD</p>
+      <h2>MinerBot</h2>
+      <p>Ingresá tu <b>STREAMBOT_ADMIN_KEY</b>. Se guarda solamente en este navegador.</p>
+      <input id="adminKeyInput" type="password" autocomplete="off" placeholder="Dashboard key" />
+      <button id="unlockButton" class="primary-button">Entrar</button>
+      <small id="unlockError"></small>
+    </div>
+  </div>
+
+  <script src="streambot.js"></script>
+</body>
+</html>
