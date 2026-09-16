@@ -567,8 +567,21 @@ async function createTtsAudio(env, text, config) {
     }),
   });
   if (!res.ok) {
-    const detail = (await res.text()).slice(0, 400);
-    throw new Error(`ElevenLabs ${res.status}: ${detail}`);
+    const raw = await res.text();
+    let detail = raw;
+    let code = "";
+    try {
+      const parsed = JSON.parse(raw);
+      const info = parsed?.detail || parsed;
+      detail = info?.message || parsed?.message || raw;
+      code = info?.code || info?.status || "";
+    } catch {}
+
+    if (res.status === 402 && (code === "paid_plan_required" || /paid plan|free users cannot use library voices/i.test(detail))) {
+      throw new Error("La voz elegida es de ElevenLabs Voice Library y el plan Free no permite usar esas voces por API. Usá una voz creada con Voice Design o pasá a un plan pago.");
+    }
+
+    throw new Error(`ElevenLabs ${res.status}: ${String(detail).slice(0, 300)}`);
   }
   return res.arrayBuffer();
 }
@@ -636,10 +649,23 @@ async function updateRedemptionState(env, redemptionId, action) {
 async function sendKickChat(env, content) {
   const clean = String(content || "").trim().slice(0, 500);
   if (!clean) return;
+
+  // Kick documenta type="bot", pero actualmente ese modo puede fallar para
+  // apps públicas/no verificadas. Como MinerBot está autorizado con la cuenta
+  // del broadcaster, enviamos el mensaje como ese usuario al canal indicado.
+  const broadcasterUserId = Number(await getSetting(env, "kick_user_id"));
+  if (!Number.isFinite(broadcasterUserId) || broadcasterUserId <= 0) {
+    throw new Error("No encuentro tu broadcaster_user_id de Kick. Reconectá Kick desde el dashboard.");
+  }
+
   const access = await getKickAccessToken(env);
   const res = await kickFetchRaw("/chat", access, {
     method: "POST",
-    body: JSON.stringify({ type: "bot", content: clean }),
+    body: JSON.stringify({
+      type: "user",
+      broadcaster_user_id: broadcasterUserId,
+      content: clean,
+    }),
   });
   await parseApiResponse(res, "Enviar mensaje al chat");
 }
