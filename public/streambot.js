@@ -16,7 +16,16 @@ async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers, cache: "no-store" });
   const text = await res.text();
   let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    const looksLikeCloudflareError = /<html|<!doctype/i.test(text) && /cloudflare/i.test(text);
+    data = {
+      error: looksLikeCloudflareError
+        ? `Cloudflare Worker falló (HTTP ${res.status}). Revisá Logs del Worker para ver la excepción.`
+        : (text || `Error ${res.status}`)
+    };
+  }
   if (!res.ok) {
     const error = new Error(data.error || `Error ${res.status}`);
     error.status = res.status;

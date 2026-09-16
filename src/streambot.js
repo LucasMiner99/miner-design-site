@@ -55,67 +55,67 @@ export async function handleStreamBotRequest(request, env, ctx) {
 
   try {
     if (path === "/api/streambot/webhook" && request.method === "POST") {
-      return handleWebhook(request, env, ctx);
+      return await handleWebhook(request, env, ctx);
     }
 
     if (path === "/api/streambot/oauth/callback" && request.method === "GET") {
-      return oauthCallback(request, env);
+      return await oauthCallback(request, env);
     }
 
     if (path === "/api/streambot/overlay/next" && request.method === "GET") {
-      return overlayNext(request, env);
+      return await overlayNext(request, env);
     }
     if (path === "/api/streambot/overlay/complete" && request.method === "POST") {
-      return overlayComplete(request, env);
+      return await overlayComplete(request, env);
     }
     if (path.startsWith("/api/streambot/overlay/audio/") && request.method === "GET") {
-      return overlayAudio(request, env);
+      return await overlayAudio(request, env);
     }
 
     const adminError = requireAdmin(request, env);
     if (adminError) return adminError;
 
     if (path === "/api/streambot/bootstrap" && request.method === "GET") {
-      return getBootstrap(request, env);
+      return await getBootstrap(request, env);
     }
     if (path === "/api/streambot/status" && request.method === "GET") {
-      return getStatus(request, env);
+      return await getStatus(request, env);
     }
     if (path === "/api/streambot/config" && request.method === "GET") {
       return json({ config: await getConfig(env) });
     }
     if (path === "/api/streambot/config" && request.method === "PUT") {
-      return updateConfig(request, env);
+      return await updateConfig(request, env);
     }
     if (path === "/api/streambot/commands" && request.method === "GET") {
-      return listCommands(env);
+      return await listCommands(env);
     }
     if (path === "/api/streambot/commands" && request.method === "POST") {
-      return createCommand(request, env);
+      return await createCommand(request, env);
     }
     if (path.startsWith("/api/streambot/commands/") && request.method === "PUT") {
-      return updateCommand(request, env);
+      return await updateCommand(request, env);
     }
     if (path.startsWith("/api/streambot/commands/") && request.method === "DELETE") {
-      return deleteCommand(request, env);
+      return await deleteCommand(request, env);
     }
     if (path === "/api/streambot/oauth/start" && request.method === "GET") {
-      return oauthStart(request, env);
+      return await oauthStart(request, env);
     }
     if (path === "/api/streambot/events/sync" && request.method === "POST") {
-      return syncEvents(request, env);
+      return await syncEvents(request, env);
     }
     if (path === "/api/streambot/reward/sync" && request.method === "POST") {
-      return syncReward(request, env);
+      return await syncReward(request, env);
     }
     if (path === "/api/streambot/test/chat" && request.method === "POST") {
-      return testChat(env);
+      return await testChat(env);
     }
     if (path === "/api/streambot/test/tts" && request.method === "POST") {
-      return testTts(request, env);
+      return await testTts(request, env);
     }
     if (path === "/api/streambot/logs" && request.method === "GET") {
-      return getLogs(env);
+      return await getLogs(env);
     }
     if (path === "/api/streambot/disconnect" && request.method === "POST") {
       await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_tokens WHERE provider='kick'").run();
