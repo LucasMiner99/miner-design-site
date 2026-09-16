@@ -17,7 +17,11 @@ async function api(path, options = {}) {
   const text = await res.text();
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  if (!res.ok) {
+    const error = new Error(data.error || `Error ${res.status}`);
+    error.status = res.status;
+    throw error;
+  }
   return data;
 }
 
@@ -224,9 +228,26 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
 
 (async () => {
   if (new URLSearchParams(location.search).get("connected")) history.replaceState(null, "", "/streambot.html");
+
+  // Keep the admin key across refreshes/browser restarts.
+  // Only forget it when the server explicitly says the key is invalid.
   if (adminKey) {
-    try { await api("/status"); $("lockScreen").classList.add("hidden"); await loadAll(); return; }
-    catch { localStorage.removeItem("streambot_admin_key"); adminKey = ""; }
+    try {
+      await api("/status");
+      $("lockScreen").classList.add("hidden");
+      await loadAll();
+      return;
+    } catch (err) {
+      if (err?.status === 401 || err?.status === 403) {
+        localStorage.removeItem("streambot_admin_key");
+        adminKey = "";
+        $("unlockError").textContent = "La clave guardada ya no es válida. Ingresala de nuevo.";
+      } else {
+        // A temporary Cloudflare/API error must not wipe the saved key.
+        $("unlockError").textContent = `No pude cargar el dashboard (${err.message}). Tu clave sigue guardada; probá recargar.`;
+      }
+    }
   }
+
   $("lockScreen").classList.remove("hidden");
 })();
