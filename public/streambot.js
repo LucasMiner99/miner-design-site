@@ -38,26 +38,26 @@ async function unlock() {
   adminKey = $("adminKeyInput").value.trim();
   if (!adminKey) return;
   try {
-    await api("/status");
-    localStorage.setItem("streambot_admin_key", adminKey);
-    $("lockScreen").classList.add("hidden");
+    $("unlockButton").disabled = true;
     $("unlockError").textContent = "";
     await loadAll();
+    localStorage.setItem("streambot_admin_key", adminKey);
+    $("lockScreen").classList.add("hidden");
   } catch (err) {
     $("unlockError").textContent = err.message;
+  } finally {
+    $("unlockButton").disabled = false;
   }
 }
 
 async function loadAll() {
-  const [statusData, configData, commandsData] = await Promise.all([
-    api("/status"), api("/config"), api("/commands")
-  ]);
-  status = statusData;
-  config = configData.config;
+  const data = await api("/bootstrap");
+  status = data.status || {};
+  config = data.config || {};
   paintStatus();
   paintConfig();
-  paintCommands(commandsData.commands || []);
-  loadLogs();
+  paintCommands(data.commands || []);
+  paintLogs(data.logs || []);
 }
 
 function paintStatus() {
@@ -180,19 +180,23 @@ function commandRow(command = { id: null, name: "", response: "", enabled: 1 }) 
   return row;
 }
 
+function paintLogs(logs = []) {
+  const host = $("logsList");
+  host.innerHTML = "";
+  for (const log of logs) {
+    const row = document.createElement("div");
+    row.className = "log-row";
+    const date = new Date(String(log.created_at).replace(" ", "T") + "Z");
+    row.innerHTML = `<time>${date.toLocaleString()}</time><span class="log-type">${esc(log.type)}</span><span class="log-user">${esc(log.username || "—")}</span><span>${esc(log.message)}</span>`;
+    host.appendChild(row);
+  }
+  if (!logs.length) host.innerHTML = '<p class="hint">Todavía no hay actividad.</p>';
+}
+
 async function loadLogs() {
   try {
     const data = await api("/logs");
-    const host = $("logsList");
-    host.innerHTML = "";
-    for (const log of data.logs || []) {
-      const row = document.createElement("div");
-      row.className = "log-row";
-      const date = new Date(String(log.created_at).replace(" ", "T") + "Z");
-      row.innerHTML = `<time>${date.toLocaleString()}</time><span class="log-type">${esc(log.type)}</span><span class="log-user">${esc(log.username || "—")}</span><span>${esc(log.message)}</span>`;
-      host.appendChild(row);
-    }
-    if (!(data.logs || []).length) host.innerHTML = '<p class="hint">Todavía no hay actividad.</p>';
+    paintLogs(data.logs || []);
   } catch {}
 }
 
@@ -229,12 +233,11 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
 (async () => {
   if (new URLSearchParams(location.search).get("connected")) history.replaceState(null, "", "/streambot.html");
 
-  // Keep the admin key across refreshes/browser restarts.
-  // Only forget it when the server explicitly says the key is invalid.
+  // Con una key ya guardada, ocultamos el cartel inmediatamente y cargamos
+  // todo el dashboard con una sola llamada al backend.
   if (adminKey) {
+    $("lockScreen").classList.add("hidden");
     try {
-      await api("/status");
-      $("lockScreen").classList.add("hidden");
       await loadAll();
       return;
     } catch (err) {
@@ -242,10 +245,12 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
         localStorage.removeItem("streambot_admin_key");
         adminKey = "";
         $("unlockError").textContent = "La clave guardada ya no es válida. Ingresala de nuevo.";
+        $("lockScreen").classList.remove("hidden");
       } else {
-        // A temporary Cloudflare/API error must not wipe the saved key.
-        $("unlockError").textContent = `No pude cargar el dashboard (${err.message}). Tu clave sigue guardada; probá recargar.`;
+        // Un error temporal no borra la key ni vuelve a mostrar el login.
+        showNotice(`No pude cargar el dashboard (${err.message}). Probá recargar.`, true);
       }
+      return;
     }
   }
 

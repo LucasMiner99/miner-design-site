@@ -75,8 +75,9 @@ export async function handleStreamBotRequest(request, env, ctx) {
     const adminError = requireAdmin(request, env);
     if (adminError) return adminError;
 
-    await ensureDefaults(env);
-
+    if (path === "/api/streambot/bootstrap" && request.method === "GET") {
+      return getBootstrap(request, env);
+    }
     if (path === "/api/streambot/status" && request.method === "GET") {
       return getStatus(request, env);
     }
@@ -141,29 +142,28 @@ function requireAdmin(request, env) {
   return null;
 }
 
-async function ensureDefaults(env) {
-  for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
-    const stored = typeof value === "string" ? value : JSON.stringify(value);
-    await env.STREAMBOT_DB.prepare(
-      "INSERT OR IGNORE INTO streambot_settings (key, value) VALUES (?, ?)"
-    ).bind(key, stored).run();
-  }
-  const overlay = await getSetting(env, "overlay_key");
-  if (!overlay) await setSetting(env, "overlay_key", randomToken(24));
-}
-
-async function getConfig(env) {
-  await ensureDefaults(env);
-  const result = await env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings").all();
-  const raw = Object.fromEntries((result.results || []).map((row) => [row.key, row.value]));
+function parseConfigRows(rows = []) {
+  const raw = Object.fromEntries(rows.map((row) => [row.key, row.value]));
   const config = {};
   for (const [key, fallback] of Object.entries(DEFAULT_CONFIG)) {
     const value = raw[key];
-    if (typeof fallback === "boolean") config[key] = value === "true";
-    else if (typeof fallback === "number") config[key] = Number(value ?? fallback);
+    if (typeof fallback === "boolean") config[key] = value == null ? fallback : value === "true";
+    else if (typeof fallback === "number") config[key] = value == null ? fallback : Number(value);
     else config[key] = value ?? fallback;
   }
   return config;
+}
+
+async function ensureOverlayKey(env, config) {
+  if (config.overlay_key) return config;
+  config.overlay_key = randomToken(24);
+  await setSetting(env, "overlay_key", config.overlay_key);
+  return config;
+}
+
+async function getConfig(env) {
+  const result = await env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings").all();
+  return ensureOverlayKey(env, parseConfigRows(result.results || []));
 }
 
 async function updateConfig(request, env) {
@@ -286,6 +286,40 @@ async function oauthCallback(request, env) {
   return Response.redirect(`${new URL(request.url).origin}/streambot.html?connected=1`, 302);
 }
 
+async function getBootstrap(request, env) {
+  const [
+    settingsResult,
+    tokenResult,
+    queueResult,
+    commandsResult,
+    logsResult,
+  ] = await env.STREAMBOT_DB.batch([
+    env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings"),
+    env.STREAMBOT_DB.prepare("SELECT expires_at FROM streambot_oauth_tokens WHERE provider='kick' LIMIT 1"),
+    env.STREAMBOT_DB.prepare("SELECT COUNT(*) AS count FROM streambot_tts_queue WHERE status IN ('ready','playing')"),
+    env.STREAMBOT_DB.prepare("SELECT id, name, response, enabled FROM streambot_commands ORDER BY name COLLATE NOCASE"),
+    env.STREAMBOT_DB.prepare("SELECT id, level, type, username, message, created_at FROM streambot_logs ORDER BY id DESC LIMIT 80"),
+  ]);
+
+  const config = await ensureOverlayKey(env, parseConfigRows(settingsResult.results || []));
+  const token = tokenResult.results?.[0] || null;
+  const queueCount = Number(queueResult.results?.[0]?.count || 0);
+
+  return json({
+    status: {
+      kickConnected: Boolean(token),
+      kickUsername: config.kick_username,
+      hasElevenLabsKey: Boolean(env.ELEVENLABS_API_KEY),
+      rewardConfigured: Boolean(config.tts_reward_id),
+      overlayUrl: `${new URL(request.url).origin}/tts-overlay.html?key=${encodeURIComponent(config.overlay_key)}`,
+      queueCount,
+    },
+    config,
+    commands: commandsResult.results || [],
+    logs: logsResult.results || [],
+  });
+}
+
 async function getStatus(request, env) {
   const config = await getConfig(env);
   const token = await env.STREAMBOT_DB.prepare("SELECT expires_at FROM streambot_oauth_tokens WHERE provider='kick'").first();
@@ -378,7 +412,6 @@ async function getLogs(env) {
 }
 
 async function handleWebhook(request, env, ctx) {
-  await ensureDefaults(env);
   const rawBody = await request.text();
   const valid = await verifyKickWebhook(request.headers, rawBody);
   if (!valid) return new Response("Invalid signature", { status: 401 });
@@ -541,7 +574,6 @@ async function createTtsAudio(env, text, config) {
 }
 
 async function overlayNext(request, env) {
-  await ensureDefaults(env);
   const config = await getConfig(env);
   if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
 
@@ -572,7 +604,6 @@ async function overlayNext(request, env) {
 }
 
 async function overlayAudio(request, env) {
-  await ensureDefaults(env);
   const config = await getConfig(env);
   if (!checkOverlayKey(request, config)) return new Response("Unauthorized", { status: 401 });
   const id = new URL(request.url).pathname.split("/").pop();
@@ -584,7 +615,6 @@ async function overlayAudio(request, env) {
 }
 
 async function overlayComplete(request, env) {
-  await ensureDefaults(env);
   const config = await getConfig(env);
   if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
   const body = await readJson(request);
