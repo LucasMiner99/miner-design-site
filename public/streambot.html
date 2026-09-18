@@ -116,7 +116,26 @@
 
       <section id="section-commands" class="panel-section">
         <div class="card">
-          <div class="card-head"><div><h2>Comandos del chat</h2><p>Ejemplo: <code>!instagram</code> o <code>!discord</code>.</p></div><button id="addCommand" class="primary-button small">+ Agregar</button></div>
+          <div class="card-head"><div><h2>Comandos del stream</h2><p>Cambian título y categoría de Kick. Vos siempre tenés permiso; podés decidir si también los mods.</p></div></div>
+
+          <label class="toggle-row"><span><b>Comando de título activo</b><small>Ejemplo: <code>!titulo Jugando con amigos</code>.</small></span><input id="title_command_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre del comando</span><input id="title_command_name" type="text" maxlength="40" placeholder="titulo" /></label>
+            <label class="toggle-row"><span><b>Permitir a moderadores</b><small>Si está apagado, solo vos podés usarlo.</small></span><input id="title_command_mods_allowed" type="checkbox"><i></i></label>
+          </div>
+
+          <label class="toggle-row"><span><b>Comando de juego activo</b><small>Ejemplo: <code>!juego Minecraft</code>.</small></span><input id="game_command_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre del comando</span><input id="game_command_name" type="text" maxlength="40" placeholder="juego" /></label>
+            <label class="toggle-row"><span><b>Permitir a moderadores</b><small>Si está apagado, solo vos podés usarlo.</small></span><input id="game_command_mods_allowed" type="checkbox"><i></i></label>
+          </div>
+
+          <label class="toggle-row"><span><b>Confirmar cambios en el chat</b><small>Responde “Título actualizado” / “Categoría actualizada” después de cambiarlo.</small></span><input id="stream_command_confirm" type="checkbox"><i></i></label>
+          <p class="hint">Los nombres se escriben sin <code>!</code>. Ejemplo: <code>titulo</code>, <code>juego</code>, <code>game</code>.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Comandos personalizados</h2><p>Ejemplo: <code>!instagram</code> o <code>!discord</code>.</p></div><button id="addCommand" class="primary-button small">+ Agregar</button></div>
           <div id="commandsList" class="commands-list"></div>
         </div>
       </section>

@@ -7,6 +7,8 @@ const $ = (id) => document.getElementById(id);
 const fields = [
   "bot_enabled","follows_enabled","subs_enabled","renewals_enabled","gifts_enabled",
   "follow_message","sub_message","renewal_message","gift_message",
+  "title_command_enabled","title_command_name","title_command_mods_allowed",
+  "game_command_enabled","game_command_name","game_command_mods_allowed","stream_command_confirm",
   "tts_enabled","tts_reward_title","tts_reward_cost","tts_max_chars","tts_daily_chars","tts_voice_id","tts_volume"
 ];
 

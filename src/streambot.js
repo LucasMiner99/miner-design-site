@@ -22,6 +22,13 @@ const DEFAULT_CONFIG = {
   sub_message: "@{user} gracias por el sub! 💚",
   renewal_message: "@{user} gracias por renovar el sub! 💚",
   gift_message: "@{user} gracias por regalar {count} subs! 💚",
+  title_command_enabled: true,
+  title_command_name: "titulo",
+  title_command_mods_allowed: true,
+  game_command_enabled: true,
+  game_command_name: "juego",
+  game_command_mods_allowed: true,
+  stream_command_confirm: true,
   tts_enabled: true,
   tts_reward_title: "🔊 TTS",
   tts_reward_cost: 2500,
@@ -168,6 +175,20 @@ async function getConfig(env) {
 
 async function updateConfig(request, env) {
   const incoming = await readJson(request);
+  const current = await getConfig(env);
+  const nextTitleCommand = normalizeCommand(
+    "title_command_name" in incoming ? incoming.title_command_name : current.title_command_name
+  ) || "titulo";
+  const nextGameCommand = normalizeCommand(
+    "game_command_name" in incoming ? incoming.game_command_name : current.game_command_name
+  ) || "juego";
+  if (nextTitleCommand === nextGameCommand) {
+    return json({ error: "!titulo y !juego no pueden tener el mismo nombre." }, 400);
+  }
+
+  incoming.title_command_name = nextTitleCommand;
+  incoming.game_command_name = nextGameCommand;
+
   const allowed = Object.keys(DEFAULT_CONFIG).filter((key) => !["tts_reward_id", "overlay_key", "kick_user_id", "kick_username"].includes(key));
   for (const key of allowed) {
     if (!(key in incoming)) continue;
@@ -440,41 +461,56 @@ async function processKickEvent(env, eventType, payload) {
       const content = String(payload.content || "").trim();
       if (!content.startsWith("!")) return;
 
-      // Comandos de administración del stream: solo broadcaster o moderadores.
-      const adminMatch = content.match(/^!(titulo|juego)(?:\s+([\s\S]+))?$/i);
-      if (adminMatch) {
-        const sender = payload.sender || {};
-        if (!isBroadcasterOrModerator(sender, config)) {
-          await safeLog(env, "warn", "admin-command-denied", sender.username || null, `!${adminMatch[1].toLowerCase()}`);
-          return;
+      // Comandos del stream configurables desde el dashboard.
+      const commandMatch = content.match(/^!([^\s]+)(?:\s+([\s\S]+))?$/);
+      if (commandMatch) {
+        const invoked = normalizeCommand(commandMatch[1]);
+        const titleCommand = normalizeCommand(config.title_command_name || "titulo");
+        const gameCommand = normalizeCommand(config.game_command_name || "juego");
+
+        let action = null;
+        let modsAllowed = false;
+        if (config.title_command_enabled && invoked === titleCommand) {
+          action = "titulo";
+          modsAllowed = Boolean(config.title_command_mods_allowed);
+        } else if (config.game_command_enabled && invoked === gameCommand) {
+          action = "juego";
+          modsAllowed = Boolean(config.game_command_mods_allowed);
         }
 
-        const action = adminMatch[1].toLowerCase();
-        const value = String(adminMatch[2] || "").trim();
-        if (!value) {
-          await sendKickChat(env, action === "titulo"
-            ? "Uso: !titulo <nuevo título>"
-            : "Uso: !juego <categoría>");
-          return;
-        }
+        if (action) {
+          const sender = payload.sender || {};
+          if (!canUseStreamCommand(sender, config, modsAllowed)) {
+            await safeLog(env, "warn", "admin-command-denied", sender.username || null, `!${invoked}`);
+            return;
+          }
 
-        if (action === "titulo") {
-          await updateStreamTitle(env, value);
-          await sendKickChat(env, `✅ Título actualizado: ${value}`);
-          await safeLog(env, "info", "stream-title", sender.username || null, value);
-          return;
-        }
+          const value = String(commandMatch[2] || "").trim();
+          if (!value) {
+            await sendKickChat(env, action === "titulo"
+              ? `Uso: !${titleCommand} <nuevo título>`
+              : `Uso: !${gameCommand} <categoría>`);
+            return;
+          }
 
-        const category = await findKickCategory(env, value);
-        if (!category) {
-          await sendKickChat(env, `No encontré la categoría "${value}" en Kick.`);
-          await safeLog(env, "warn", "stream-category-not-found", sender.username || null, value);
+          if (action === "titulo") {
+            await updateStreamTitle(env, value);
+            if (config.stream_command_confirm) await sendKickChat(env, `✅ Título actualizado: ${value}`);
+            await safeLog(env, "info", "stream-title", sender.username || null, value);
+            return;
+          }
+
+          const category = await findKickCategory(env, value);
+          if (!category) {
+            await sendKickChat(env, `No encontré la categoría "${value}" en Kick.`);
+            await safeLog(env, "warn", "stream-category-not-found", sender.username || null, value);
+            return;
+          }
+          await updateStreamCategory(env, category.id);
+          if (config.stream_command_confirm) await sendKickChat(env, `✅ Categoría actualizada: ${category.name}`);
+          await safeLog(env, "info", "stream-category", sender.username || null, `${category.name} (${category.id})`);
           return;
         }
-        await updateStreamCategory(env, category.id);
-        await sendKickChat(env, `✅ Categoría actualizada: ${category.name}`);
-        await safeLog(env, "info", "stream-category", sender.username || null, `${category.name} (${category.id})`);
-        return;
       }
 
       const name = normalizeCommand(content.split(/\s+/)[0]);
@@ -525,13 +561,20 @@ async function processKickEvent(env, eventType, payload) {
   }
 }
 
-function isBroadcasterOrModerator(sender, config) {
+function isBroadcaster(sender, config) {
   const senderId = Number(sender?.user_id || 0);
   const broadcasterId = Number(config?.kick_user_id || 0);
-  if (senderId > 0 && broadcasterId > 0 && senderId === broadcasterId) return true;
+  return senderId > 0 && broadcasterId > 0 && senderId === broadcasterId;
+}
 
+function isModerator(sender) {
   const badges = Array.isArray(sender?.identity?.badges) ? sender.identity.badges : [];
   return badges.some((badge) => String(badge?.type || "").toLowerCase() === "moderator");
+}
+
+function canUseStreamCommand(sender, config, modsAllowed) {
+  if (isBroadcaster(sender, config)) return true;
+  return Boolean(modsAllowed) && isModerator(sender);
 }
 
 async function updateStreamTitle(env, title) {
