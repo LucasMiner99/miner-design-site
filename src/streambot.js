@@ -234,7 +234,7 @@ async function oauthStart(request, env) {
   auth.searchParams.set("response_type", "code");
   auth.searchParams.set("client_id", env.KICK_CLIENT_ID);
   auth.searchParams.set("redirect_uri", redirectUri);
-  auth.searchParams.set("scope", "user:read channel:read channel:rewards:write chat:write events:subscribe");
+  auth.searchParams.set("scope", "user:read channel:read channel:write channel:rewards:write chat:write events:subscribe");
   auth.searchParams.set("state", state);
   auth.searchParams.set("code_challenge", challenge);
   auth.searchParams.set("code_challenge_method", "S256");
@@ -439,6 +439,44 @@ async function processKickEvent(env, eventType, payload) {
     if (eventType === "chat.message.sent") {
       const content = String(payload.content || "").trim();
       if (!content.startsWith("!")) return;
+
+      // Comandos de administración del stream: solo broadcaster o moderadores.
+      const adminMatch = content.match(/^!(titulo|juego)(?:\s+([\s\S]+))?$/i);
+      if (adminMatch) {
+        const sender = payload.sender || {};
+        if (!isBroadcasterOrModerator(sender, config)) {
+          await safeLog(env, "warn", "admin-command-denied", sender.username || null, `!${adminMatch[1].toLowerCase()}`);
+          return;
+        }
+
+        const action = adminMatch[1].toLowerCase();
+        const value = String(adminMatch[2] || "").trim();
+        if (!value) {
+          await sendKickChat(env, action === "titulo"
+            ? "Uso: !titulo <nuevo título>"
+            : "Uso: !juego <categoría>");
+          return;
+        }
+
+        if (action === "titulo") {
+          await updateStreamTitle(env, value);
+          await sendKickChat(env, `✅ Título actualizado: ${value}`);
+          await safeLog(env, "info", "stream-title", sender.username || null, value);
+          return;
+        }
+
+        const category = await findKickCategory(env, value);
+        if (!category) {
+          await sendKickChat(env, `No encontré la categoría "${value}" en Kick.`);
+          await safeLog(env, "warn", "stream-category-not-found", sender.username || null, value);
+          return;
+        }
+        await updateStreamCategory(env, category.id);
+        await sendKickChat(env, `✅ Categoría actualizada: ${category.name}`);
+        await safeLog(env, "info", "stream-category", sender.username || null, `${category.name} (${category.id})`);
+        return;
+      }
+
       const name = normalizeCommand(content.split(/\s+/)[0]);
       const command = await env.STREAMBOT_DB.prepare(
         "SELECT response FROM streambot_commands WHERE name=? COLLATE NOCASE AND enabled=1"
@@ -485,6 +523,85 @@ async function processKickEvent(env, eventType, payload) {
   } catch (error) {
     await safeLog(env, "error", eventType, null, error?.message || String(error));
   }
+}
+
+function isBroadcasterOrModerator(sender, config) {
+  const senderId = Number(sender?.user_id || 0);
+  const broadcasterId = Number(config?.kick_user_id || 0);
+  if (senderId > 0 && broadcasterId > 0 && senderId === broadcasterId) return true;
+
+  const badges = Array.isArray(sender?.identity?.badges) ? sender.identity.badges : [];
+  return badges.some((badge) => String(badge?.type || "").toLowerCase() === "moderator");
+}
+
+async function updateStreamTitle(env, title) {
+  const clean = String(title || "").trim();
+  if (!clean) throw new Error("El título no puede estar vacío.");
+
+  const access = await getKickAccessToken(env);
+  const res = await kickFetchRaw("/channels", access, {
+    method: "PATCH",
+    body: JSON.stringify({ stream_title: clean }),
+  });
+  await parseApiResponse(res, "Cambiar título");
+}
+
+async function updateStreamCategory(env, categoryId) {
+  const id = Number(categoryId);
+  if (!Number.isFinite(id) || id <= 0) throw new Error("Category ID inválido.");
+
+  const access = await getKickAccessToken(env);
+  const res = await kickFetchRaw("/channels", access, {
+    method: "PATCH",
+    body: JSON.stringify({ category_id: id }),
+  });
+  await parseApiResponse(res, "Cambiar categoría");
+}
+
+async function findKickCategory(env, query) {
+  const clean = String(query || "").trim();
+  if (!clean) return null;
+
+  const access = await getKickAccessToken(env);
+
+  // API V2 actual: primero intentamos buscar por nombre.
+  const v2Url = new URL("https://api.kick.com/public/v2/categories");
+  v2Url.searchParams.set("name", clean);
+  v2Url.searchParams.set("limit", "25");
+  let res = await fetch(v2Url.toString(), {
+    headers: {
+      "Authorization": `Bearer ${access}`,
+      "Accept": "application/json",
+    },
+  });
+  let data = await parseApiResponse(res, "Buscar categoría Kick");
+  let categories = Array.isArray(data?.data) ? data.data : [];
+
+  // V2 puede ser más estricto con el nombre. Como fallback usamos el buscador
+  // V1 mientras siga disponible para aceptar búsquedas parciales como "mine".
+  if (!categories.length) {
+    const v1Url = new URL(`${KICK_API}/categories`);
+    v1Url.searchParams.set("q", clean);
+    res = await fetch(v1Url.toString(), {
+      headers: {
+        "Authorization": `Bearer ${access}`,
+        "Accept": "application/json",
+      },
+    });
+    data = await parseApiResponse(res, "Buscar categoría Kick");
+    categories = Array.isArray(data?.data) ? data.data : [];
+  }
+
+  if (!categories.length) return null;
+
+  const needle = clean.toLocaleLowerCase("es");
+  const exact = categories.find((category) => String(category?.name || "").toLocaleLowerCase("es") === needle);
+  if (exact) return exact;
+
+  const starts = categories.find((category) => String(category?.name || "").toLocaleLowerCase("es").startsWith(needle));
+  if (starts) return starts;
+
+  return categories[0];
 }
 
 async function processTtsRedemption(env, payload, config) {
