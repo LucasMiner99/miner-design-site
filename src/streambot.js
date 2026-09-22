@@ -30,18 +30,70 @@ const DEFAULT_CONFIG = {
   game_command_mods_allowed: true,
   stream_command_confirm: true,
   tts_enabled: true,
-  tts_reward_title: "🔊 TTS",
-  tts_reward_cost: 2500,
   tts_max_chars: 140,
   tts_daily_chars: 4000,
-  tts_voice_id: DEFAULT_VOICE_ID,
   tts_model_id: "eleven_flash_v2_5",
   tts_volume: 0.85,
+
+  // Voz 1 conserva las keys originales para migrar sin tocar D1 ni perder
+  // la recompensa que ya existe en Kick.
+  tts_voice_1_enabled: true,
+  tts_reward_title: "🔊 TTS",
+  tts_reward_cost: 2500,
+  tts_voice_id: DEFAULT_VOICE_ID,
   tts_reward_id: "",
+
+  // Voces 2-4 se guardan como settings normales en la misma tabla existente.
+  tts_voice_2_enabled: false,
+  tts_voice_2_title: "🔊 TTS Voz 2",
+  tts_voice_2_cost: 3000,
+  tts_voice_2_voice_id: DEFAULT_VOICE_ID,
+  tts_voice_2_reward_id: "",
+  tts_voice_3_enabled: false,
+  tts_voice_3_title: "🔊 TTS Voz 3",
+  tts_voice_3_cost: 3500,
+  tts_voice_3_voice_id: DEFAULT_VOICE_ID,
+  tts_voice_3_reward_id: "",
+  tts_voice_4_enabled: false,
+  tts_voice_4_title: "🔊 TTS Voz 4",
+  tts_voice_4_cost: 4000,
+  tts_voice_4_voice_id: DEFAULT_VOICE_ID,
+  tts_voice_4_reward_id: "",
   overlay_key: "",
   kick_user_id: "",
   kick_username: "",
 };
+
+const TTS_VOICE_SLOTS = [1, 2, 3, 4];
+
+function getTtsVoice(config, slot) {
+  const n = Number(slot);
+  if (n === 1) {
+    return {
+      slot: 1,
+      enabled: Boolean(config.tts_voice_1_enabled),
+      title: String(config.tts_reward_title || "🔊 TTS"),
+      cost: Math.max(1, Number(config.tts_reward_cost) || 1),
+      voiceId: String(config.tts_voice_id ?? DEFAULT_VOICE_ID).trim(),
+      rewardId: String(config.tts_reward_id || "").trim(),
+      rewardSettingKey: "tts_reward_id",
+    };
+  }
+  const prefix = `tts_voice_${n}_`;
+  return {
+    slot: n,
+    enabled: Boolean(config[`${prefix}enabled`]),
+    title: String(config[`${prefix}title`] || `🔊 TTS Voz ${n}`),
+    cost: Math.max(1, Number(config[`${prefix}cost`]) || 1),
+    voiceId: String(config[`${prefix}voice_id`] ?? DEFAULT_VOICE_ID).trim(),
+    rewardId: String(config[`${prefix}reward_id`] || "").trim(),
+    rewardSettingKey: `${prefix}reward_id`,
+  };
+}
+
+function getTtsVoices(config) {
+  return TTS_VOICE_SLOTS.map((slot) => getTtsVoice(config, slot));
+}
 
 const EVENT_TYPES = [
   "chat.message.sent",
@@ -189,11 +241,19 @@ async function updateConfig(request, env) {
   incoming.title_command_name = nextTitleCommand;
   incoming.game_command_name = nextGameCommand;
 
-  const allowed = Object.keys(DEFAULT_CONFIG).filter((key) => !["tts_reward_id", "overlay_key", "kick_user_id", "kick_username"].includes(key));
+  const protectedKeys = new Set([
+    "tts_reward_id", "tts_voice_2_reward_id", "tts_voice_3_reward_id", "tts_voice_4_reward_id",
+    "overlay_key", "kick_user_id", "kick_username"
+  ]);
+  const allowed = Object.keys(DEFAULT_CONFIG).filter((key) => !protectedKeys.has(key));
+  const positiveIntegerKeys = new Set([
+    "tts_reward_cost", "tts_voice_2_cost", "tts_voice_3_cost", "tts_voice_4_cost",
+    "tts_max_chars", "tts_daily_chars"
+  ]);
   for (const key of allowed) {
     if (!(key in incoming)) continue;
     let value = incoming[key];
-    if (["tts_reward_cost", "tts_max_chars", "tts_daily_chars"].includes(key)) value = Math.max(1, Math.round(Number(value) || 1));
+    if (positiveIntegerKeys.has(key)) value = Math.max(1, Math.round(Number(value) || 1));
     if (key === "tts_volume") value = Math.min(1, Math.max(0, Number(value) || 0));
     if (typeof DEFAULT_CONFIG[key] === "boolean") value = Boolean(value);
     await setSetting(env, key, typeof value === "string" ? value.trim() : JSON.stringify(value));
@@ -331,7 +391,8 @@ async function getBootstrap(request, env) {
       kickConnected: Boolean(token),
       kickUsername: config.kick_username,
       hasElevenLabsKey: Boolean(env.ELEVENLABS_API_KEY),
-      rewardConfigured: Boolean(config.tts_reward_id),
+      rewardConfigured: getTtsVoices(config).some((voice) => Boolean(voice.rewardId)),
+      rewardConfiguredCount: getTtsVoices(config).filter((voice) => Boolean(voice.rewardId)).length,
       overlayUrl: `${new URL(request.url).origin}/tts-overlay.html?key=${encodeURIComponent(config.overlay_key)}`,
       queueCount,
     },
@@ -349,7 +410,8 @@ async function getStatus(request, env) {
     kickConnected: Boolean(token),
     kickUsername: config.kick_username,
     hasElevenLabsKey: Boolean(env.ELEVENLABS_API_KEY),
-    rewardConfigured: Boolean(config.tts_reward_id),
+    rewardConfigured: getTtsVoices(config).some((voice) => Boolean(voice.rewardId)),
+    rewardConfiguredCount: getTtsVoices(config).filter((voice) => Boolean(voice.rewardId)).length,
     overlayUrl: `${new URL(request.url).origin}/tts-overlay.html?key=${encodeURIComponent(config.overlay_key)}`,
     queueCount: Number(queue?.count || 0),
   });
@@ -375,35 +437,57 @@ async function syncEvents(request, env) {
 async function syncReward(request, env) {
   const config = await getConfig(env);
   const access = await getKickAccessToken(env);
-  const payload = {
-    title: String(config.tts_reward_title || "🔊 TTS").slice(0, 50),
-    description: `Escribí el mensaje que querés escuchar en stream (máx. ${config.tts_max_chars} caracteres).`,
-    cost: Math.max(1, Number(config.tts_reward_cost) || 1),
-    is_enabled: Boolean(config.tts_enabled),
-    is_user_input_required: true,
-    should_redemptions_skip_request_queue: false,
-    background_color: "#53FC18",
-  };
-
-  let reward;
-  if (config.tts_reward_id) {
-    const res = await kickFetchRaw(`/channels/rewards/${encodeURIComponent(config.tts_reward_id)}`, access, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
-    const data = await parseApiResponse(res, "Actualizar recompensa TTS");
-    reward = data.data;
-  } else {
-    const res = await kickFetchRaw("/channels/rewards", access, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    const data = await parseApiResponse(res, "Crear recompensa TTS");
-    reward = data.data;
-    await setSetting(env, "tts_reward_id", reward?.id || "");
+  const requestedSlot = Number(new URL(request.url).searchParams.get("slot") || 0);
+  if (requestedSlot && !TTS_VOICE_SLOTS.includes(requestedSlot)) {
+    return json({ error: "Voz TTS inválida." }, 400);
   }
-  await safeLog(env, "info", "reward", null, `Recompensa TTS sincronizada (${payload.cost} puntos).`);
-  return json({ ok: true, reward, config: await getConfig(env) });
+
+  const slots = requestedSlot ? [requestedSlot] : TTS_VOICE_SLOTS;
+  const synced = [];
+
+  for (const slot of slots) {
+    const voice = getTtsVoice(config, slot);
+
+    // No creamos recompensas apagadas que todavía no existen. Si ya existe una,
+    // sí la actualizamos para que Kick también la deje desactivada.
+    if (!voice.enabled && !voice.rewardId) {
+      synced.push({ slot, skipped: true, reason: "disabled" });
+      continue;
+    }
+
+    const payload = {
+      title: String(voice.title || `🔊 TTS Voz ${slot}`).slice(0, 50),
+      description: `Escribí el mensaje que querés escuchar en stream (máx. ${config.tts_max_chars} caracteres).`,
+      cost: voice.cost,
+      is_enabled: Boolean(config.tts_enabled && voice.enabled),
+      is_user_input_required: true,
+      should_redemptions_skip_request_queue: false,
+      background_color: "#53FC18",
+    };
+
+    let reward;
+    if (voice.rewardId) {
+      const res = await kickFetchRaw(`/channels/rewards/${encodeURIComponent(voice.rewardId)}`, access, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      const data = await parseApiResponse(res, `Actualizar recompensa TTS voz ${slot}`);
+      reward = data.data;
+    } else {
+      const res = await kickFetchRaw("/channels/rewards", access, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const data = await parseApiResponse(res, `Crear recompensa TTS voz ${slot}`);
+      reward = data.data;
+      await setSetting(env, voice.rewardSettingKey, reward?.id || "");
+    }
+
+    synced.push({ slot, reward });
+    await safeLog(env, "info", "reward", null, `TTS voz ${slot} sincronizada (${payload.cost} puntos).`);
+  }
+
+  return json({ ok: true, synced, config: await getConfig(env) });
 }
 
 async function testChat(env) {
@@ -414,15 +498,18 @@ async function testChat(env) {
 async function testTts(request, env) {
   const body = await readJson(request);
   const config = await getConfig(env);
+  const slot = TTS_VOICE_SLOTS.includes(Number(body.slot)) ? Number(body.slot) : 1;
+  const voice = getTtsVoice(config, slot);
   const text = String(body.text || "Prueba de texto a voz de MinerBot.").trim().slice(0, config.tts_max_chars);
   if (!text) return json({ error: "Escribí un texto de prueba." }, 400);
+  if (!voice.voiceId) return json({ error: `Falta el ElevenLabs Voice ID de la voz ${slot}.` }, 400);
   const id = crypto.randomUUID();
-  const audio = await createTtsAudio(env, text, config);
+  const audio = await createTtsAudio(env, text, config, voice.voiceId);
   await env.STREAMBOT_DB.prepare(
     "INSERT INTO streambot_tts_queue (id, username, text, char_count, audio, status) VALUES (?, ?, ?, ?, ?, 'ready')"
   ).bind(id, "MinerDesign", text, [...text].length, audio).run();
-  await safeLog(env, "info", "tts-test", "MinerDesign", text);
-  return json({ ok: true, id });
+  await safeLog(env, "info", "tts-test", "MinerDesign", `Voz ${slot}: ${text}`);
+  return json({ ok: true, id, slot });
 }
 
 async function getLogs(env) {
@@ -648,8 +735,10 @@ async function findKickCategory(env, query) {
 }
 
 async function processTtsRedemption(env, payload, config) {
-  const rewardId = payload.reward?.id || "";
-  if (!config.tts_reward_id || rewardId !== config.tts_reward_id) return;
+  const rewardId = String(payload.reward?.id || "");
+  const voice = getTtsVoices(config).find((candidate) => candidate.rewardId && candidate.rewardId === rewardId);
+  if (!voice) return;
+
   const redemptionId = payload.id;
   if (!redemptionId || payload.status === "rejected") return;
 
@@ -668,6 +757,8 @@ async function processTtsRedemption(env, payload, config) {
   let rejectReason = "";
 
   if (!config.tts_enabled) rejectReason = "TTS está desactivado.";
+  else if (!voice.enabled) rejectReason = "Esta voz TTS está desactivada.";
+  else if (!voice.voiceId) rejectReason = "Esta voz TTS no tiene Voice ID configurado.";
   else if (!text) rejectReason = "Mensaje vacío.";
   else if (charCount > config.tts_max_chars) rejectReason = `Supera el límite de ${config.tts_max_chars} caracteres.`;
   else if (/https?:\/\/|www\./i.test(text)) rejectReason = "No se permiten links.";
@@ -684,13 +775,13 @@ async function processTtsRedemption(env, payload, config) {
     await env.STREAMBOT_DB.prepare(
       "UPDATE streambot_redemptions SET status='rejected', reason=?, updated_at=CURRENT_TIMESTAMP WHERE redemption_id=?"
     ).bind(rejectReason, redemptionId).run();
-    await safeLog(env, "warn", "tts-rejected", username, rejectReason);
+    await safeLog(env, "warn", "tts-rejected", username, `Voz ${voice.slot}: ${rejectReason}`);
     return;
   }
 
   try {
     const ttsId = crypto.randomUUID();
-    const audio = await createTtsAudio(env, text, config);
+    const audio = await createTtsAudio(env, text, config, voice.voiceId);
     await env.STREAMBOT_DB.prepare(
       "INSERT INTO streambot_tts_queue (id, redemption_id, username, text, char_count, audio, status) VALUES (?, ?, ?, ?, ?, ?, 'ready')"
     ).bind(ttsId, redemptionId, username, text, charCount, audio).run();
@@ -698,7 +789,7 @@ async function processTtsRedemption(env, payload, config) {
     await env.STREAMBOT_DB.prepare(
       "UPDATE streambot_redemptions SET status='done', reason=NULL, updated_at=CURRENT_TIMESTAMP WHERE redemption_id=?"
     ).bind(redemptionId).run();
-    await safeLog(env, "info", "tts", username, text);
+    await safeLog(env, "info", "tts", username, `${voice.title}: ${text}`);
   } catch (error) {
     if (payload.status === "pending") {
       try { await updateRedemptionState(env, redemptionId, "reject"); } catch {}
@@ -706,13 +797,13 @@ async function processTtsRedemption(env, payload, config) {
     await env.STREAMBOT_DB.prepare(
       "UPDATE streambot_redemptions SET status='failed', reason=?, updated_at=CURRENT_TIMESTAMP WHERE redemption_id=?"
     ).bind(error?.message || String(error), redemptionId).run();
-    await safeLog(env, "error", "tts", username, `ElevenLabs falló: ${error?.message || error}`);
+    await safeLog(env, "error", "tts", username, `Voz ${voice.slot} / ElevenLabs falló: ${error?.message || error}`);
   }
 }
 
-async function createTtsAudio(env, text, config) {
+async function createTtsAudio(env, text, config, voiceIdOverride = "") {
   if (!env.ELEVENLABS_API_KEY) throw new Error("Falta ELEVENLABS_API_KEY.");
-  const voiceId = String(config.tts_voice_id || DEFAULT_VOICE_ID).trim();
+  const voiceId = String(voiceIdOverride || config.tts_voice_id || DEFAULT_VOICE_ID).trim();
   const res = await fetch(`${ELEVEN_TTS}/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, {
     method: "POST",
     headers: {

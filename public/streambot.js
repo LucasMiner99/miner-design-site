@@ -9,7 +9,11 @@ const fields = [
   "follow_message","sub_message","renewal_message","gift_message",
   "title_command_enabled","title_command_name","title_command_mods_allowed",
   "game_command_enabled","game_command_name","game_command_mods_allowed","stream_command_confirm",
-  "tts_enabled","tts_reward_title","tts_reward_cost","tts_max_chars","tts_daily_chars","tts_voice_id","tts_volume"
+  "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
+  "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
+  "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
+  "tts_voice_3_enabled","tts_voice_3_title","tts_voice_3_cost","tts_voice_3_voice_id",
+  "tts_voice_4_enabled","tts_voice_4_title","tts_voice_4_cost","tts_voice_4_voice_id"
 ];
 
 async function api(path, options = {}) {
@@ -75,7 +79,8 @@ function paintStatus() {
   $("kickStatus").textContent = status.kickConnected ? "Conectado" : "Desconectado";
   $("kickUser").textContent = status.kickUsername ? `@${status.kickUsername}` : "—";
   $("elevenStatus").textContent = status.hasElevenLabsKey ? "Listo" : "Sin API key";
-  $("rewardStatus").textContent = status.rewardConfigured ? "Configurada" : "Sin crear";
+  const rewardCount = Number(status.rewardConfiguredCount || 0);
+  $("rewardStatus").textContent = rewardCount ? `${rewardCount}/4 configuradas` : "Sin crear";
   $("queueStatus").textContent = String(status.queueCount || 0);
   $("overlayUrl").value = status.overlayUrl || "";
   $("sidebarStatus").textContent = status.kickConnected ? `Kick · @${status.kickUsername || "conectado"}` : "Kick sin conectar";
@@ -111,7 +116,8 @@ async function saveConfig() {
     if (status.kickConnected) await api("/reward/sync", { method: "POST" });
     status = await api("/status");
     paintStatus();
-    showNotice("Cambios guardados.");
+    paintConfig();
+    showNotice("Cambios guardados y recompensas TTS sincronizadas.");
   } catch (err) { showNotice(err.message, true); }
   finally { $("saveButton").disabled = false; }
 }
@@ -130,13 +136,14 @@ async function syncEvents() {
   } catch (err) { showNotice(err.message, true); }
 }
 
-async function syncReward() {
+async function syncReward(slot = 0) {
   try {
     await api("/config", { method: "PUT", body: JSON.stringify(collectConfig()) });
-    await api("/reward/sync", { method: "POST" });
+    const suffix = slot ? `?slot=${slot}` : "";
+    await api(`/reward/sync${suffix}`, { method: "POST" });
     status = await api("/status");
     paintStatus();
-    showNotice("Recompensa TTS sincronizada con Kick.");
+    showNotice(slot ? `Voz ${slot} sincronizada con Kick.` : "Recompensas TTS sincronizadas con Kick.");
   } catch (err) { showNotice(err.message, true); }
 }
 
@@ -145,11 +152,14 @@ async function testChat() {
   catch (err) { showNotice(err.message, true); }
 }
 
-async function testTts() {
+async function testTts(slot = 1) {
   try {
+    // Guardamos primero para que la prueba use el Voice ID que está visible en pantalla.
+    const result = await api("/config", { method: "PUT", body: JSON.stringify(collectConfig()) });
+    config = result.config;
     const text = $("testTtsText").value.trim();
-    await api("/test/tts", { method: "POST", body: JSON.stringify({ text }) });
-    showNotice("TTS enviado a la cola de OBS.");
+    await api("/test/tts", { method: "POST", body: JSON.stringify({ text, slot }) });
+    showNotice(`TTS de la voz ${slot} enviado a la cola de OBS.`);
   } catch (err) { showNotice(err.message, true); }
 }
 
@@ -220,9 +230,12 @@ $("adminKeyInput").addEventListener("keydown", e => { if (e.key === "Enter") unl
 $("saveButton").addEventListener("click", saveConfig);
 $("connectKick").addEventListener("click", connectKick);
 $("syncEvents").addEventListener("click", syncEvents);
-$("syncReward").addEventListener("click", syncReward);
+$("syncAllRewards").addEventListener("click", () => syncReward(0));
+for (let slot = 1; slot <= 4; slot++) {
+  $(`syncReward${slot}`).addEventListener("click", () => syncReward(slot));
+  $(`testVoice${slot}`).addEventListener("click", () => testTts(slot));
+}
 $("testChat").addEventListener("click", testChat);
-$("testTts").addEventListener("click", testTts);
 $("refreshLogs").addEventListener("click", loadLogs);
 $("copyOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("overlayUrl").value); showNotice("URL copiada."); });
 $("addCommand").addEventListener("click", () => {

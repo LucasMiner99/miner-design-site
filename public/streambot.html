@@ -80,37 +80,87 @@
 
       <section id="section-tts" class="panel-section">
         <div class="card">
-          <div class="card-head"><div><h2>TTS con Channel Points</h2><p>Kick cobra puntos → ElevenLabs genera la voz → OBS la reproduce.</p></div></div>
-          <label class="toggle-row"><span><b>TTS activo</b><small>Pausa la recompensa sin borrarla.</small></span><input id="tts_enabled" type="checkbox"><i></i></label>
+          <div class="card-head"><div><h2>TTS con Channel Points</h2><p>Hasta 4 voces distintas. Cada una puede tener su propia recompensa y costo en Kick.</p></div></div>
+          <label class="toggle-row"><span><b>TTS activo</b><small>Interruptor general para todas las voces.</small></span><input id="tts_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Máximo de caracteres por TTS</span><input id="tts_max_chars" type="number" min="1" max="500" /></label>
+            <label class="field"><span>Límite diario de caracteres</span><input id="tts_daily_chars" type="number" min="1" /></label>
+            <label class="field"><span>Volumen OBS</span><input id="tts_volume" type="number" min="0" max="1" step="0.05" /></label>
+            <label class="field"><span>Texto para probar las voces</span><input id="testTtsText" type="text" value="Prueba de texto a voz de MinerBot." maxlength="500" /></label>
+          </div>
+          <div class="button-row">
+            <button id="syncAllRewards" class="primary-button">Sincronizar las 4 recompensas</button>
+          </div>
+          <p class="hint">Las voces apagadas que todavía no existen en Kick no se crean. Si una recompensa ya existe y apagás esa voz, MinerBot la desactiva en Kick sin borrarla.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Voz 1</h2><p>Tu TTS actual. Conserva automáticamente la recompensa que ya tenías creada.</p></div></div>
+          <label class="toggle-row"><span><b>Voz 1 activa</b><small>Habilita esta recompensa de Channel Points.</small></span><input id="tts_voice_1_enabled" type="checkbox"><i></i></label>
           <div class="two-cols">
             <label class="field"><span>Nombre de la recompensa</span><input id="tts_reward_title" type="text" maxlength="50" /></label>
             <label class="field"><span>Costo en puntos</span><input id="tts_reward_cost" type="number" min="1" step="1" /></label>
-            <label class="field"><span>Máximo de caracteres</span><input id="tts_max_chars" type="number" min="1" max="500" /></label>
-            <label class="field"><span>Límite diario de caracteres</span><input id="tts_daily_chars" type="number" min="1" /></label>
-            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_id" type="text" /></label>
-            <label class="field"><span>Volumen OBS</span><input id="tts_volume" type="number" min="0" max="1" step="0.05" /></label>
+            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_id" type="text" autocomplete="off" /></label>
           </div>
           <div class="button-row">
-            <button id="syncReward" class="primary-button">Crear / actualizar recompensa</button>
+            <button id="syncReward1" class="primary-button">Sincronizar Voz 1</button>
+            <button id="testVoice1" class="secondary-button">Probar Voz 1</button>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h2>Widget de OBS</h2><p>Browser Source transparente. El cartel aparece únicamente mientras habla el TTS.</p></div></div>
+          <div class="card-head"><div><h2>Voz 2</h2><p>Segunda recompensa TTS independiente.</p></div></div>
+          <label class="toggle-row"><span><b>Voz 2 activa</b><small>Al activarla y guardar, se crea o actualiza en Kick.</small></span><input id="tts_voice_2_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre de la recompensa</span><input id="tts_voice_2_title" type="text" maxlength="50" /></label>
+            <label class="field"><span>Costo en puntos</span><input id="tts_voice_2_cost" type="number" min="1" step="1" /></label>
+            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_2_voice_id" type="text" autocomplete="off" /></label>
+          </div>
+          <div class="button-row">
+            <button id="syncReward2" class="primary-button">Sincronizar Voz 2</button>
+            <button id="testVoice2" class="secondary-button">Probar Voz 2</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Voz 3</h2><p>Tercera recompensa TTS independiente.</p></div></div>
+          <label class="toggle-row"><span><b>Voz 3 activa</b><small>Al activarla y guardar, se crea o actualiza en Kick.</small></span><input id="tts_voice_3_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre de la recompensa</span><input id="tts_voice_3_title" type="text" maxlength="50" /></label>
+            <label class="field"><span>Costo en puntos</span><input id="tts_voice_3_cost" type="number" min="1" step="1" /></label>
+            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_3_voice_id" type="text" autocomplete="off" /></label>
+          </div>
+          <div class="button-row">
+            <button id="syncReward3" class="primary-button">Sincronizar Voz 3</button>
+            <button id="testVoice3" class="secondary-button">Probar Voz 3</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Voz 4</h2><p>Cuarta recompensa TTS independiente.</p></div></div>
+          <label class="toggle-row"><span><b>Voz 4 activa</b><small>Al activarla y guardar, se crea o actualiza en Kick.</small></span><input id="tts_voice_4_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Nombre de la recompensa</span><input id="tts_voice_4_title" type="text" maxlength="50" /></label>
+            <label class="field"><span>Costo en puntos</span><input id="tts_voice_4_cost" type="number" min="1" step="1" /></label>
+            <label class="field"><span>ElevenLabs Voice ID</span><input id="tts_voice_4_voice_id" type="text" autocomplete="off" /></label>
+          </div>
+          <div class="button-row">
+            <button id="syncReward4" class="primary-button">Sincronizar Voz 4</button>
+            <button id="testVoice4" class="secondary-button">Probar Voz 4</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Widget de OBS</h2><p>Seguís usando el mismo Browser Source para las cuatro voces. Todo entra por la misma cola.</p></div></div>
           <div class="copy-row"><input id="overlayUrl" type="text" readonly /><button id="copyOverlay" class="secondary-button">Copiar URL</button></div>
-          <p class="hint">OBS → Fuentes → Navegador → pegá esta URL. Recomendado: 1920×1080, audio del navegador activado.</p>
+          <p class="hint">No tenés que agregar otro Browser Source en OBS. El que ya tenés sirve para las cuatro voces.</p>
           <div class="tts-preview">
             <div class="audio-badge">
               <span class="audio-icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
               <strong>@usuario</strong>
             </div>
-            <small>Así se ve el cartel.</small>
+            <small>El cartel funciona igual para cualquiera de las cuatro voces.</small>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><div><h2>Prueba rápida</h2><p>Genera un TTS real y lo manda al widget de OBS.</p></div></div>
-          <div class="copy-row"><input id="testTtsText" type="text" value="Prueba de texto a voz de MinerBot." maxlength="200" /><button id="testTts" class="secondary-button">Mandar TTS</button></div>
         </div>
       </section>
 
