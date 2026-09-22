@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#0b0d12" />
+  <meta name="theme-color" content="#12061f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="RepQuest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="stylesheet" href="./styles.css" />
@@ -15,9 +18,12 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <div class="eyebrow">REPQUEST</div>
-        <h1 id="greeting">Hoy entrenamos.</h1>
+      <div class="brand-block">
+        <img src="./icons/icon-192.png" alt="RepQuest" class="brand-icon" />
+        <div>
+          <div class="eyebrow">REPQUEST</div>
+          <h1>Track your grind</h1>
+        </div>
       </div>
       <button id="settingsBtn" class="icon-btn" aria-label="Ajustes">⋯</button>
     </header>
@@ -40,12 +46,15 @@
         </div>
       </section>
 
-      <section class="section-head">
+      <section class="section-head section-head-inline">
         <div>
           <span class="eyebrow">HOY</span>
           <h2>Sumá reps</h2>
         </div>
-        <span id="todayDate" class="muted"></span>
+        <div class="section-tools">
+          <span id="todayDate" class="muted"></span>
+          <button id="undoBtn" class="ghost-btn" disabled>↶ Undo</button>
+        </div>
       </section>
       <section id="exerciseGrid" class="exercise-grid"></section>
 
@@ -90,12 +99,13 @@
         </div>
         <button class="icon-btn" data-close="addModal">×</button>
       </div>
-      <div class="quick-add" id="quickAdd"></div>
-      <label class="input-label" for="customReps">Cantidad personalizada</label>
+      <p class="modal-copy">Escribí únicamente la cantidad real que hiciste. Nada de botones rápidos para evitar misclicks.</p>
+      <label class="input-label" for="customReps">Cantidad</label>
       <div class="custom-row">
         <input id="customReps" type="number" inputmode="numeric" min="1" max="9999" placeholder="Ej. 17" />
-        <button id="customAddBtn" class="primary-btn">Sumar</button>
+        <button id="customAddBtn" class="primary-btn">Guardar</button>
       </div>
+      <button id="modalUndoBtn" class="ghost-btn wide" disabled>↶ Deshacer último agregado</button>
     </div>
   </div>
 
@@ -122,7 +132,7 @@
         <label class="settings-btn file-label"><span>Importar backup</span><small>Restaurar desde un JSON</small><input id="importInput" type="file" accept="application/json" /></label>
         <button id="resetBtn" class="settings-btn danger"><span>Reiniciar progreso</span><small>Borra todos los datos de este dispositivo</small></button>
       </div>
-      <p class="tiny-note">Tus datos se guardan únicamente en este dispositivo.</p>
+      <p class="tiny-note">Tus datos se guardan localmente en este dispositivo y siguen ahí aunque cierres la app o apagues el celu. Solo se pierden si borrás los datos del sitio o reinstalás sin backup.</p>
     </div>
   </div>
 
