@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="RepQuest" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>RepQuest</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">REPQUEST</div>
+        <h1 id="greeting">Hoy entrenamos.</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Ajustes">⋯</button>
+    </header>
+
+    <main>
+      <section class="hero card">
+        <div class="hero-top">
+          <div>
+            <span class="muted">Nivel general</span>
+            <div class="hero-level"><span>LVL</span> <strong id="playerLevel">1</strong></div>
+          </div>
+          <div class="streak-pill">🔥 <strong id="streak">0</strong> días</div>
+        </div>
+        <div class="xp-row"><span id="xpText">0 / 100 XP</span><span id="todayXp">+0 hoy</span></div>
+        <div class="progress big"><div id="xpBar" class="progress-fill"></div></div>
+        <div class="hero-stats">
+          <div><strong id="todayTotal">0</strong><span>reps hoy</span></div>
+          <div><strong id="allTimeTotal">0</strong><span>reps totales</span></div>
+          <div><strong id="achievementCount">0</strong><span>logros</span></div>
+        </div>
+      </section>
+
+      <section class="section-head">
+        <div>
+          <span class="eyebrow">HOY</span>
+          <h2>Sumá reps</h2>
+        </div>
+        <span id="todayDate" class="muted"></span>
+      </section>
+      <section id="exerciseGrid" class="exercise-grid"></section>
+
+      <section class="section-head">
+        <div>
+          <span class="eyebrow">PROGRESO</span>
+          <h2>Esta semana</h2>
+        </div>
+      </section>
+      <section class="card week-card">
+        <div id="weekChart" class="week-chart"></div>
+      </section>
+
+      <section class="section-head">
+        <div>
+          <span class="eyebrow">LOGROS</span>
+          <h2>Achievements</h2>
+        </div>
+        <button id="showAllAchievements" class="text-btn">Ver todos</button>
+      </section>
+      <section id="achievementPreview" class="achievement-list"></section>
+
+      <section class="section-head">
+        <div>
+          <span class="eyebrow">HISTORIAL</span>
+          <h2>Últimos días</h2>
+        </div>
+      </section>
+      <section id="historyList" class="history-list"></section>
+    </main>
+
+    <div class="safe-bottom"></div>
+  </div>
+
+  <div id="addModal" class="modal-backdrop hidden">
+    <div class="modal sheet">
+      <div class="grabber"></div>
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">AÑADIR REPS</span>
+          <h2 id="modalExerciseName">Push-ups</h2>
+        </div>
+        <button class="icon-btn" data-close="addModal">×</button>
+      </div>
+      <div class="quick-add" id="quickAdd"></div>
+      <label class="input-label" for="customReps">Cantidad personalizada</label>
+      <div class="custom-row">
+        <input id="customReps" type="number" inputmode="numeric" min="1" max="9999" placeholder="Ej. 17" />
+        <button id="customAddBtn" class="primary-btn">Sumar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="achievementsModal" class="modal-backdrop hidden">
+    <div class="modal sheet tall">
+      <div class="grabber"></div>
+      <div class="modal-head">
+        <div><span class="eyebrow">LOGROS</span><h2>Achievements</h2></div>
+        <button class="icon-btn" data-close="achievementsModal">×</button>
+      </div>
+      <div id="allAchievements" class="achievement-list"></div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal-backdrop hidden">
+    <div class="modal sheet">
+      <div class="grabber"></div>
+      <div class="modal-head">
+        <div><span class="eyebrow">REPQUEST</span><h2>Ajustes</h2></div>
+        <button class="icon-btn" data-close="settingsModal">×</button>
+      </div>
+      <div class="settings-stack">
+        <button id="exportBtn" class="settings-btn"><span>Exportar backup</span><small>Descarga tus datos en JSON</small></button>
+        <label class="settings-btn file-label"><span>Importar backup</span><small>Restaurar desde un JSON</small><input id="importInput" type="file" accept="application/json" /></label>
+        <button id="resetBtn" class="settings-btn danger"><span>Reiniciar progreso</span><small>Borra todos los datos de este dispositivo</small></button>
+      </div>
+      <p class="tiny-note">Tus datos se guardan únicamente en este dispositivo.</p>
+    </div>
+  </div>
+
+  <div id="levelToast" class="level-toast hidden">
+    <div class="level-burst">LEVEL UP</div>
+    <div id="levelToastText">Llegaste a nivel 2</div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
