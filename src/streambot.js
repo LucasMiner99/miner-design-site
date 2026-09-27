@@ -34,6 +34,7 @@ const DEFAULT_CONFIG = {
   tts_daily_chars: 4000,
   tts_model_id: "eleven_flash_v2_5",
   tts_volume: 0.85,
+  mod_control_enabled: true,
 
   // Voz 1 conserva las keys originales para migrar sin tocar D1 ni perder
   // la recompensa que ya existe en Kick.
@@ -130,6 +131,19 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/overlay/audio/") && request.method === "GET") {
       return await overlayAudio(request, env);
     }
+    if (path === "/api/streambot/overlay/media-state" && request.method === "GET") {
+      return await overlayMediaState(request, env);
+    }
+    if (path === "/api/streambot/overlay/media/complete" && request.method === "POST") {
+      return await overlayMediaComplete(request, env);
+    }
+    if (path.startsWith("/api/streambot/overlay/media-file/") && request.method === "GET") {
+      return await overlayMediaFile(request, env);
+    }
+
+    if (path.startsWith("/api/streambot/mod/")) {
+      return await handleModApi(request, env);
+    }
 
     const adminError = requireAdmin(request, env);
     if (adminError) return adminError;
@@ -176,6 +190,18 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path === "/api/streambot/logs" && request.method === "GET") {
       return await getLogs(env);
     }
+    if (path === "/api/streambot/mods" && request.method === "GET") {
+      return await adminListMods(env);
+    }
+    if (path === "/api/streambot/mods" && request.method === "POST") {
+      return await adminCreateMod(request, env);
+    }
+    if (path.startsWith("/api/streambot/mods/") && request.method === "PUT") {
+      return await adminUpdateMod(request, env);
+    }
+    if (path.startsWith("/api/streambot/mods/") && request.method === "DELETE") {
+      return await adminDeleteMod(request, env);
+    }
     if (path === "/api/streambot/disconnect" && request.method === "POST") {
       await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_tokens WHERE provider='kick'").run();
       await setSetting(env, "kick_user_id", "");
@@ -186,7 +212,8 @@ export async function handleStreamBotRequest(request, env, ctx) {
     return json({ error: "Ruta StreamBot no encontrada." }, 404);
   } catch (error) {
     await safeLog(env, "error", "server", null, error?.message || String(error));
-    return json({ error: error?.message || "Error interno de StreamBot." }, 500);
+    const status = Number(error?.status);
+    return json({ error: error?.message || "Error interno de StreamBot." }, Number.isInteger(status) && status >= 400 && status < 600 ? status : 500);
   }
 }
 
@@ -330,18 +357,55 @@ async function oauthCallback(request, env) {
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlMessage("Kick no devolvió code/state.", 400);
 
-  const row = await env.STREAMBOT_DB.prepare(
+  const adminState = await env.STREAMBOT_DB.prepare(
     "SELECT state, code_verifier, redirect_uri, expires_at FROM streambot_oauth_states WHERE state=?"
   ).bind(state).first();
-  if (!row || row.expires_at < Date.now()) return htmlMessage("El login expiró. Volvé al dashboard e intentá otra vez.", 400);
-  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_states WHERE state=?").bind(state).run();
 
+  if (adminState) {
+    if (adminState.expires_at < Date.now()) return htmlMessage("El login expiró. Volvé al dashboard e intentá otra vez.", 400);
+    await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_states WHERE state=?").bind(state).run();
+    const token = await exchangeKickCode(env, code, adminState);
+    await saveKickToken(env, token);
+
+    const access = token.access_token;
+    const userRes = await kickFetchRaw("/users", access);
+    const userJson = await parseApiResponse(userRes, "Kick /users");
+    const user = Array.isArray(userJson.data) ? userJson.data[0] : userJson.data;
+    if (user) {
+      await setSetting(env, "kick_user_id", String(user.user_id || ""));
+      await setSetting(env, "kick_username", String(user.name || user.username || ""));
+    }
+
+    await safeLog(env, "info", "oauth", user?.name || null, "Kick conectado correctamente.");
+    try { await syncEvents(request, env); } catch (error) { await safeLog(env, "warn", "events", null, error?.message || String(error)); }
+    try { await syncReward(request, env); } catch (error) { await safeLog(env, "warn", "reward", null, error?.message || String(error)); }
+    return Response.redirect(`${new URL(request.url).origin}/streambot.html?connected=1`, 302);
+  }
+
+  let modState = null;
+  try {
+    modState = await env.STREAMBOT_DB.prepare(
+      "SELECT state, code_verifier, redirect_uri, expires_at FROM streambot_mod_oauth_states WHERE state=?"
+    ).bind(state).first();
+  } catch {
+    return htmlMessage("No encontré ese login. Si es el panel de mods, ejecutá primero la migración v9 de D1.", 400, "/control.html");
+  }
+
+  if (!modState) return htmlMessage("Login inválido o ya utilizado.", 400, "/control.html");
+  if (modState.expires_at < Date.now()) return htmlMessage("El login expiró. Volvé al panel de control e intentá otra vez.", 400, "/control.html");
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_oauth_states WHERE state=?").bind(state).run();
+
+  const token = await exchangeKickCode(env, code, modState);
+  return await finishModLogin(request, env, token.access_token);
+}
+
+async function exchangeKickCode(env, code, stateRow) {
   const form = new URLSearchParams({
     grant_type: "authorization_code",
     client_id: env.KICK_CLIENT_ID,
     client_secret: env.KICK_CLIENT_SECRET,
-    redirect_uri: row.redirect_uri,
-    code_verifier: row.code_verifier,
+    redirect_uri: stateRow.redirect_uri,
+    code_verifier: stateRow.code_verifier,
     code,
   });
   const tokenRes = await fetch(`${KICK_OAUTH}/oauth/token`, {
@@ -349,22 +413,7 @@ async function oauthCallback(request, env) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: form,
   });
-  const token = await parseApiResponse(tokenRes, "Kick OAuth");
-  await saveKickToken(env, token);
-
-  const access = token.access_token;
-  const userRes = await kickFetchRaw("/users", access);
-  const userJson = await parseApiResponse(userRes, "Kick /users");
-  const user = Array.isArray(userJson.data) ? userJson.data[0] : userJson.data;
-  if (user) {
-    await setSetting(env, "kick_user_id", String(user.user_id || ""));
-    await setSetting(env, "kick_username", String(user.name || user.username || ""));
-  }
-
-  await safeLog(env, "info", "oauth", user?.name || null, "Kick conectado correctamente.");
-  try { await syncEvents(request, env); } catch (error) { await safeLog(env, "warn", "events", null, error?.message || String(error)); }
-  try { await syncReward(request, env); } catch (error) { await safeLog(env, "warn", "reward", null, error?.message || String(error)); }
-  return Response.redirect(`${new URL(request.url).origin}/streambot.html?connected=1`, 302);
+  return parseApiResponse(tokenRes, "Kick OAuth");
 }
 
 async function getBootstrap(request, env) {
@@ -394,6 +443,8 @@ async function getBootstrap(request, env) {
       rewardConfigured: getTtsVoices(config).some((voice) => Boolean(voice.rewardId)),
       rewardConfiguredCount: getTtsVoices(config).filter((voice) => Boolean(voice.rewardId)).length,
       overlayUrl: `${new URL(request.url).origin}/tts-overlay.html?key=${encodeURIComponent(config.overlay_key)}`,
+      controlUrl: `${new URL(request.url).origin}/control.html`,
+      mediaReady: Boolean(env.STREAMBOT_MEDIA),
       queueCount,
     },
     config,
@@ -413,6 +464,8 @@ async function getStatus(request, env) {
     rewardConfigured: getTtsVoices(config).some((voice) => Boolean(voice.rewardId)),
     rewardConfiguredCount: getTtsVoices(config).filter((voice) => Boolean(voice.rewardId)).length,
     overlayUrl: `${new URL(request.url).origin}/tts-overlay.html?key=${encodeURIComponent(config.overlay_key)}`,
+    controlUrl: `${new URL(request.url).origin}/control.html`,
+    mediaReady: Boolean(env.STREAMBOT_MEDIA),
     queueCount: Number(queue?.count || 0),
   });
 }
@@ -888,6 +941,554 @@ async function overlayComplete(request, env) {
   return json({ ok: true });
 }
 
+
+// -----------------------------------------------------------------------------
+// Remote overlay control (Kick login + allowlist + R2 media library)
+// -----------------------------------------------------------------------------
+
+async function handleModApi(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  if (path === "/api/streambot/mod/oauth/start" && request.method === "GET") {
+    return modOauthStart(request, env);
+  }
+  if (path === "/api/streambot/mod/logout" && request.method === "POST") {
+    return modLogout(request, env);
+  }
+
+  const session = await getModSession(request, env);
+  if (!session) return json({ error: "Iniciá sesión con Kick." }, 401);
+
+  const config = await getConfig(env);
+  const controlAllowed = session.isOwner || config.mod_control_enabled;
+
+  if (path === "/api/streambot/mod/me" && request.method === "GET") {
+    return json({ me: publicModSession(session), controlEnabled: Boolean(config.mod_control_enabled), mediaReady: Boolean(env.STREAMBOT_MEDIA) });
+  }
+
+  if (!controlAllowed) return json({ error: "El control remoto de moderadores está pausado por MinerDesign." }, 423);
+
+  if (path === "/api/streambot/mod/bootstrap" && request.method === "GET") {
+    return modBootstrap(env, session, config);
+  }
+
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
+    const originError = requireSameOrigin(request);
+    if (originError) return originError;
+  }
+
+  if (path === "/api/streambot/mod/assets" && request.method === "POST") {
+    requireModPermission(session, "upload");
+    return modUploadAsset(request, env, session);
+  }
+  if (path.startsWith("/api/streambot/mod/assets/") && path.endsWith("/file") && request.method === "GET") {
+    const id = path.split("/").at(-2);
+    return modServeAsset(request, env, session, id);
+  }
+  if (path.startsWith("/api/streambot/mod/assets/") && request.method === "DELETE") {
+    requireModPermission(session, "delete");
+    const id = path.split("/").pop();
+    return modDeleteAsset(env, session, id);
+  }
+  if (path === "/api/streambot/mod/items" && request.method === "POST") {
+    requireModPermission(session, "control");
+    return modCreateItem(request, env, session);
+  }
+  if (path.startsWith("/api/streambot/mod/items/") && path.endsWith("/show") && request.method === "POST") {
+    requireModPermission(session, "control");
+    const id = path.split("/").at(-2);
+    return modShowItem(request, env, session, id);
+  }
+  if (path.startsWith("/api/streambot/mod/items/") && path.endsWith("/hide") && request.method === "POST") {
+    requireModPermission(session, "control");
+    const id = path.split("/").at(-2);
+    return modHideItem(env, session, id);
+  }
+  if (path.startsWith("/api/streambot/mod/items/") && request.method === "PATCH") {
+    requireModPermission(session, "control");
+    const id = path.split("/").pop();
+    return modUpdateItem(request, env, session, id);
+  }
+  if (path.startsWith("/api/streambot/mod/items/") && request.method === "DELETE") {
+    requireModPermission(session, "control");
+    const id = path.split("/").pop();
+    return modDeleteItem(env, session, id);
+  }
+  if (path === "/api/streambot/mod/clear" && request.method === "POST") {
+    requireModPermission(session, "control");
+    await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL, updated_at=CURRENT_TIMESTAMP").run();
+    await safeLog(env, "info", "overlay-clear", session.username, "Ocultó todos los elementos del overlay.");
+    return json({ ok: true });
+  }
+
+  return json({ error: "Ruta de control no encontrada." }, 404);
+}
+
+async function modOauthStart(request, env) {
+  assertKickSecrets(env);
+  const origin = new URL(request.url).origin;
+  const redirectUri = `${origin}/api/streambot/oauth/callback`;
+  const state = randomToken(24);
+  const verifier = randomToken(48);
+  const challenge = await sha256Base64Url(verifier);
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_oauth_states WHERE expires_at < ?").bind(Date.now()).run();
+  await env.STREAMBOT_DB.prepare(
+    "INSERT INTO streambot_mod_oauth_states (state, code_verifier, redirect_uri, expires_at) VALUES (?, ?, ?, ?)"
+  ).bind(state, verifier, redirectUri, expiresAt).run();
+
+  const auth = new URL(`${KICK_OAUTH}/oauth/authorize`);
+  auth.searchParams.set("response_type", "code");
+  auth.searchParams.set("client_id", env.KICK_CLIENT_ID);
+  auth.searchParams.set("redirect_uri", redirectUri);
+  auth.searchParams.set("scope", "user:read");
+  auth.searchParams.set("state", state);
+  auth.searchParams.set("code_challenge", challenge);
+  auth.searchParams.set("code_challenge_method", "S256");
+  if (new URL(request.url).searchParams.get("json") === "1") return json({ url: auth.toString() });
+  return Response.redirect(auth.toString(), 302);
+}
+
+async function finishModLogin(request, env, accessToken) {
+  const userRes = await kickFetchRaw("/users", accessToken);
+  const userJson = await parseApiResponse(userRes, "Kick /users");
+  const user = Array.isArray(userJson.data) ? userJson.data[0] : userJson.data;
+  const userId = String(user?.user_id || "");
+  const username = String(user?.name || user?.username || "").trim();
+  if (!userId || !username) return htmlMessage("Kick no devolvió tu usuario.", 400, "/control.html");
+
+  const config = await getConfig(env);
+  const isOwner = userId === String(config.kick_user_id || "");
+  let mod = await env.STREAMBOT_DB.prepare(
+    "SELECT * FROM streambot_mod_users WHERE kick_user_id=? OR username=? COLLATE NOCASE LIMIT 1"
+  ).bind(userId, username).first();
+
+  if (isOwner) {
+    if (mod) {
+      await env.STREAMBOT_DB.prepare(`
+        UPDATE streambot_mod_users SET kick_user_id=?, username=?, active=1, can_control=1, can_upload=1, can_delete=1, is_owner=1, updated_at=CURRENT_TIMESTAMP WHERE id=?
+      `).bind(userId, username, mod.id).run();
+    } else {
+      await env.STREAMBOT_DB.prepare(`
+        INSERT INTO streambot_mod_users (kick_user_id, username, active, can_control, can_upload, can_delete, is_owner)
+        VALUES (?, ?, 1, 1, 1, 1, 1)
+      `).bind(userId, username).run();
+    }
+    mod = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_mod_users WHERE kick_user_id=? LIMIT 1").bind(userId).first();
+  } else {
+    if (!mod || !Number(mod.active)) {
+      await safeLog(env, "warn", "mod-login-denied", username, "Intentó entrar al control remoto sin estar autorizado.");
+      return Response.redirect(`${new URL(request.url).origin}/control.html?denied=1`, 302);
+    }
+    if (mod.kick_user_id && String(mod.kick_user_id) !== userId) {
+      await safeLog(env, "warn", "mod-login-denied", username, "El username coincide pero el Kick user ID no.");
+      return Response.redirect(`${new URL(request.url).origin}/control.html?denied=1`, 302);
+    }
+    await env.STREAMBOT_DB.prepare(
+      "UPDATE streambot_mod_users SET kick_user_id=?, username=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
+    ).bind(userId, username, mod.id).run();
+    mod = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_mod_users WHERE id=?").bind(mod.id).first();
+  }
+
+  const rawToken = randomToken(36);
+  const tokenHash = await sha256Base64Url(rawToken);
+  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_sessions WHERE expires_at < ?").bind(Date.now()).run();
+  await env.STREAMBOT_DB.prepare(
+    "INSERT INTO streambot_mod_sessions (token_hash, mod_id, expires_at) VALUES (?, ?, ?)"
+  ).bind(tokenHash, mod.id, expiresAt).run();
+
+  await safeLog(env, "info", "mod-login", username, isOwner ? "Owner inició sesión en Overlay Control." : "Moderador inició sesión en Overlay Control.");
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "Location": `${new URL(request.url).origin}/control.html?connected=1`,
+      "Set-Cookie": modSessionCookie(rawToken, 7 * 24 * 60 * 60),
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+async function getModSession(request, env) {
+  const raw = getCookie(request, "minerbot_mod_session");
+  if (!raw) return null;
+  const hash = await sha256Base64Url(raw);
+  const row = await env.STREAMBOT_DB.prepare(`
+    SELECT s.token_hash, s.expires_at, m.id, m.kick_user_id, m.username, m.active,
+           m.can_control, m.can_upload, m.can_delete, m.is_owner
+    FROM streambot_mod_sessions s
+    JOIN streambot_mod_users m ON m.id=s.mod_id
+    WHERE s.token_hash=? LIMIT 1
+  `).bind(hash).first();
+  if (!row || Number(row.expires_at) < Date.now() || !Number(row.active)) {
+    if (row) await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_sessions WHERE token_hash=?").bind(hash).run();
+    return null;
+  }
+  return {
+    tokenHash: hash,
+    id: Number(row.id),
+    kickUserId: String(row.kick_user_id || ""),
+    username: String(row.username || ""),
+    canControl: Boolean(row.can_control),
+    canUpload: Boolean(row.can_upload),
+    canDelete: Boolean(row.can_delete),
+    isOwner: Boolean(row.is_owner),
+  };
+}
+
+function publicModSession(session) {
+  return {
+    id: session.id,
+    username: session.username,
+    isOwner: session.isOwner,
+    permissions: {
+      control: session.isOwner || session.canControl,
+      upload: session.isOwner || session.canUpload,
+      delete: session.isOwner || session.canDelete,
+    },
+  };
+}
+
+function requireModPermission(session, permission) {
+  const allowed = session.isOwner || (
+    permission === "control" ? session.canControl :
+    permission === "upload" ? session.canUpload :
+    permission === "delete" ? session.canDelete : false
+  );
+  if (!allowed) {
+    const error = new Error("No tenés permiso para hacer eso.");
+    error.status = 403;
+    throw error;
+  }
+}
+
+async function modLogout(request, env) {
+  const raw = getCookie(request, "minerbot_mod_session");
+  if (raw) {
+    const hash = await sha256Base64Url(raw);
+    try { await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_sessions WHERE token_hash=?").bind(hash).run(); } catch {}
+  }
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Set-Cookie": "minerbot_mod_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+    },
+  });
+}
+
+async function modBootstrap(env, session, config) {
+  const [assetsResult, itemsResult] = await env.STREAMBOT_DB.batch([
+    env.STREAMBOT_DB.prepare(`
+      SELECT id, name, mime_type, media_type, size_bytes, uploaded_by, created_at
+      FROM streambot_media_assets WHERE approved=1 ORDER BY created_at DESC
+    `),
+    env.STREAMBOT_DB.prepare(`
+      SELECT i.id, i.asset_id, i.x, i.y, i.width, i.height, i.rotation, i.opacity, i.volume,
+             i.z_index, i.visible, i.play_nonce, i.loop, i.duration_ms, i.visible_until, i.updated_by, i.updated_at,
+             a.name AS asset_name, a.media_type, a.mime_type
+      FROM streambot_overlay_items i
+      JOIN streambot_media_assets a ON a.id=i.asset_id
+      WHERE a.approved=1 ORDER BY i.z_index ASC, i.created_at ASC
+    `),
+  ]);
+
+  return json({
+    me: publicModSession(session),
+    controlEnabled: Boolean(config.mod_control_enabled),
+    mediaReady: Boolean(env.STREAMBOT_MEDIA),
+    assets: (assetsResult.results || []).map((asset) => ({ ...asset, fileUrl: `/api/streambot/mod/assets/${encodeURIComponent(asset.id)}/file` })),
+    items: (itemsResult.results || []).map(normalizeOverlayItem),
+  });
+}
+
+async function modUploadAsset(request, env, session) {
+  if (!env.STREAMBOT_MEDIA) return json({ error: "Falta el binding R2 STREAMBOT_MEDIA." }, 500);
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!file || typeof file.stream !== "function") return json({ error: "Elegí un archivo." }, 400);
+  if (Number(file.size || 0) <= 0) return json({ error: "El archivo está vacío." }, 400);
+  if (Number(file.size || 0) > 25 * 1024 * 1024) return json({ error: "Máximo 25 MB por archivo." }, 413);
+
+  const mime = String(file.type || "").toLowerCase();
+  const allowed = new Map([
+    ["image/png", "image"], ["image/jpeg", "image"], ["image/webp", "image"], ["image/gif", "image"],
+    ["video/webm", "video"], ["video/mp4", "video"],
+  ]);
+  const mediaType = allowed.get(mime);
+  if (!mediaType) return json({ error: "Formato no soportado. Usá PNG/JPG/WebP/GIF o WebM/MP4." }, 415);
+
+  const id = crypto.randomUUID();
+  const cleanName = sanitizeFileName(file.name || `${mediaType}-${id}`);
+  const ext = cleanName.includes(".") ? `.${cleanName.split(".").pop().toLowerCase().slice(0, 8)}` : "";
+  const objectKey = `overlay/${id}${ext}`;
+
+  await env.STREAMBOT_MEDIA.put(objectKey, file.stream(), {
+    httpMetadata: { contentType: mime, cacheControl: "private, max-age=31536000" },
+    customMetadata: { originalName: cleanName, uploadedBy: session.username },
+  });
+
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_media_assets (id, name, object_key, mime_type, media_type, size_bytes, uploaded_by, approved)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+  `).bind(id, cleanName, objectKey, mime, mediaType, Number(file.size || 0), session.username).run();
+  await safeLog(env, "info", "media-upload", session.username, cleanName);
+  return json({ ok: true, asset: { id, name: cleanName, mime_type: mime, media_type: mediaType, size_bytes: Number(file.size || 0), fileUrl: `/api/streambot/mod/assets/${id}/file` } });
+}
+
+async function modServeAsset(request, env, session, id) {
+  const asset = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_media_assets WHERE id=? AND approved=1").bind(String(id || "")).first();
+  if (!asset) return new Response("Not found", { status: 404 });
+  return serveR2Object(request, env, asset);
+}
+
+async function modDeleteAsset(env, session, id) {
+  if (!env.STREAMBOT_MEDIA) return json({ error: "Falta el binding R2 STREAMBOT_MEDIA." }, 500);
+  const asset = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_media_assets WHERE id=?").bind(String(id || "")).first();
+  if (!asset) return json({ error: "Asset no encontrado." }, 404);
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_overlay_items WHERE asset_id=?").bind(asset.id).run();
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_media_assets WHERE id=?").bind(asset.id).run();
+  await env.STREAMBOT_MEDIA.delete(asset.object_key);
+  await safeLog(env, "info", "media-delete", session.username, asset.name);
+  return json({ ok: true });
+}
+
+async function modCreateItem(request, env, session) {
+  const body = await readJson(request);
+  const assetId = String(body.assetId || "");
+  const asset = await env.STREAMBOT_DB.prepare("SELECT id, name FROM streambot_media_assets WHERE id=? AND approved=1").bind(assetId).first();
+  if (!asset) return json({ error: "Asset no encontrado." }, 404);
+  const top = await env.STREAMBOT_DB.prepare("SELECT COALESCE(MAX(z_index),0) AS z FROM streambot_overlay_items").first();
+  const id = crypto.randomUUID();
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_overlay_items
+      (id, asset_id, x, y, width, height, rotation, opacity, volume, z_index, visible, play_nonce, loop, duration_ms, updated_by)
+    VALUES (?, ?, 0.35, 0.30, 0.30, 0.30, 0, 1, 1, ?, 0, 0, 0, 0, ?)
+  `).bind(id, assetId, Number(top?.z || 0) + 1, session.username).run();
+  await safeLog(env, "info", "overlay-add", session.username, asset.name);
+  return json({ ok: true, id });
+}
+
+async function modUpdateItem(request, env, session, id) {
+  const body = await readJson(request);
+  const current = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_overlay_items WHERE id=?").bind(String(id || "")).first();
+  if (!current) return json({ error: "Elemento no encontrado." }, 404);
+  const next = {
+    x: clampNumber(body.x, -0.75, 1.75, current.x),
+    y: clampNumber(body.y, -0.75, 1.75, current.y),
+    width: clampNumber(body.width, 0.02, 2.5, current.width),
+    height: clampNumber(body.height, 0.02, 2.5, current.height),
+    rotation: clampNumber(body.rotation, -720, 720, current.rotation),
+    opacity: clampNumber(body.opacity, 0, 1, current.opacity),
+    volume: clampNumber(body.volume, 0, 1, current.volume),
+    z: Math.round(clampNumber(body.zIndex, -1000, 10000, current.z_index)),
+    loop: "loop" in body ? (body.loop ? 1 : 0) : Number(current.loop || 0),
+    duration: Math.round(clampNumber(body.durationMs, 0, 600000, current.duration_ms)),
+  };
+  await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_overlay_items SET x=?, y=?, width=?, height=?, rotation=?, opacity=?, volume=?, z_index=?, loop=?, duration_ms=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+  `).bind(next.x, next.y, next.width, next.height, next.rotation, next.opacity, next.volume, next.z, next.loop, next.duration, session.username, current.id).run();
+  return json({ ok: true });
+}
+
+async function modShowItem(request, env, session, id) {
+  const body = await readJson(request);
+  const item = await env.STREAMBOT_DB.prepare(`
+    SELECT i.*, a.name AS asset_name FROM streambot_overlay_items i JOIN streambot_media_assets a ON a.id=i.asset_id WHERE i.id=?
+  `).bind(String(id || "")).first();
+  if (!item) return json({ error: "Elemento no encontrado." }, 404);
+  const duration = Math.round(clampNumber("durationMs" in body ? body.durationMs : item.duration_ms, 0, 600000, item.duration_ms));
+  const until = duration > 0 ? Date.now() + duration : null;
+  await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_overlay_items SET visible=1, play_nonce=play_nonce+1, duration_ms=?, visible_until=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+  `).bind(duration, until, session.username, item.id).run();
+  await safeLog(env, "info", "overlay-show", session.username, item.asset_name);
+  return json({ ok: true });
+}
+
+async function modHideItem(env, session, id) {
+  const item = await env.STREAMBOT_DB.prepare(`
+    SELECT i.id, a.name AS asset_name FROM streambot_overlay_items i JOIN streambot_media_assets a ON a.id=i.asset_id WHERE i.id=?
+  `).bind(String(id || "")).first();
+  if (!item) return json({ error: "Elemento no encontrado." }, 404);
+  await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .bind(session.username, item.id).run();
+  await safeLog(env, "info", "overlay-hide", session.username, item.asset_name);
+  return json({ ok: true });
+}
+
+async function modDeleteItem(env, session, id) {
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_overlay_items WHERE id=?").bind(String(id || "")).run();
+  await safeLog(env, "info", "overlay-remove", session.username, `Elemento ${id}`);
+  return json({ ok: true });
+}
+
+async function overlayMediaState(request, env) {
+  const config = await getConfig(env);
+  if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
+  const now = Date.now();
+  try {
+    await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL WHERE visible=1 AND visible_until IS NOT NULL AND visible_until<=?").bind(now).run();
+    const result = await env.STREAMBOT_DB.prepare(`
+      SELECT i.id, i.asset_id, i.x, i.y, i.width, i.height, i.rotation, i.opacity, i.volume,
+             i.z_index, i.visible, i.play_nonce, i.loop, i.duration_ms, i.visible_until,
+             a.name AS asset_name, a.media_type, a.mime_type
+      FROM streambot_overlay_items i JOIN streambot_media_assets a ON a.id=i.asset_id
+      WHERE i.visible=1 AND a.approved=1 ORDER BY i.z_index ASC, i.created_at ASC
+    `).all();
+    return json({ items: (result.results || []).map((item) => ({
+      ...normalizeOverlayItem(item),
+      fileUrl: `/api/streambot/overlay/media-file/${encodeURIComponent(item.asset_id)}?key=${encodeURIComponent(config.overlay_key)}`,
+    })) }, 200, { "Cache-Control": "no-store" });
+  } catch {
+    // Mantiene el TTS funcionando aunque todavía no se haya aplicado la migración v9.
+    return json({ items: [] }, 200, { "Cache-Control": "no-store" });
+  }
+}
+
+async function overlayMediaComplete(request, env) {
+  const config = await getConfig(env);
+  if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
+  const body = await readJson(request);
+  const id = String(body.id || "");
+  const nonce = Number(body.playNonce || 0);
+  if (!id) return json({ error: "ID inválido." }, 400);
+  if (nonce) {
+    await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL WHERE id=? AND play_nonce=?").bind(id, nonce).run();
+  } else {
+    await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL WHERE id=?").bind(id).run();
+  }
+  return json({ ok: true });
+}
+
+async function overlayMediaFile(request, env) {
+  const config = await getConfig(env);
+  if (!checkOverlayKey(request, config)) return new Response("Unauthorized", { status: 401 });
+  if (!env.STREAMBOT_MEDIA) return new Response("R2 not configured", { status: 503 });
+  const id = new URL(request.url).pathname.split("/").pop();
+  const asset = await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_media_assets WHERE id=? AND approved=1").bind(String(id || "")).first();
+  if (!asset) return new Response("Not found", { status: 404 });
+  return serveR2Object(request, env, asset);
+}
+
+async function serveR2Object(request, env, asset) {
+  if (!env.STREAMBOT_MEDIA) return new Response("R2 not configured", { status: 503 });
+  const object = await env.STREAMBOT_MEDIA.get(asset.object_key, { range: request.headers });
+  if (!object || !("body" in object)) return new Response("Not found", { status: 404 });
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("Content-Type", asset.mime_type || headers.get("Content-Type") || "application/octet-stream");
+  headers.set("Cache-Control", "private, max-age=3600");
+  headers.set("Accept-Ranges", "bytes");
+  headers.set("ETag", object.httpEtag);
+  let status = 200;
+  if (object.range && typeof object.range.offset === "number" && typeof object.range.length === "number") {
+    status = 206;
+    const start = object.range.offset;
+    const end = start + object.range.length - 1;
+    headers.set("Content-Range", `bytes ${start}-${end}/${object.size}`);
+    headers.set("Content-Length", String(object.range.length));
+  } else {
+    headers.set("Content-Length", String(object.size));
+  }
+  return new Response(object.body, { status, headers });
+}
+
+function normalizeOverlayItem(item) {
+  return {
+    id: String(item.id), assetId: String(item.asset_id), assetName: String(item.asset_name || ""),
+    mediaType: String(item.media_type || "image"), mimeType: String(item.mime_type || ""),
+    x: Number(item.x), y: Number(item.y), width: Number(item.width), height: Number(item.height),
+    rotation: Number(item.rotation), opacity: Number(item.opacity), volume: Number(item.volume),
+    zIndex: Number(item.z_index), visible: Boolean(item.visible), playNonce: Number(item.play_nonce || 0),
+    loop: Boolean(item.loop), durationMs: Number(item.duration_ms || 0), visibleUntil: item.visible_until == null ? null : Number(item.visible_until),
+    updatedBy: String(item.updated_by || ""), updatedAt: String(item.updated_at || ""),
+  };
+}
+
+async function adminListMods(env) {
+  const result = await env.STREAMBOT_DB.prepare(`
+    SELECT id, kick_user_id, username, active, can_control, can_upload, can_delete, is_owner, created_at, updated_at
+    FROM streambot_mod_users WHERE is_owner=0 ORDER BY username COLLATE NOCASE
+  `).all();
+  return json({ mods: result.results || [] });
+}
+
+async function adminCreateMod(request, env) {
+  const body = await readJson(request);
+  const username = normalizeKickUsername(body.username);
+  if (!username) return json({ error: "Ingresá un username de Kick." }, 400);
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_mod_users (username, active, can_control, can_upload, can_delete, is_owner)
+    VALUES (?, 1, 1, 0, 0, 0)
+    ON CONFLICT(username) DO UPDATE SET active=1, updated_at=CURRENT_TIMESTAMP
+  `).bind(username).run();
+  await safeLog(env, "info", "mod-allowlist", username, "Agregado a la allowlist del Overlay Control.");
+  return adminListMods(env);
+}
+
+async function adminUpdateMod(request, env) {
+  const id = Number(new URL(request.url).pathname.split("/").pop());
+  const body = await readJson(request);
+  if (!id) return json({ error: "ID inválido." }, 400);
+  const row = await env.STREAMBOT_DB.prepare("SELECT is_owner, username FROM streambot_mod_users WHERE id=?").bind(id).first();
+  if (!row || Number(row.is_owner)) return json({ error: "Moderador inválido." }, 400);
+  await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_mod_users SET active=?, can_control=?, can_upload=?, can_delete=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+  `).bind(body.active === false ? 0 : 1, body.can_control === false ? 0 : 1, body.can_upload ? 1 : 0, body.can_delete ? 1 : 0, id).run();
+  if (body.active === false) await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_sessions WHERE mod_id=?").bind(id).run();
+  await safeLog(env, "info", "mod-permissions", row.username, "Permisos de Overlay Control actualizados.");
+  return adminListMods(env);
+}
+
+async function adminDeleteMod(request, env) {
+  const id = Number(new URL(request.url).pathname.split("/").pop());
+  if (!id) return json({ error: "ID inválido." }, 400);
+  const row = await env.STREAMBOT_DB.prepare("SELECT is_owner, username FROM streambot_mod_users WHERE id=?").bind(id).first();
+  if (!row || Number(row.is_owner)) return json({ error: "Moderador inválido." }, 400);
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_sessions WHERE mod_id=?").bind(id).run();
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_mod_users WHERE id=?").bind(id).run();
+  await safeLog(env, "info", "mod-allowlist", row.username, "Quitado de la allowlist del Overlay Control.");
+  return adminListMods(env);
+}
+
+function normalizeKickUsername(value) {
+  return String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").slice(0, 64);
+}
+
+function clampNumber(value, min, max, fallback = 0) {
+  const number = Number(value);
+  const base = Number.isFinite(number) ? number : Number(fallback);
+  return Math.min(max, Math.max(min, Number.isFinite(base) ? base : 0));
+}
+
+function sanitizeFileName(value) {
+  return String(value || "archivo").replace(/[\\/:*?"<>|\u0000-\u001F]/g, "_").trim().slice(0, 120) || "archivo";
+}
+
+function getCookie(request, name) {
+  const cookies = String(request.headers.get("Cookie") || "").split(";");
+  for (const part of cookies) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(rest.join("="));
+  }
+  return "";
+}
+
+function modSessionCookie(value, maxAge) {
+  return `minerbot_mod_session=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.max(0, Math.floor(maxAge))}`;
+}
+
+function requireSameOrigin(request) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  if (origin !== new URL(request.url).origin) return json({ error: "Origen no permitido." }, 403);
+  return null;
+}
+
 async function updateRedemptionState(env, redemptionId, action) {
   const access = await getKickAccessToken(env);
   const res = await kickFetchRaw(`/channels/rewards/redemptions/${action}`, access, {
@@ -1102,8 +1703,8 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function htmlMessage(message, status = 200) {
-  return new Response(`<!doctype html><meta charset="utf-8"><title>MinerBot</title><style>body{font:16px system-ui;background:#111;color:#fff;padding:40px}a{color:#53fc18}</style><p>${escapeHtml(message)}</p><p><a href="/streambot.html">Volver al dashboard</a></p>`, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+function htmlMessage(message, status = 200, backHref = "/streambot.html") {
+  return new Response(`<!doctype html><meta charset="utf-8"><title>MinerBot</title><style>body{font:16px system-ui;background:#111;color:#fff;padding:40px}a{color:#53fc18}</style><p>${escapeHtml(message)}</p><p><a href="${escapeHtml(backHref)}">Volver</a></p>`, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
 function escapeHtml(value) {

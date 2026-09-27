@@ -19,6 +19,7 @@
         <button class="nav-link active" data-section="general">General</button>
         <button class="nav-link" data-section="tts">TTS</button>
         <button class="nav-link" data-section="commands">Comandos</button>
+        <button class="nav-link" data-section="mods">Mods</button>
         <button class="nav-link" data-section="logs">Actividad</button>
       </nav>
       <div class="sidebar-bottom">
@@ -151,9 +152,9 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h2>Widget de OBS</h2><p>Seguís usando el mismo Browser Source para las cuatro voces. Todo entra por la misma cola.</p></div></div>
+          <div class="card-head"><div><h2>Widget global de OBS</h2><p>El mismo Browser Source maneja TTS y el nuevo Overlay Control.</p></div></div>
           <div class="copy-row"><input id="overlayUrl" type="text" readonly /><button id="copyOverlay" class="secondary-button">Copiar URL</button></div>
-          <p class="hint">No tenés que agregar otro Browser Source en OBS. El que ya tenés sirve para las cuatro voces.</p>
+          <p class="hint">No agregues otro Browser Source: la URL actual sirve para las cuatro voces y para imágenes/videos de los mods.</p>
           <div class="tts-preview">
             <div class="audio-badge">
               <span class="audio-icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
@@ -187,6 +188,30 @@
         <div class="card">
           <div class="card-head"><div><h2>Comandos personalizados</h2><p>Ejemplo: <code>!instagram</code> o <code>!discord</code>.</p></div><button id="addCommand" class="primary-button small">+ Agregar</button></div>
           <div id="commandsList" class="commands-list"></div>
+        </div>
+      </section>
+
+
+      <section id="section-mods" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>Overlay Control</h2><p>Acceso privado para mover imágenes y videos sobre tu stream.</p></div><a id="openControl" class="secondary-button link-button" href="/control.html" target="_blank" rel="noopener">Abrir control</a></div>
+          <label class="toggle-row"><span><b>Permitir control remoto a mods</b><small>Tu cuenta de Kick (owner) sigue entrando aunque lo apagues.</small></span><input id="mod_control_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>URL del panel</span><input id="controlUrl" type="text" readonly /></label>
+            <div class="field"><span>Almacenamiento de media</span><div id="mediaStorageStatus" class="storage-status">Cargando…</div></div>
+          </div>
+          <p class="hint">Los mods entran con su propia cuenta de Kick. No ven tu admin key, tus secrets ni el resto del dashboard.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Personas autorizadas</h2><p>Agregalas por username de Kick. La primera vez que entren vinculamos su user ID real.</p></div></div>
+          <div class="mod-add-row">
+            <input id="newModUsername" type="text" placeholder="@usuario" maxlength="64" />
+            <button id="addMod" class="primary-button">Agregar</button>
+          </div>
+          <div class="mod-permission-head"><span>Usuario</span><span>Controlar</span><span>Subir</span><span>Borrar</span><span>Activo</span><span></span></div>
+          <div id="modsList" class="mods-list"></div>
+          <p class="hint">“Controlar” permite mover/mostrar/ocultar. “Subir” permite agregar archivos nuevos a la biblioteca. “Borrar” elimina archivos de la biblioteca.</p>
         </div>
       </section>
 

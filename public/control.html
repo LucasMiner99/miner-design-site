@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>MinerBot Overlay Control</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="control.css" />
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="assets/logo-miner.svg" alt="" />
+      <p class="eyebrow">MINERBOT</p>
+      <h1>Overlay Control</h1>
+      <p>Panel privado para controlar imágenes y videos sobre el stream.</p>
+      <button id="loginKick" class="primary">Entrar con Kick</button>
+      <small id="loginMessage"></small>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo-miner.svg" alt="" />
+        <div><b>MinerBot</b><span>Overlay Control</span></div>
+      </div>
+      <div class="top-actions">
+        <span id="whoami" class="user-pill">@usuario</span>
+        <span id="liveStatus" class="status-pill">Conectando…</span>
+        <button id="logout" class="ghost">Salir</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="left-panel panel">
+        <div class="panel-head">
+          <div><h2>Biblioteca</h2><p>Imágenes y videos disponibles.</p></div>
+        </div>
+
+        <div id="r2Warning" class="warning hidden">Falta configurar R2 <b>STREAMBOT_MEDIA</b>.</div>
+
+        <div id="uploadBox" class="upload-box hidden">
+          <input id="mediaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" />
+          <button id="uploadButton" class="secondary">Subir archivo</button>
+          <small>PNG, JPG, WebP, GIF, WebM o MP4 · máximo 25 MB.</small>
+        </div>
+
+        <div id="assetList" class="asset-list"></div>
+      </section>
+
+      <section class="center-panel">
+        <div class="canvas-toolbar">
+          <div>
+            <b>Vista del stream</b>
+            <span>16:9 · arrastrá y redimensioná los elementos</span>
+          </div>
+          <div class="toolbar-actions">
+            <button id="refreshScene" class="ghost">Actualizar</button>
+            <button id="hideAll" class="danger">Ocultar todo</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <div id="stage" class="stage">
+            <div class="center-line vertical"></div>
+            <div class="center-line horizontal"></div>
+            <div class="safe-area"></div>
+            <div id="emptyStage" class="stage-empty">Agregá un asset desde la biblioteca</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="right-panel panel">
+        <div class="panel-head">
+          <div><h2>Elemento</h2><p id="selectedName">Nada seleccionado</p></div>
+        </div>
+        <div id="inspectorEmpty" class="inspector-empty">Seleccioná una imagen o video en el canvas.</div>
+        <div id="inspector" class="inspector hidden">
+          <div class="action-grid">
+            <button id="showItem" class="primary">Mostrar / Reproducir</button>
+            <button id="hideItem" class="secondary">Ocultar</button>
+          </div>
+          <label><span>Duración</span><div class="inline"><input id="duration" type="number" min="0" max="600" step="0.5" /><em>seg</em></div><small>0 = hasta ocultar; los videos se ocultan al terminar.</small></label>
+          <label><span>Volumen</span><input id="volume" type="range" min="0" max="100" step="1" /></label>
+          <label><span>Opacidad</span><input id="opacity" type="range" min="0" max="100" step="1" /></label>
+          <label><span>Rotación</span><input id="rotation" type="range" min="-180" max="180" step="1" /></label>
+          <label id="loopRow" class="check-row"><input id="loop" type="checkbox" /><span>Loop de video</span></label>
+          <div class="action-grid">
+            <button id="bringFront" class="secondary">Traer al frente</button>
+            <button id="sendBack" class="secondary">Mandar atrás</button>
+          </div>
+          <button id="removeItem" class="danger full">Quitar del canvas</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+  <script src="control.js"></script>
+</body>
+</html>

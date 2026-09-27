@@ -13,7 +13,8 @@ const fields = [
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
   "tts_voice_3_enabled","tts_voice_3_title","tts_voice_3_cost","tts_voice_3_voice_id",
-  "tts_voice_4_enabled","tts_voice_4_title","tts_voice_4_cost","tts_voice_4_voice_id"
+  "tts_voice_4_enabled","tts_voice_4_title","tts_voice_4_cost","tts_voice_4_voice_id",
+  "mod_control_enabled"
 ];
 
 async function api(path, options = {}) {
@@ -83,6 +84,12 @@ function paintStatus() {
   $("rewardStatus").textContent = rewardCount ? `${rewardCount}/4 configuradas` : "Sin crear";
   $("queueStatus").textContent = String(status.queueCount || 0);
   $("overlayUrl").value = status.overlayUrl || "";
+  if ($("controlUrl")) $("controlUrl").value = status.controlUrl || `${location.origin}/control.html`;
+  if ($("mediaStorageStatus")) {
+    $("mediaStorageStatus").textContent = status.mediaReady ? "R2 conectado · listo" : "Falta binding R2 STREAMBOT_MEDIA";
+    $("mediaStorageStatus").classList.toggle("ok", Boolean(status.mediaReady));
+    $("mediaStorageStatus").classList.toggle("warn", !status.mediaReady);
+  }
   $("sidebarStatus").textContent = status.kickConnected ? `Kick · @${status.kickUsername || "conectado"}` : "Kick sin conectar";
   $("sidebarStatus").classList.toggle("online", status.kickConnected);
   $("connectKick").textContent = status.kickConnected ? "Reconectar Kick" : "Conectar Kick";
@@ -201,6 +208,73 @@ function commandRow(command = { id: null, name: "", response: "", enabled: 1 }) 
   return row;
 }
 
+
+async function loadMods() {
+  try {
+    const data = await api("/mods");
+    paintMods(data.mods || []);
+  } catch (err) {
+    const host = $("modsList");
+    if (host) host.innerHTML = `<p class="hint">${esc(err.message)}. Si recién instalaste v9, ejecutá <code>streambot-v9-migration.sql</code> en D1.</p>`;
+  }
+}
+
+function paintMods(mods = []) {
+  const host = $("modsList");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const mod of mods) {
+    const row = document.createElement("div");
+    row.className = "mod-row";
+    row.innerHTML = `
+      <div class="mod-user"><b>@${esc(mod.username)}</b><small>${mod.kick_user_id ? `ID ${esc(mod.kick_user_id)}` : "Todavía no inició sesión"}</small></div>
+      <input class="p-control" type="checkbox" ${Number(mod.can_control) ? "checked" : ""} title="Puede controlar" />
+      <input class="p-upload" type="checkbox" ${Number(mod.can_upload) ? "checked" : ""} title="Puede subir" />
+      <input class="p-delete" type="checkbox" ${Number(mod.can_delete) ? "checked" : ""} title="Puede borrar" />
+      <input class="p-active" type="checkbox" ${Number(mod.active) ? "checked" : ""} title="Activo" />
+      <button class="delete-button">Quitar</button>`;
+    const save = async () => {
+      try {
+        const data = await api(`/mods/${mod.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            can_control: row.querySelector(".p-control").checked,
+            can_upload: row.querySelector(".p-upload").checked,
+            can_delete: row.querySelector(".p-delete").checked,
+            active: row.querySelector(".p-active").checked,
+          }),
+        });
+        paintMods(data.mods || []);
+        showNotice(`Permisos de @${mod.username} actualizados.`);
+      } catch (err) { showNotice(err.message, true); }
+    };
+    row.querySelectorAll("input").forEach((el) => el.addEventListener("change", save));
+    row.querySelector(".delete-button").addEventListener("click", async () => {
+      if (!confirm(`¿Quitar a @${mod.username} del Overlay Control?`)) return;
+      try {
+        const data = await api(`/mods/${mod.id}`, { method: "DELETE" });
+        paintMods(data.mods || []);
+        showNotice(`@${mod.username} ya no tiene acceso.`);
+      } catch (err) { showNotice(err.message, true); }
+    });
+    host.appendChild(row);
+  }
+  if (!mods.length) host.innerHTML = '<p class="hint">Todavía no autorizaste a ningún mod. Vos podés entrar al panel con tu propia cuenta de Kick sin agregarte.</p>';
+}
+
+async function addMod() {
+  const username = $("newModUsername").value.trim();
+  if (!username) return;
+  try {
+    $("addMod").disabled = true;
+    const data = await api("/mods", { method: "POST", body: JSON.stringify({ username }) });
+    $("newModUsername").value = "";
+    paintMods(data.mods || []);
+    showNotice("Mod autorizado.");
+  } catch (err) { showNotice(err.message, true); }
+  finally { $("addMod").disabled = false; }
+}
+
 function paintLogs(logs = []) {
   const host = $("logsList");
   host.innerHTML = "";
@@ -246,12 +320,15 @@ $("addCommand").addEventListener("click", () => {
   row.querySelector(".command-name").focus();
 });
 $("lockButton").addEventListener("click", () => { localStorage.removeItem("streambot_admin_key"); adminKey = ""; $("adminKeyInput").value = ""; $("lockScreen").classList.remove("hidden"); });
+if ($("addMod")) $("addMod").addEventListener("click", addMod);
+if ($("newModUsername")) $("newModUsername").addEventListener("keydown", e => { if (e.key === "Enter") addMod(); });
 
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
   document.querySelectorAll(".panel-section").forEach(s => s.classList.remove("active"));
   $(`section-${button.dataset.section}`).classList.add("active");
   if (button.dataset.section === "logs") loadLogs();
+  if (button.dataset.section === "mods") loadMods();
 }));
 
 (async () => {
