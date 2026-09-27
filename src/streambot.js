@@ -140,6 +140,9 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/overlay/media-file/") && request.method === "GET") {
       return await overlayMediaFile(request, env);
     }
+    if (path === "/api/streambot/realtime/ws" && request.method === "GET") {
+      return await handleRealtimeWebSocket(request, env);
+    }
 
     if (path.startsWith("/api/streambot/mod/")) {
       return await handleModApi(request, env);
@@ -562,6 +565,7 @@ async function testTts(request, env) {
     "INSERT INTO streambot_tts_queue (id, username, text, char_count, audio, status) VALUES (?, ?, ?, ?, ?, 'ready')"
   ).bind(id, "MinerDesign", text, [...text].length, audio).run();
   await safeLog(env, "info", "tts-test", "MinerDesign", `Voz ${slot}: ${text}`);
+  await realtimeBroadcast(env, { type: "tts.available" }, "overlay");
   return json({ ok: true, id, slot });
 }
 
@@ -843,6 +847,7 @@ async function processTtsRedemption(env, payload, config) {
       "UPDATE streambot_redemptions SET status='done', reason=NULL, updated_at=CURRENT_TIMESTAMP WHERE redemption_id=?"
     ).bind(redemptionId).run();
     await safeLog(env, "info", "tts", username, `${voice.title}: ${text}`);
+    await realtimeBroadcast(env, { type: "tts.available" }, "overlay");
   } catch (error) {
     if (payload.status === "pending") {
       try { await updateRedemptionState(env, redemptionId, "reject"); } catch {}
@@ -943,6 +948,51 @@ async function overlayComplete(request, env) {
 
 
 // -----------------------------------------------------------------------------
+// Realtime overlay channel (Durable Object + WebSockets)
+// -----------------------------------------------------------------------------
+
+async function handleRealtimeWebSocket(request, env) {
+  if (!env.OVERLAY_ROOM) return json({ error: "Falta el binding Durable Object OVERLAY_ROOM." }, 503);
+  if ((request.headers.get("Upgrade") || "").toLowerCase() !== "websocket") {
+    return new Response("Expected WebSocket", { status: 426 });
+  }
+
+  const url = new URL(request.url);
+  const role = url.searchParams.get("role") === "control" ? "control" : "overlay";
+  let username = "";
+
+  if (role === "overlay") {
+    const config = await getConfig(env);
+    if (!checkOverlayKey(request, config)) return new Response("Unauthorized", { status: 401 });
+  } else {
+    const session = await getModSession(request, env);
+    if (!session) return new Response("Unauthorized", { status: 401 });
+    const config = await getConfig(env);
+    const allowed = session.isOwner || (config.mod_control_enabled && session.canControl);
+    if (!allowed) return new Response("Forbidden", { status: 403 });
+    username = session.username;
+  }
+
+  const headers = new Headers(request.headers);
+  headers.set("X-Miner-Role", role);
+  headers.set("X-Miner-User", username);
+  const forwarded = new Request(request, { headers });
+  return env.OVERLAY_ROOM.getByName("global").fetch(forwarded);
+}
+
+async function realtimeBroadcast(env, event, target = "all") {
+  if (!env.OVERLAY_ROOM) return;
+  try {
+    const stub = env.OVERLAY_ROOM.getByName("global");
+    await stub.fetch("https://overlay-room.internal/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Miner-Target": target },
+      body: JSON.stringify(event),
+    });
+  } catch {}
+}
+
+// -----------------------------------------------------------------------------
 // Remote overlay control (Kick login + allowlist + R2 media library)
 // -----------------------------------------------------------------------------
 
@@ -1019,6 +1069,7 @@ async function handleModApi(request, env) {
     requireModPermission(session, "control");
     await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL, updated_at=CURRENT_TIMESTAMP").run();
     await safeLog(env, "info", "overlay-clear", session.username, "Ocultó todos los elementos del overlay.");
+    await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
     return json({ ok: true });
   }
 
@@ -1236,6 +1287,7 @@ async function modUploadAsset(request, env, session) {
     VALUES (?, ?, ?, ?, ?, ?, ?, 1)
   `).bind(id, cleanName, objectKey, mime, mediaType, Number(file.size || 0), session.username).run();
   await safeLog(env, "info", "media-upload", session.username, cleanName);
+  await realtimeBroadcast(env, { type: "library.refresh" }, "control");
   return json({ ok: true, asset: { id, name: cleanName, mime_type: mime, media_type: mediaType, size_bytes: Number(file.size || 0), fileUrl: `/api/streambot/mod/assets/${id}/file` } });
 }
 
@@ -1253,6 +1305,8 @@ async function modDeleteAsset(env, session, id) {
   await env.STREAMBOT_DB.prepare("DELETE FROM streambot_media_assets WHERE id=?").bind(asset.id).run();
   await env.STREAMBOT_MEDIA.delete(asset.object_key);
   await safeLog(env, "info", "media-delete", session.username, asset.name);
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
+  await realtimeBroadcast(env, { type: "library.refresh" }, "control");
   return json({ ok: true });
 }
 
@@ -1269,6 +1323,7 @@ async function modCreateItem(request, env, session) {
     VALUES (?, ?, 0.35, 0.30, 0.30, 0.30, 0, 1, 1, ?, 0, 0, 0, 0, ?)
   `).bind(id, assetId, Number(top?.z || 0) + 1, session.username).run();
   await safeLog(env, "info", "overlay-add", session.username, asset.name);
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "control");
   return json({ ok: true, id });
 }
 
@@ -1291,6 +1346,7 @@ async function modUpdateItem(request, env, session, id) {
   await env.STREAMBOT_DB.prepare(`
     UPDATE streambot_overlay_items SET x=?, y=?, width=?, height=?, rotation=?, opacity=?, volume=?, z_index=?, loop=?, duration_ms=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
   `).bind(next.x, next.y, next.width, next.height, next.rotation, next.opacity, next.volume, next.z, next.loop, next.duration, session.username, current.id).run();
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
   return json({ ok: true });
 }
 
@@ -1306,6 +1362,7 @@ async function modShowItem(request, env, session, id) {
     UPDATE streambot_overlay_items SET visible=1, play_nonce=play_nonce+1, duration_ms=?, visible_until=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
   `).bind(duration, until, session.username, item.id).run();
   await safeLog(env, "info", "overlay-show", session.username, item.asset_name);
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
   return json({ ok: true });
 }
 
@@ -1317,12 +1374,14 @@ async function modHideItem(env, session, id) {
   await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
     .bind(session.username, item.id).run();
   await safeLog(env, "info", "overlay-hide", session.username, item.asset_name);
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
   return json({ ok: true });
 }
 
 async function modDeleteItem(env, session, id) {
   await env.STREAMBOT_DB.prepare("DELETE FROM streambot_overlay_items WHERE id=?").bind(String(id || "")).run();
   await safeLog(env, "info", "overlay-remove", session.username, `Elemento ${id}`);
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
   return json({ ok: true });
 }
 
@@ -1361,6 +1420,7 @@ async function overlayMediaComplete(request, env) {
   } else {
     await env.STREAMBOT_DB.prepare("UPDATE streambot_overlay_items SET visible=0, visible_until=NULL WHERE id=?").bind(id).run();
   }
+  await realtimeBroadcast(env, { type: "scene.refresh" }, "all");
   return json({ ok: true });
 }
 

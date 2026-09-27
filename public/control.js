@@ -1,9 +1,11 @@
 const API = "/api/streambot/mod";
 const $ = (id) => document.getElementById(id);
-const state = { me:null, assets:[], items:[], selectedId:null, interacting:false, mediaReady:false };
-let sceneTimer = null;
+const state = { me:null, assets:[], items:[], selectedId:null, interacting:false, mediaReady:false, socket:null };
+let reconnectTimer = null;
 let saveTimer = null;
-let lastLiveSave = 0;
+let previewTimer = null;
+let lastPreviewAt = 0;
+let pendingPreview = null;
 
 async function api(path, options={}) {
   const res = await fetch(`${API}${path}`, { credentials:"same-origin", cache:"no-store", ...options });
@@ -17,6 +19,29 @@ function toast(message,error=false){const el=$("toast");el.textContent=message;e
 function esc(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
 function bytes(v){const n=Number(v||0);if(n<1024)return`${n} B`;if(n<1024**2)return`${(n/1024).toFixed(1)} KB`;return`${(n/1024**2).toFixed(1)} MB`}
 
+function realtimeUrl(){const proto=location.protocol==="https:"?"wss":"ws";return `${proto}://${location.host}/api/streambot/realtime/ws?role=control`}
+function connectRealtime(){
+  clearTimeout(reconnectTimer);
+  try{if(state.socket&&state.socket.readyState<=1)state.socket.close()}catch{}
+  let ws;try{ws=new WebSocket(realtimeUrl())}catch{return scheduleReconnect()}
+  state.socket=ws;
+  ws.addEventListener("open",()=>{});
+  ws.addEventListener("message",event=>{let msg;try{msg=JSON.parse(event.data)}catch{return}
+    if(msg.type==="scene.preview"&&msg.item){applyRemotePreview(msg.item);return}
+    if(msg.type==="scene.refresh"){refreshScene();return}
+    if(msg.type==="library.refresh"){refreshAll();return}
+  });
+  ws.addEventListener("close",scheduleReconnect);
+  ws.addEventListener("error",()=>{try{ws.close()}catch{}});
+}
+function scheduleReconnect(){clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connectRealtime,1500)}
+function previewPayload(item){return{id:item.id,...itemPayload(item)}}
+function sendPreview(item){
+  pendingPreview=previewPayload(item);const now=performance.now();const wait=Math.max(0,34-(now-lastPreviewAt));
+  if(previewTimer)return;previewTimer=setTimeout(()=>{previewTimer=null;const ws=state.socket;if(!pendingPreview||!ws||ws.readyState!==WebSocket.OPEN)return;lastPreviewAt=performance.now();try{ws.send(JSON.stringify({type:"scene.preview",item:pendingPreview}))}catch{}pendingPreview=null},wait)
+}
+function applyRemotePreview(preview){const item=state.items.find(x=>x.id===String(preview.id||""));if(!item)return;for(const key of ["x","y","width","height","rotation","opacity","volume","zIndex"]){if(key in preview&&Number.isFinite(Number(preview[key])))item[key]=Number(preview[key])}updateItemElement(item)}
+
 async function login(){try{const d=await api("/oauth/start?json=1");if(d.url)location.href=d.url}catch(e){$("loginMessage").textContent=e.message}}
 async function logout(){try{await api("/logout",{method:"POST"})}catch{}location.reload()}
 
@@ -27,7 +52,7 @@ async function boot(){
     state.me=d.me; state.assets=d.assets||[]; state.items=d.items||[]; state.mediaReady=Boolean(d.mediaReady);
     $("loginScreen").classList.add("hidden"); $("app").classList.remove("hidden");
     paintHeader(d); paintLibrary(); paintStage(); paintInspector();
-    startPolling();
+    connectRealtime();
   }catch(e){
     if(e.status!==401) $("loginMessage").textContent=e.message;
     $("loginScreen").classList.remove("hidden");
@@ -89,26 +114,22 @@ function startDrag(e,id){
   if(!state.me.permissions.control)return; if(e.target.classList.contains("resize-handle"))return;
   e.preventDefault();selectItem(id);state.interacting=true;
   const stage=$("stage").getBoundingClientRect();const item=state.items.find(x=>x.id===id);const sx=e.clientX,sy=e.clientY,ox=item.x,oy=item.y;
-  const move=ev=>{item.x=ox+(ev.clientX-sx)/stage.width;item.y=oy+(ev.clientY-sy)/stage.height;updateItemElement(item);scheduleSave(item)};
-  const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);state.interacting=false;saveItem(item,true)};
+  const move=ev=>{item.x=ox+(ev.clientX-sx)/stage.width;item.y=oy+(ev.clientY-sy)/stage.height;updateItemElement(item);sendPreview(item)};
+  const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);state.interacting=false;sendPreview(item);saveItem(item,true)};
   window.addEventListener("pointermove",move);window.addEventListener("pointerup",up,{once:true});
 }
 
 function startResize(e,id){
   if(!state.me.permissions.control)return;e.preventDefault();e.stopPropagation();selectItem(id);state.interacting=true;
   const stage=$("stage").getBoundingClientRect();const item=state.items.find(x=>x.id===id);const sx=e.clientX,sy=e.clientY,ow=item.width,oh=item.height;
-  const move=ev=>{item.width=Math.max(.02,ow+(ev.clientX-sx)/stage.width);item.height=Math.max(.02,oh+(ev.clientY-sy)/stage.height);updateItemElement(item);scheduleSave(item)};
-  const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);state.interacting=false;saveItem(item,true)};
+  const move=ev=>{item.width=Math.max(.02,ow+(ev.clientX-sx)/stage.width);item.height=Math.max(.02,oh+(ev.clientY-sy)/stage.height);updateItemElement(item);sendPreview(item)};
+  const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);state.interacting=false;sendPreview(item);saveItem(item,true)};
   window.addEventListener("pointermove",move);window.addEventListener("pointerup",up,{once:true});
 }
 
 function updateItemElement(item){const el=document.querySelector(`.scene-item[data-id="${CSS.escape(item.id)}"]`);if(!el)return;Object.assign(el.style,{left:`${item.x*100}%`,top:`${item.y*100}%`,width:`${item.width*100}%`,height:`${item.height*100}%`,transform:`rotate(${item.rotation}deg)`,opacity:String(item.opacity),zIndex:String(item.zIndex)})}
 function itemPayload(item){return{x:item.x,y:item.y,width:item.width,height:item.height,rotation:item.rotation,opacity:item.opacity,volume:item.volume,zIndex:item.zIndex,loop:item.loop,durationMs:item.durationMs}}
-function scheduleSave(item){
-  const now=Date.now();
-  if(now-lastLiveSave>=140){lastLiveSave=now;saveItem(item,true);return}
-  clearTimeout(saveTimer);saveTimer=setTimeout(()=>{lastLiveSave=Date.now();saveItem(item,true)},Math.max(20,140-(now-lastLiveSave)));
-}
+function scheduleSave(item){sendPreview(item);clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveItem(item,true),450)}
 async function saveItem(item,quiet=true){try{await api(`/items/${encodeURIComponent(item.id)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(itemPayload(item))})}catch(e){if(!quiet)toast(e.message,true)}}
 
 function paintInspector(){
@@ -129,11 +150,11 @@ function bindInspector(){
   $("volume").addEventListener("input",()=>{const i=selected();if(!i)return;i.volume=Number($("volume").value)/100;scheduleSave(i)});
   $("opacity").addEventListener("input",()=>{const i=selected();if(!i)return;i.opacity=Number($("opacity").value)/100;updateItemElement(i);scheduleSave(i)});
   $("rotation").addEventListener("input",()=>{const i=selected();if(!i)return;i.rotation=Number($("rotation").value);updateItemElement(i);scheduleSave(i)});
+  for(const id of ["volume","opacity","rotation"]){$(id).addEventListener("change",()=>{const i=selected();if(i)saveItem(i,true)})}
   $("loop").addEventListener("change",()=>{const i=selected();if(!i)return;i.loop=$("loop").checked;saveItem(i)});
 }
 
-async function refreshAll(){if(state.interacting)return;try{const d=await api("/bootstrap");state.me=d.me;state.assets=d.assets||[];state.items=d.items||[];state.mediaReady=Boolean(d.mediaReady);paintHeader(d);paintLibrary();if(state.selectedId&&!state.items.some(x=>x.id===state.selectedId))state.selectedId=null;paintStage();paintInspector()}catch(e){if(e.status===401){clearInterval(sceneTimer);location.reload()}}}
+async function refreshAll(){if(state.interacting)return;try{const d=await api("/bootstrap");state.me=d.me;state.assets=d.assets||[];state.items=d.items||[];state.mediaReady=Boolean(d.mediaReady);paintHeader(d);paintLibrary();if(state.selectedId&&!state.items.some(x=>x.id===state.selectedId))state.selectedId=null;paintStage();paintInspector()}catch(e){if(e.status===401)location.reload()}}
 async function refreshScene(){if(state.interacting)return;try{const d=await api("/bootstrap");state.items=d.items||[];state.assets=d.assets||state.assets;if(state.selectedId&&!state.items.some(x=>x.id===state.selectedId))state.selectedId=null;paintStage();paintInspector()}catch(e){if(e.status===401)location.reload()}}
-function startPolling(){clearInterval(sceneTimer);sceneTimer=setInterval(refreshScene,1300)}
 
 $("loginKick").onclick=login;$("logout").onclick=logout;$("uploadButton").onclick=upload;$("refreshScene").onclick=refreshAll;$("hideAll").onclick=hideAll;$("showItem").onclick=showSelected;$("hideItem").onclick=hideSelected;$("removeItem").onclick=removeSelected;$("bringFront").onclick=()=>setZ(true);$("sendBack").onclick=()=>setZ(false);bindInspector();boot();

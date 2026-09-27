@@ -17,35 +17,48 @@
 <script>
 const key=new URLSearchParams(location.search).get('key')||'';
 const badge=document.getElementById('badge');const nameEl=document.getElementById('name');const mediaLayer=document.getElementById('mediaLayer');
-let busy=false;const mediaNodes=new Map();
+let busy=false;const mediaNodes=new Map();let socket=null,reconnectTimer=null,fallbackTimer=null;
 
 async function pollTts(){if(busy||!key)return;try{const r=await fetch(`/api/streambot/overlay/next?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.item)playTts(d.item)}catch{}}
 async function completeTts(id){try{await fetch(`/api/streambot/overlay/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})}catch{}}
-async function playTts(item){busy=true;nameEl.textContent='@'+String(item.username||'viewer').replace(/^@/,'');badge.classList.add('show');const audio=new Audio(item.audioUrl);audio.volume=Math.max(0,Math.min(1,Number(item.volume??.85)));let ended=false;const finish=async()=>{if(ended)return;ended=true;badge.classList.remove('show');await completeTts(item.id);busy=false;setTimeout(pollTts,250)};audio.addEventListener('ended',finish,{once:true});audio.addEventListener('error',finish,{once:true});try{await audio.play()}catch{finish()}}
+async function playTts(item){busy=true;nameEl.textContent='@'+String(item.username||'viewer').replace(/^@/,'');badge.classList.add('show');const audio=new Audio(item.audioUrl);audio.volume=Math.max(0,Math.min(1,Number(item.volume??.85)));let ended=false;const finish=async()=>{if(ended)return;ended=true;badge.classList.remove('show');await completeTts(item.id);busy=false;setTimeout(pollTts,120)};audio.addEventListener('ended',finish,{once:true});audio.addEventListener('error',finish,{once:true});try{await audio.play()}catch{finish()}}
 
 async function pollMedia(){if(!key)return;try{const r=await fetch(`/api/streambot/overlay/media-state?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();syncMedia(d.items||[])}catch{}}
 function syncMedia(items){
   const active=new Set(items.map(i=>String(i.id)));
-  for(const [id,entry] of mediaNodes){if(!active.has(id)){entry.el.remove();mediaNodes.delete(id)}}
+  for(const [id,entry] of mediaNodes){if(!active.has(id)){clearTimeout(entry.expiryTimer);entry.el.remove();mediaNodes.delete(id)}}
   for(const item of items){
     const id=String(item.id);let entry=mediaNodes.get(id);
     if(!entry){
       const el=document.createElement('div');el.className='media-item';el.dataset.id=id;
       const media=item.mediaType==='video'?document.createElement('video'):document.createElement('img');
-      if(item.mediaType==='video'){media.playsInline=true;media.preload='auto';media.addEventListener('ended',()=>{const current=mediaNodes.get(id);if(current&&!current.item.loop)completeMedia(current.item)})}
-      media.src=item.fileUrl;el.appendChild(media);mediaLayer.appendChild(el);entry={el,media,item:null,nonce:null};mediaNodes.set(id,entry)
+      if(item.mediaType==='video'){media.playsInline=true;media.preload='auto';media.addEventListener('ended',()=>{const current=mediaNodes.get(id);if(current&&!current.item.loop)finishMedia(current.item)})}
+      media.src=item.fileUrl;el.appendChild(media);mediaLayer.appendChild(el);entry={el,media,item:null,nonce:null,expiryTimer:null,expiryAt:null};mediaNodes.set(id,entry)
     }
-    entry.item=item;applyMediaStyle(entry,item);
+    entry.item=item;applyMediaStyle(entry,item);scheduleExpiry(entry,item);
     if(item.mediaType==='video'){
       entry.media.volume=Math.max(0,Math.min(1,Number(item.volume??1)));entry.media.loop=Boolean(item.loop);
       if(entry.nonce!==Number(item.playNonce)){entry.nonce=Number(item.playNonce);try{entry.media.currentTime=0}catch{};entry.media.play().catch(()=>{})}
     }
   }
 }
-function applyMediaStyle(entry,item){Object.assign(entry.el.style,{left:`${Number(item.x)*100}%`,top:`${Number(item.y)*100}%`,width:`${Number(item.width)*100}%`,height:`${Number(item.height)*100}%`,transform:`rotate(${Number(item.rotation)||0}deg)`,opacity:String(Math.max(0,Math.min(1,Number(item.opacity??1)))),zIndex:String(Number(item.zIndex)||0)})}
+function applyMediaStyle(entry,item){Object.assign(entry.el.style,{left:`${Number(item.x)*100}%`,top:`${Number(item.y)*100}%`,width:`${Number(item.width)*100}%`,height:`${Number(item.height)*100}%`,transform:`rotate(${Number(item.rotation)||0}deg)`,opacity:String(Math.max(0,Math.min(1,Number(item.opacity??1)))),zIndex:String(Number(item.zIndex)||0)});if(entry.media&&entry.item?.mediaType==='video')entry.media.volume=Math.max(0,Math.min(1,Number(item.volume??1)))}
+function applyPreview(item){const entry=mediaNodes.get(String(item.id||''));if(!entry)return;entry.item={...entry.item,...item};applyMediaStyle(entry,entry.item)}
+function scheduleExpiry(entry,item){const until=Number(item.visibleUntil||0);if(entry.expiryAt===until)return;clearTimeout(entry.expiryTimer);entry.expiryAt=until||null;if(!until)return;const wait=Math.max(0,until-Date.now());entry.expiryTimer=setTimeout(()=>finishMedia(entry.item),wait)}
+async function finishMedia(item){const id=String(item.id);const entry=mediaNodes.get(id);if(entry){clearTimeout(entry.expiryTimer);entry.el.remove();mediaNodes.delete(id)}await completeMedia(item)}
 async function completeMedia(item){try{await fetch(`/api/streambot/overlay/media/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:item.id,playNonce:item.playNonce})})}catch{}}
 
-setInterval(pollTts,900);setInterval(pollMedia,450);pollTts();pollMedia();
+function realtimeUrl(){const proto=location.protocol==='https:'?'wss':'ws';return `${proto}://${location.host}/api/streambot/realtime/ws?role=overlay&key=${encodeURIComponent(key)}`}
+function connectRealtime(){if(!key)return;clearTimeout(reconnectTimer);try{if(socket&&socket.readyState<=1)socket.close()}catch{};let ws;try{ws=new WebSocket(realtimeUrl())}catch{return startFallback()};socket=ws;
+  ws.addEventListener('open',()=>{stopFallback();pollTts();pollMedia()});
+  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch{return};if(msg.type==='tts.available'){pollTts();return}if(msg.type==='scene.refresh'){pollMedia();return}if(msg.type==='scene.preview'&&msg.item){applyPreview(msg.item)}});
+  ws.addEventListener('close',()=>{startFallback();reconnectTimer=setTimeout(connectRealtime,1800)});
+  ws.addEventListener('error',()=>{try{ws.close()}catch{}});
+}
+function startFallback(){if(fallbackTimer)return;fallbackTimer=setInterval(()=>{pollTts();pollMedia()},15000)}
+function stopFallback(){clearInterval(fallbackTimer);fallbackTimer=null}
+
+pollTts();pollMedia();connectRealtime();
 </script>
 </body>
 </html>

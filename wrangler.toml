@@ -18,3 +18,13 @@ database_id = "77503bf0-64f6-4683-bd37-acad4c1fc111"
 [[r2_buckets]]
 binding = "STREAMBOT_MEDIA"
 bucket_name = "miner-streambot-media"
+
+# MinerBot v10 · canal realtime para Overlay Control/TTS.
+# Durable Object SQLite (incluido en Workers Free).
+[[durable_objects.bindings]]
+name = "OVERLAY_ROOM"
+class_name = "OverlayRoom"
+
+[exports.OverlayRoom]
+type = "durable-object"
+storage = "sqlite"

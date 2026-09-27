@@ -1,4 +1,5 @@
 import { handleStreamBotRequest } from "./streambot.js";
+export { OverlayRoom } from "./realtime.js";
 
 const CHANNEL_ID = "UC7ICe-QlKsiyClI3uA8WU3g";
 const FEED_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
