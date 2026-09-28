@@ -29,22 +29,39 @@
       <div class="top-actions">
         <span id="whoami" class="user-pill">@usuario</span>
         <span id="liveStatus" class="status-pill">Conectando…</span>
-        <button id="logout" class="ghost">Salir</button>
+        <button id="logout" class="ghost compact">Salir</button>
       </div>
     </header>
 
     <main class="workspace">
       <section class="left-panel panel">
-        <div class="panel-head">
-          <div><h2>Biblioteca</h2><p>Imágenes y videos disponibles.</p></div>
+        <div class="panel-head library-head">
+          <div>
+            <h2>Biblioteca</h2>
+            <p>Assets disponibles para poner en stream.</p>
+          </div>
+          <span id="assetCount" class="count-pill">0</span>
         </div>
 
         <div id="r2Warning" class="warning hidden">Falta configurar R2 <b>STREAMBOT_MEDIA</b>.</div>
 
-        <div id="uploadBox" class="upload-box hidden">
-          <input id="mediaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" />
-          <button id="uploadButton" class="secondary">Subir archivo</button>
-          <small>PNG, JPG, WebP, GIF, WebM o MP4 · máximo 25 MB.</small>
+        <div id="uploadBox" class="upload-card hidden">
+          <input id="mediaFile" class="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" />
+          <button id="dropZone" class="drop-zone" type="button">
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <span class="drop-title">Soltá un archivo acá</span>
+            <span class="drop-sub">o hacé click para elegir</span>
+            <span class="format-pill">PNG · JPG · WebP · GIF · WebM · MP4</span>
+          </button>
+          <div id="fileSelection" class="file-selection hidden">
+            <div class="file-selection-copy">
+              <b id="selectedFileName">archivo</b>
+              <span id="selectedFileMeta">0 MB</span>
+            </div>
+            <button id="clearFile" class="icon-button" type="button" title="Quitar selección">×</button>
+          </div>
+          <button id="uploadButton" class="primary upload-action" disabled>Subir a biblioteca</button>
+          <p class="upload-help">Máximo 25 MB por archivo · se elimina automáticamente según la regla de R2.</p>
         </div>
 
         <div id="assetList" class="asset-list"></div>
@@ -52,13 +69,17 @@
 
       <section class="center-panel">
         <div class="canvas-toolbar">
-          <div>
+          <div class="canvas-title">
             <b>Vista del stream</b>
-            <span>16:9 · arrastrá y redimensioná los elementos</span>
+            <span>16:9 · lo que ves acá corresponde al overlay de OBS</span>
           </div>
           <div class="toolbar-actions">
-            <button id="refreshScene" class="ghost">Actualizar</button>
-            <button id="hideAll" class="danger">Ocultar todo</button>
+            <label class="toolbar-toggle" title="Ajustar al centro y a los bordes mientras arrastrás">
+              <input id="snapToggle" type="checkbox" checked />
+              <span>Snap</span>
+            </label>
+            <button id="refreshScene" class="ghost compact">Actualizar</button>
+            <button id="hideAll" class="danger compact">Ocultar todo</button>
           </div>
         </div>
         <div class="canvas-wrap">
@@ -66,30 +87,76 @@
             <div class="center-line vertical"></div>
             <div class="center-line horizontal"></div>
             <div class="safe-area"></div>
-            <div id="emptyStage" class="stage-empty">Agregá un asset desde la biblioteca</div>
+            <div id="emptyStage" class="stage-empty">
+              <span class="stage-empty-icon">＋</span>
+              <b>Canvas vacío</b>
+              <span>Agregá un asset desde la biblioteca</span>
+            </div>
           </div>
         </div>
       </section>
 
       <section class="right-panel panel">
-        <div class="panel-head">
-          <div><h2>Elemento</h2><p id="selectedName">Nada seleccionado</p></div>
+        <div class="panel-head inspector-head">
+          <div>
+            <h2>Elemento</h2>
+            <p id="selectedName">Nada seleccionado</p>
+          </div>
+          <span id="selectedStatus" class="mini-status hidden">OCULTO</span>
         </div>
-        <div id="inspectorEmpty" class="inspector-empty">Seleccioná una imagen o video en el canvas.</div>
+
+        <div id="inspectorEmpty" class="inspector-empty">
+          <span class="inspector-empty-icon">◇</span>
+          <b>Seleccioná un elemento</b>
+          <span>Hacé click sobre una imagen o video del canvas para editarlo.</span>
+        </div>
+
         <div id="inspector" class="inspector hidden">
-          <div class="action-grid">
+          <div class="action-grid primary-actions">
             <button id="showItem" class="primary">Mostrar / Reproducir</button>
             <button id="hideItem" class="secondary">Ocultar</button>
           </div>
-          <label><span>Duración</span><div class="inline"><input id="duration" type="number" min="0" max="600" step="0.5" /><em>seg</em></div><small>0 = hasta ocultar; los videos se ocultan al terminar.</small></label>
-          <label><span>Volumen</span><input id="volume" type="range" min="0" max="100" step="1" /></label>
-          <label><span>Opacidad</span><input id="opacity" type="range" min="0" max="100" step="1" /></label>
-          <label><span>Rotación</span><input id="rotation" type="range" min="-180" max="180" step="1" /></label>
-          <label id="loopRow" class="check-row"><input id="loop" type="checkbox" /><span>Loop de video</span></label>
-          <div class="action-grid">
-            <button id="bringFront" class="secondary">Traer al frente</button>
-            <button id="sendBack" class="secondary">Mandar atrás</button>
+
+          <div class="inspector-section">
+            <div class="section-title"><span>Posición rápida</span><small>mantiene el tamaño</small></div>
+            <div class="preset-grid">
+              <button class="preset" data-preset="tl" title="Arriba izquierda">↖</button>
+              <button class="preset" data-preset="tc" title="Arriba centro">↑</button>
+              <button class="preset" data-preset="tr" title="Arriba derecha">↗</button>
+              <button class="preset" data-preset="ml" title="Centro izquierda">←</button>
+              <button class="preset center-preset" data-preset="cc" title="Centro">●</button>
+              <button class="preset" data-preset="mr" title="Centro derecha">→</button>
+              <button class="preset" data-preset="bl" title="Abajo izquierda">↙</button>
+              <button class="preset" data-preset="bc" title="Abajo centro">↓</button>
+              <button class="preset" data-preset="br" title="Abajo derecha">↘</button>
+            </div>
+            <div class="quick-actions">
+              <button id="fitFullscreen" class="secondary">Fullscreen</button>
+              <button id="resetTransform" class="secondary">Reset</button>
+            </div>
+            <label class="check-row compact-check"><input id="aspectLock" type="checkbox" checked /><span>Bloquear proporción al redimensionar</span></label>
           </div>
+
+          <div class="inspector-section">
+            <label>
+              <span>Duración</span>
+              <div class="inline"><input id="duration" type="number" min="0" max="600" step="0.5" /><em>seg</em></div>
+              <small>0 = queda visible hasta ocultarlo. Los videos pueden ocultarse al terminar.</small>
+            </label>
+            <label><span>Volumen <output id="volumeValue">100%</output></span><input id="volume" type="range" min="0" max="100" step="1" /></label>
+            <label><span>Opacidad <output id="opacityValue">100%</output></span><input id="opacity" type="range" min="0" max="100" step="1" /></label>
+            <label><span>Rotación <output id="rotationValue">0°</output></span><input id="rotation" type="range" min="-180" max="180" step="1" /></label>
+            <label id="loopRow" class="check-row"><input id="loop" type="checkbox" /><span>Loop de video</span></label>
+          </div>
+
+          <div class="inspector-section compact-section">
+            <div class="action-grid layer-actions">
+              <button id="bringFront" class="secondary">Traer al frente</button>
+              <button id="sendBack" class="secondary">Mandar atrás</button>
+            </div>
+            <button id="duplicateItem" class="secondary full">Duplicar elemento</button>
+          </div>
+
           <button id="removeItem" class="danger full">Quitar del canvas</button>
         </div>
       </section>
