@@ -9,7 +9,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 .stage{position:fixed;inset:0;pointer-events:none}
-.media-layer,.tts-layer,.crown-layer{position:absolute;inset:0;pointer-events:none}
+.media-layer,.tts-layer,.crown-layer,.subgoal-layer{position:absolute;inset:0;pointer-events:none}
 .media-item{position:absolute;transform-origin:center center;pointer-events:none}
 .media-item img,.media-item video{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
 
@@ -22,9 +22,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .bars{display:flex;align-items:center;gap:2px;height:14px;margin-left:2px}.bars i{width:2px;height:5px;background:#53fc18;border-radius:2px;animation:wave .65s ease-in-out infinite alternate}.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.08s}@keyframes wave{to{height:14px}}
 
 /* The Crown */
-.crown-widget{position:absolute;right:34px;bottom:34px;width:300px;padding:12px 14px 11px;background:rgba(7,8,12,.91);border:1px solid rgba(158,79,255,.78);border-radius:11px;color:#f7f4fb;box-shadow:0 9px 28px rgba(0,0,0,.28);opacity:0;transform-origin:bottom right;transform:translateY(8px) scale(var(--crown-scale,1));transition:opacity .18s ease,transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.crown-widget{position:absolute;right:34px;bottom:34px;width:300px;padding:12px 14px 11px;background:rgba(7,8,12,.91);border:1px solid rgba(255,255,255,.72);border-radius:11px;color:#f7f4fb;box-shadow:0 9px 28px rgba(0,0,0,.28);opacity:0;transform-origin:bottom right;transform:translateY(8px) scale(var(--crown-scale,1));transition:opacity .18s ease,transform .18s ease,border-color .18s ease,box-shadow .18s ease}
 .crown-widget.show{opacity:1;transform:translateY(0) scale(var(--crown-scale,1))}
-.crown-widget.open{border-color:#bd7aff;box-shadow:0 0 0 1px rgba(177,93,255,.14),0 0 24px rgba(151,60,255,.18),0 9px 28px rgba(0,0,0,.30)}
+.crown-widget.open{border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.10),0 0 20px rgba(255,255,255,.08),0 9px 28px rgba(0,0,0,.30)}
 .crown-main{display:flex;align-items:center;gap:9px;min-width:0}
 .crown-emoji{font-size:19px;line-height:1;filter:drop-shadow(0 1px 5px rgba(255,199,77,.22))}
 .crown-label{font-size:11px;color:#a9a3b2;font-weight:700;margin-right:1px}
@@ -32,19 +32,31 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .crown-held{font-size:12px;font-variant-numeric:tabular-nums;color:#d8d2df;font-weight:750;white-space:nowrap}
 .crown-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.07)}
 .crown-countdown{font-size:11px;color:#bbb4c4;font-variant-numeric:tabular-nums}
-.crown-countdown strong{color:#c986ff;font-weight:850}
-.crown-widget.open .crown-countdown strong{color:#e0adff}
-.crown-hint{font-size:10px;color:#777181;white-space:nowrap}.crown-hint b{color:#b86dff;font-weight:850}
+.crown-countdown strong{color:#fff;font-weight:850}
+.crown-widget.open .crown-countdown strong{color:#fff}
+.crown-hint{font-size:10px;color:#8d8d8d;white-space:nowrap}.crown-hint b{color:#fff;font-weight:850}
 .crown-free .crown-held{display:none}
 
-.crown-alert{position:absolute;left:50%;top:52px;transform-origin:top center;transform:translate(-50%,-10px) scale(calc(.98 * var(--crown-scale,1)));display:flex;align-items:center;gap:10px;max-width:min(520px,80vw);padding:10px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(158,79,255,.8);border-radius:10px;color:#fff;box-shadow:0 10px 34px rgba(0,0,0,.32);opacity:0;transition:opacity .2s ease,transform .2s ease}
+.crown-alert{position:absolute;left:50%;top:52px;transform-origin:top center;transform:translate(-50%,-10px) scale(calc(.98 * var(--crown-scale,1)));display:flex;align-items:center;gap:10px;max-width:min(520px,80vw);padding:10px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(255,255,255,.72);border-radius:10px;color:#fff;box-shadow:0 10px 34px rgba(0,0,0,.32);opacity:0;transition:opacity .2s ease,transform .2s ease}
 .crown-alert.show{opacity:1;transform:translate(-50%,0) scale(var(--crown-scale,1))}
-.crown-alert .mini-crown{font-size:18px}.crown-alert-text{font-size:14px;font-weight:750}.crown-alert-text b{color:#c986ff}
+.crown-alert .mini-crown{font-size:18px}.crown-alert-text{font-size:14px;font-weight:750}.crown-alert-text b{color:#fff}
 
-.crown-top{position:absolute;right:34px;bottom:132px;width:300px;padding:12px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(158,79,255,.72);border-radius:11px;color:#fff;box-shadow:0 10px 32px rgba(0,0,0,.3);opacity:0;transform-origin:bottom right;transform:translateY(8px) scale(calc(.985 * var(--crown-scale,1)));transition:opacity .2s ease,transform .2s ease}
+.crown-top{position:absolute;right:34px;bottom:132px;width:300px;padding:12px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(255,255,255,.68);border-radius:11px;color:#fff;box-shadow:0 10px 32px rgba(0,0,0,.3);opacity:0;transform-origin:bottom right;transform:translateY(8px) scale(calc(.985 * var(--crown-scale,1)));transition:opacity .2s ease,transform .2s ease}
 .crown-top.show{opacity:1;transform:translateY(0) scale(var(--crown-scale,1))}
-.crown-top-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:850;margin-bottom:8px}.crown-top-title span{color:#c986ff}
+.crown-top-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:850;margin-bottom:8px}.crown-top-title span{color:#fff}
 .crown-top-row{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,.06);font-size:11px}.crown-top-row:first-of-type{border-top:0}.crown-rank{color:#8f8799;font-weight:800}.crown-top-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:750}.crown-top-time{font-variant-numeric:tabular-nums;color:#c9c3cf;font-weight:700}.crown-top-empty{font-size:11px;color:#8f8799;padding:3px 0}
+
+/* Meta mensual de subs */
+.subgoal-widget{position:absolute;right:34px;bottom:132px;width:300px;padding:11px 14px 12px;background:rgba(0,0,0,.91);border:1px solid rgba(255,255,255,.72);border-radius:11px;color:#fff;box-shadow:0 9px 28px rgba(0,0,0,.28);opacity:0;transform-origin:bottom right;transform:translateY(8px) scale(var(--subgoal-scale,1));transition:opacity .18s ease,transform .18s ease}
+.subgoal-widget.show{opacity:1;transform:translateY(0) scale(var(--subgoal-scale,1))}
+.subgoal-main{display:flex;align-items:center;gap:8px;min-width:0}
+.subgoal-icon{font-size:14px;line-height:1;color:#fff}
+.subgoal-label{font-size:12px;font-weight:820;letter-spacing:.01em;flex:1;color:#fff}
+.subgoal-count{font-size:14px;font-weight:850;font-variant-numeric:tabular-nums;white-space:nowrap}
+.subgoal-bar{height:4px;margin-top:8px;background:rgba(255,255,255,.13);border-radius:999px;overflow:hidden}
+.subgoal-fill{height:100%;width:0;background:#fff;border-radius:999px;transition:width .35s ease}
+.subgoal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;color:#888;font-size:9px;font-weight:650;text-transform:uppercase;letter-spacing:.06em}
+.subgoal-percent{color:#bdbdbd;font-variant-numeric:tabular-nums}
 
 </style>
 </head>
@@ -74,6 +86,17 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       </div>
     </div>
   </div>
+  <div class="subgoal-layer">
+    <div id="subGoalWidget" class="subgoal-widget">
+      <div class="subgoal-main">
+        <span class="subgoal-icon">★</span>
+        <span class="subgoal-label">Meta de subs</span>
+        <span id="subGoalCount" class="subgoal-count">0 / 50</span>
+      </div>
+      <div class="subgoal-bar"><div id="subGoalFill" class="subgoal-fill"></div></div>
+      <div class="subgoal-foot"><span id="subGoalMonth">Meta mensual</span><span id="subGoalPercent" class="subgoal-percent">0%</span></div>
+    </div>
+  </div>
 </div>
 <script>
 const key=new URLSearchParams(location.search).get('key')||'';
@@ -88,11 +111,17 @@ const crownHint=document.getElementById('crownHint');
 const crownAlert=document.getElementById('crownAlert');
 const crownAlertText=document.getElementById('crownAlertText');
 const crownTop=document.getElementById('crownTop');
+const subGoalWidget=document.getElementById('subGoalWidget');
+const subGoalCount=document.getElementById('subGoalCount');
+const subGoalFill=document.getElementById('subGoalFill');
+const subGoalMonth=document.getElementById('subGoalMonth');
+const subGoalPercent=document.getElementById('subGoalPercent');
 
 let busy=false;
 const mediaNodes=new Map();
 let socket=null,reconnectTimer=null,fallbackTimer=null;
 let crownData=null,crownClockOffset=0,crownAlertTimer=null,crownTopTimer=null,crownPollTimer=null,crownExpiryPollAt=0;
+let subGoalData=null,subGoalPollTimer=null;
 
 async function pollTts(){if(busy||!key)return;try{const r=await fetch(`/api/streambot/overlay/next?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.item)playTts(d.item)}catch{}}
 async function completeTts(id){try{await fetch(`/api/streambot/overlay/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})}catch{}}
@@ -196,19 +225,48 @@ function showCrownTop(msg){
   crownTopTimer=setTimeout(()=>crownTop.classList.remove('show'),Math.max(1000,Number(msg.durationMs||10000)));
 }
 
+async function pollSubGoal(){
+  if(!key)return;
+  try{
+    const r=await fetch(`/api/streambot/subgoal/state?key=${encodeURIComponent(key)}`,{cache:'no-store'});
+    if(!r.ok){subGoalWidget.classList.remove('show');return}
+    subGoalData=await r.json();renderSubGoal();
+  }catch{}
+}
+function subGoalMonthLabel(key){
+  const m=String(key||'').match(/^(\d{4})-(\d{2})$/);if(!m)return 'Meta mensual';
+  const names=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return names[Math.max(0,Math.min(11,Number(m[2])-1))]||'Meta mensual';
+}
+function renderSubGoal(){
+  if(!subGoalData||!subGoalData.enabled){subGoalWidget.classList.remove('show');return}
+  const layout=subGoalData.overlay||{},scale=Math.min(2.5,Math.max(.5,Number(layout.scalePercent||100)/100));
+  subGoalWidget.style.setProperty('--subgoal-scale',String(scale));
+  subGoalWidget.style.right=`${Math.min(1200,Math.max(0,Number(layout.right??34)))}px`;
+  subGoalWidget.style.bottom=`${Math.min(1200,Math.max(0,Number(layout.bottom??132)))}px`;
+  const current=Math.max(0,Math.round(Number(subGoalData.current)||0)),target=Math.max(1,Math.round(Number(subGoalData.target)||1));
+  const pct=Math.max(0,Math.round(current/target*100));
+  subGoalCount.textContent=`${current} / ${target}`;
+  subGoalFill.style.width=`${Math.min(100,pct)}%`;
+  subGoalMonth.textContent=subGoalMonthLabel(subGoalData.month);
+  subGoalPercent.textContent=`${pct}%`;
+  subGoalWidget.classList.add('show');
+}
+
 function realtimeUrl(){const proto=location.protocol==='https:'?'wss':'ws';return `${proto}://${location.host}/api/streambot/realtime/ws?role=overlay&key=${encodeURIComponent(key)}`}
 function connectRealtime(){if(!key)return;clearTimeout(reconnectTimer);try{if(socket&&socket.readyState<=1)socket.close()}catch{};let ws;try{ws=new WebSocket(realtimeUrl())}catch{return startFallback()};socket=ws;
-  ws.addEventListener('open',()=>{stopFallback();pollTts();pollMedia();pollCrown()});
-  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch{return};if(msg.type==='tts.available'){pollTts();return}if(msg.type==='scene.refresh'){pollMedia();return}if(msg.type==='scene.preview'&&msg.item){applyPreview(msg.item);return}if(msg.type==='crown.refresh'){pollCrown();return}if(msg.type==='crown.alert'){showCrownAlert(msg);pollCrown();return}if(msg.type==='crown.showTop'){showCrownTop(msg);return}});
+  ws.addEventListener('open',()=>{stopFallback();pollTts();pollMedia();pollCrown();pollSubGoal()});
+  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch{return};if(msg.type==='tts.available'){pollTts();return}if(msg.type==='scene.refresh'){pollMedia();return}if(msg.type==='scene.preview'&&msg.item){applyPreview(msg.item);return}if(msg.type==='crown.refresh'){pollCrown();return}if(msg.type==='crown.alert'){showCrownAlert(msg);pollCrown();return}if(msg.type==='crown.showTop'){showCrownTop(msg);return}if(msg.type==='subgoal.refresh'){pollSubGoal();return}});
   ws.addEventListener('close',()=>{startFallback();reconnectTimer=setTimeout(connectRealtime,1800)});
   ws.addEventListener('error',()=>{try{ws.close()}catch{}});
 }
-function startFallback(){if(fallbackTimer)return;fallbackTimer=setInterval(()=>{pollTts();pollMedia();pollCrown()},15000)}
+function startFallback(){if(fallbackTimer)return;fallbackTimer=setInterval(()=>{pollTts();pollMedia();pollCrown();pollSubGoal()},15000)}
 function stopFallback(){clearInterval(fallbackTimer);fallbackTimer=null}
 
 setInterval(renderCrown,500);
 crownPollTimer=setInterval(pollCrown,20000);
-pollTts();pollMedia();pollCrown();connectRealtime();
+subGoalPollTimer=setInterval(pollSubGoal,20000);
+pollTts();pollMedia();pollCrown();pollSubGoal();connectRealtime();
 </script>
 </body>
 </html>

@@ -43,6 +43,15 @@ const DEFAULT_CONFIG = {
   crown_overlay_right: 34,
   crown_overlay_bottom: 34,
 
+  // Meta mensual de subs. El contador se reinicia automáticamente al cambiar de mes.
+  sub_goal_enabled: true,
+  sub_goal_target: 50,
+  sub_goal_current: 0,
+  sub_goal_month: "",
+  sub_goal_overlay_scale: 100,
+  sub_goal_overlay_right: 34,
+  sub_goal_overlay_bottom: 132,
+
   tts_enabled: true,
   tts_max_chars: 140,
   tts_daily_chars: 4000,
@@ -156,6 +165,9 @@ export async function handleStreamBotRequest(request, env, ctx) {
     }
     if (path === "/api/streambot/crown/state" && request.method === "GET") {
       return await crownOverlayState(request, env);
+    }
+    if (path === "/api/streambot/subgoal/state" && request.method === "GET") {
+      return await subGoalOverlayState(request, env);
     }
     if (path === "/api/streambot/realtime/ws" && request.method === "GET") {
       return await handleRealtimeWebSocket(request, env);
@@ -314,14 +326,14 @@ async function updateConfig(request, env) {
 
   const protectedKeys = new Set([
     "tts_reward_id", "tts_voice_2_reward_id", "tts_voice_3_reward_id", "tts_voice_4_reward_id",
-    "overlay_key", "kick_user_id", "kick_username"
+    "overlay_key", "kick_user_id", "kick_username", "sub_goal_month"
   ]);
   const allowed = Object.keys(DEFAULT_CONFIG).filter((key) => !protectedKeys.has(key));
   const positiveIntegerKeys = new Set([
     "tts_reward_cost", "tts_voice_2_cost", "tts_voice_3_cost", "tts_voice_4_cost",
     "tts_max_chars", "tts_daily_chars",
     "crown_min_minutes", "crown_max_minutes", "crown_open_seconds", "crown_alert_seconds", "crown_top_seconds",
-    "crown_overlay_scale"
+    "crown_overlay_scale", "sub_goal_target", "sub_goal_overlay_scale"
   ]);
   for (const key of allowed) {
     if (!(key in incoming)) continue;
@@ -331,10 +343,12 @@ async function updateConfig(request, env) {
     if (key === "crown_min_minutes" || key === "crown_max_minutes") value = Math.min(240, value);
     if (key === "crown_open_seconds") value = Math.min(120, value);
     if (key === "crown_alert_seconds" || key === "crown_top_seconds") value = Math.min(60, value);
-    if (key === "crown_overlay_scale") value = Math.min(250, Math.max(50, value));
-    if (key === "crown_overlay_right" || key === "crown_overlay_bottom") {
+    if (key === "crown_overlay_scale" || key === "sub_goal_overlay_scale") value = Math.min(250, Math.max(50, value));
+    if (key === "crown_overlay_right" || key === "crown_overlay_bottom" || key === "sub_goal_overlay_right" || key === "sub_goal_overlay_bottom") {
       value = Math.min(1200, Math.max(0, Math.round(Number(value) || 0)));
     }
+    if (key === "sub_goal_current") value = Math.min(999999, Math.max(0, Math.round(Number(value) || 0)));
+    if (key === "sub_goal_target") value = Math.min(999999, Math.max(1, Math.round(Number(value) || 1)));
     if (typeof DEFAULT_CONFIG[key] === "boolean") value = Boolean(value);
     await setSetting(env, key, typeof value === "string" ? value.trim() : JSON.stringify(value));
   }
@@ -342,7 +356,12 @@ async function updateConfig(request, env) {
   if (saved.crown_max_minutes < saved.crown_min_minutes) {
     await setSetting(env, "crown_max_minutes", saved.crown_min_minutes);
   }
+  // Si el contador fue editado desde el dashboard, pertenece al mes actual.
+  if ("sub_goal_current" in incoming || "sub_goal_target" in incoming || "sub_goal_enabled" in incoming) {
+    await setSetting(env, "sub_goal_month", currentSubGoalMonth());
+  }
   await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+  await realtimeBroadcast(env, { type: "subgoal.refresh" }, "overlay");
   return json({ ok: true, config: await getConfig(env) });
 }
 
@@ -755,24 +774,27 @@ async function processKickEvent(env, eventType, payload) {
       return;
     }
 
-    if (eventType === "channel.subscription.new" && config.subs_enabled) {
+    if (eventType === "channel.subscription.new") {
       const username = payload.subscriber?.username || "viewer";
-      await sendKickChat(env, template(config.sub_message, { user: username }));
+      await incrementSubGoal(env, 1);
+      if (config.subs_enabled) await sendKickChat(env, template(config.sub_message, { user: username }));
       await safeLog(env, "info", "sub", username, "Nuevo sub.");
       return;
     }
 
-    if (eventType === "channel.subscription.renewal" && config.renewals_enabled) {
+    if (eventType === "channel.subscription.renewal") {
       const username = payload.subscriber?.username || "viewer";
-      await sendKickChat(env, template(config.renewal_message, { user: username }));
+      await incrementSubGoal(env, 1);
+      if (config.renewals_enabled) await sendKickChat(env, template(config.renewal_message, { user: username }));
       await safeLog(env, "info", "renewal", username, "Renovación de sub.");
       return;
     }
 
-    if (eventType === "channel.subscription.gifts" && config.gifts_enabled) {
+    if (eventType === "channel.subscription.gifts") {
       const username = payload.gifter?.username || "Anónimo";
-      const count = Array.isArray(payload.giftees) ? payload.giftees.length : 1;
-      await sendKickChat(env, template(config.gift_message, { user: username, count }));
+      const count = Math.max(1, Array.isArray(payload.giftees) ? payload.giftees.length : 1);
+      await incrementSubGoal(env, count);
+      if (config.gifts_enabled) await sendKickChat(env, template(config.gift_message, { user: username, count }));
       await safeLog(env, "info", "gift", username, `${count} subs regaladas.`);
       return;
     }
@@ -1027,6 +1049,72 @@ async function overlayComplete(request, env) {
 }
 
 
+
+// -----------------------------------------------------------------------------
+// Meta mensual de subs · estado liviano en streambot_settings
+// -----------------------------------------------------------------------------
+
+function currentSubGoalMonth(now = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit"
+    }).formatToParts(now);
+    const year = parts.find((p) => p.type === "year")?.value || String(now.getUTCFullYear());
+    const month = parts.find((p) => p.type === "month")?.value || String(now.getUTCMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  } catch {
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+}
+
+async function ensureSubGoalMonth(env, config = null) {
+  const currentMonth = currentSubGoalMonth();
+  const cfg = config || await getConfig(env);
+  if (String(cfg.sub_goal_month || "") === currentMonth) return cfg;
+  await env.STREAMBOT_DB.batch([
+    env.STREAMBOT_DB.prepare(`
+      INSERT INTO streambot_settings (key, value, updated_at) VALUES ('sub_goal_month', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+    `).bind(currentMonth),
+    env.STREAMBOT_DB.prepare(`
+      INSERT INTO streambot_settings (key, value, updated_at) VALUES ('sub_goal_current', '0', CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value='0', updated_at=CURRENT_TIMESTAMP
+    `),
+  ]);
+  return await getConfig(env);
+}
+
+async function incrementSubGoal(env, amount = 1) {
+  const safeAmount = Math.max(0, Math.round(Number(amount) || 0));
+  if (!safeAmount) return;
+  await ensureSubGoalMonth(env);
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_settings (key, value, updated_at) VALUES ('sub_goal_current', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET
+      value=CAST(COALESCE(streambot_settings.value, '0') AS INTEGER) + ?,
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(String(safeAmount), safeAmount).run();
+  await realtimeBroadcast(env, { type: "subgoal.refresh" }, "overlay");
+}
+
+async function subGoalOverlayState(request, env) {
+  let config = await getConfig(env);
+  if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
+  config = await ensureSubGoalMonth(env, config);
+  const current = Math.max(0, Math.round(Number(config.sub_goal_current) || 0));
+  const target = Math.max(1, Math.round(Number(config.sub_goal_target) || 1));
+  return json({
+    enabled: Boolean(config.sub_goal_enabled),
+    current,
+    target,
+    month: String(config.sub_goal_month || currentSubGoalMonth()),
+    overlay: {
+      scalePercent: Math.min(250, Math.max(50, Number(config.sub_goal_overlay_scale ?? 100))),
+      right: Math.min(1200, Math.max(0, Number(config.sub_goal_overlay_right ?? 34))),
+      bottom: Math.min(1200, Math.max(0, Number(config.sub_goal_overlay_bottom ?? 132))),
+    },
+  });
+}
 
 // -----------------------------------------------------------------------------
 // The Crown · minijuego de chat persistente

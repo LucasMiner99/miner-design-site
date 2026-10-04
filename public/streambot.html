@@ -19,6 +19,7 @@
         <button class="nav-link active" data-section="general">General</button>
         <button class="nav-link" data-section="tts">TTS</button>
         <button class="nav-link" data-section="crown">Corona</button>
+        <button class="nav-link" data-section="subgoal">Meta subs</button>
         <button class="nav-link" data-section="commands">Comandos</button>
         <button class="nav-link" data-section="mods">Mods</button>
         <button class="nav-link" data-section="logs">Actividad</button>
@@ -153,9 +154,9 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h2>Widget global de OBS</h2><p>El mismo Browser Source maneja TTS, Corona y Overlay Control.</p></div></div>
+          <div class="card-head"><div><h2>Widget global de OBS</h2><p>El mismo Browser Source maneja TTS, Corona, Meta de subs y Overlay Control.</p></div></div>
           <div class="copy-row"><input id="overlayUrl" type="text" readonly /><button id="copyOverlay" class="secondary-button">Copiar URL</button></div>
-          <p class="hint">No agregues otro Browser Source: la URL actual sirve para TTS, Corona e imágenes/videos de los mods.</p>
+          <p class="hint">No agregues otro Browser Source: la URL actual sirve para TTS, Corona, Meta de subs e imágenes/videos de los mods.</p>
           <div class="tts-preview">
             <div class="audio-badge">
               <span class="audio-icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
@@ -200,6 +201,26 @@
           <div class="card-head"><div><h2>Estado actual</h2><p>Vista rápida de lo que está mostrando OBS.</p></div></div>
           <div id="crownAdminState" class="crown-admin-state">Cargando…</div>
           <div id="crownAdminTop" class="crown-admin-top"></div>
+        </div>
+      </section>
+
+      <section id="section-subgoal" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>Meta mensual de subs</h2><p>Se actualiza sola con subs, renovaciones y regalos de Kick, y se reinicia al cambiar de mes.</p></div></div>
+          <label class="toggle-row"><span><b>Mostrar meta en OBS</b><small>Usa el mismo Browser Source global que TTS y Corona.</small></span><input id="sub_goal_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Subs este mes</span><input id="sub_goal_current" type="number" min="0" max="999999" step="1" /></label>
+            <label class="field"><span>Meta mensual</span><input id="sub_goal_target" type="number" min="1" max="999999" step="1" /></label>
+          </div>
+          <p class="hint">El contador es editable por si necesitás corregirlo manualmente. Al empezar un mes nuevo vuelve a 0 automáticamente.</p>
+          <div class="card-subsection">
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Misma estética que Corona: negro, borde blanco fino.</small></div>
+            <div class="three-cols">
+              <label class="field"><span>Tamaño (%)</span><input id="sub_goal_overlay_scale" type="number" min="50" max="250" step="5" /></label>
+              <label class="field"><span>Margen derecha (px)</span><input id="sub_goal_overlay_right" type="number" min="0" max="1200" step="1" /></label>
+              <label class="field"><span>Margen abajo (px)</span><input id="sub_goal_overlay_bottom" type="number" min="0" max="1200" step="1" /></label>
+            </div>
+          </div>
         </div>
       </section>
 
