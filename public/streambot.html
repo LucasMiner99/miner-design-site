@@ -178,6 +178,15 @@
             <label class="field"><span>Ventana para robar (seg)</span><input id="crown_open_seconds" type="number" min="1" max="120" /></label>
             <label class="field"><span>Duración del Top 5 (seg)</span><input id="crown_top_seconds" type="number" min="1" max="60" /></label>
           </div>
+          <div class="card-subsection">
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Ajustá el tamaño y la posición del cartel de la corona.</small></div>
+            <div class="three-cols">
+              <label class="field"><span>Tamaño (%)</span><input id="crown_overlay_scale" type="number" min="50" max="250" step="5" /></label>
+              <label class="field"><span>Margen derecha (px)</span><input id="crown_overlay_right" type="number" min="0" max="1200" step="1" /></label>
+              <label class="field"><span>Margen abajo (px)</span><input id="crown_overlay_bottom" type="number" min="0" max="1200" step="1" /></label>
+            </div>
+            <p class="hint">100% es el tamaño original. Si te queda chico en OBS, probá 140–170%.</p>
+          </div>
           <label class="field"><span>Duración del cartel al robar (seg)</span><input id="crown_alert_seconds" type="number" min="1" max="60" /></label>
           <div class="button-row">
             <button id="crownShowTop" class="secondary-button">Mostrar Top 5 en OBS</button>

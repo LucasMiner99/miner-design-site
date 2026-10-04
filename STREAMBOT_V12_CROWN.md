@@ -34,3 +34,17 @@ No hay bindings nuevos, buckets nuevos ni secrets nuevos.
 6. Usá **Probar alerta** y **Mostrar Top 5 en OBS** desde el dashboard.
 
 Si no hay rey todavía, el primer viewer que escriba `!robar` se queda con la corona inmediatamente.
+
+
+## Tamaño del overlay
+En **Dashboard → Corona → Overlay en OBS** podés cambiar el tamaño en porcentaje y los márgenes derecho/inferior. No requiere una migración D1 adicional. Guardá cambios y el overlay se actualiza por realtime.
+
+## Hotfix webhook Kick (401)
+
+Se corrigió la validación de webhooks de Kick para:
+- verificar la firma sobre los bytes exactos recibidos;
+- refrescar automáticamente la public key desde `GET /public/v1/public-key` si la key documentada/caché no valida;
+- mantener fallback seguro a la public key documentada;
+- dejar diagnóstico en Workers Logs si una firma vuelve a fallar.
+
+No requiere migración D1 adicional. Después del deploy, usar **Sincronizar eventos** una vez y probar `!ig`.

@@ -11,6 +11,7 @@ const fields = [
   "game_command_enabled","game_command_name","game_command_mods_allowed","stream_command_confirm",
   "crown_enabled","crown_steal_command","crown_info_commands","crown_min_minutes","crown_max_minutes",
   "crown_open_seconds","crown_alert_seconds","crown_top_seconds",
+  "crown_overlay_scale","crown_overlay_right","crown_overlay_bottom",
   "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",

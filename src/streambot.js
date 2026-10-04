@@ -39,6 +39,9 @@ const DEFAULT_CONFIG = {
   crown_open_seconds: 20,
   crown_alert_seconds: 5,
   crown_top_seconds: 10,
+  crown_overlay_scale: 100,
+  crown_overlay_right: 34,
+  crown_overlay_bottom: 34,
 
   tts_enabled: true,
   tts_max_chars: 140,
@@ -317,7 +320,8 @@ async function updateConfig(request, env) {
   const positiveIntegerKeys = new Set([
     "tts_reward_cost", "tts_voice_2_cost", "tts_voice_3_cost", "tts_voice_4_cost",
     "tts_max_chars", "tts_daily_chars",
-    "crown_min_minutes", "crown_max_minutes", "crown_open_seconds", "crown_alert_seconds", "crown_top_seconds"
+    "crown_min_minutes", "crown_max_minutes", "crown_open_seconds", "crown_alert_seconds", "crown_top_seconds",
+    "crown_overlay_scale"
   ]);
   for (const key of allowed) {
     if (!(key in incoming)) continue;
@@ -327,6 +331,10 @@ async function updateConfig(request, env) {
     if (key === "crown_min_minutes" || key === "crown_max_minutes") value = Math.min(240, value);
     if (key === "crown_open_seconds") value = Math.min(120, value);
     if (key === "crown_alert_seconds" || key === "crown_top_seconds") value = Math.min(60, value);
+    if (key === "crown_overlay_scale") value = Math.min(250, Math.max(50, value));
+    if (key === "crown_overlay_right" || key === "crown_overlay_bottom") {
+      value = Math.min(1200, Math.max(0, Math.round(Number(value) || 0)));
+    }
     if (typeof DEFAULT_CONFIG[key] === "boolean") value = Boolean(value);
     await setSetting(env, key, typeof value === "string" ? value.trim() : JSON.stringify(value));
   }
@@ -624,9 +632,18 @@ async function getLogs(env) {
 }
 
 async function handleWebhook(request, env, ctx) {
-  const rawBody = await request.text();
-  const valid = await verifyKickWebhook(request.headers, rawBody);
-  if (!valid) return new Response("Invalid signature", { status: 401 });
+  // IMPORTANT: verify against the exact bytes Kick sent. Re-serializing or
+  // round-tripping the body through text can change the signed payload.
+  const rawBytes = new Uint8Array(await request.arrayBuffer());
+  const valid = await verifyKickWebhook(request.headers, rawBytes, env);
+  if (!valid) {
+    console.warn("Kick webhook rejected: signature verification failed", {
+      eventType: request.headers.get("Kick-Event-Type") || "",
+      messageId: request.headers.get("Kick-Event-Message-Id") || "",
+      subscriptionId: request.headers.get("Kick-Event-Subscription-Id") || "",
+    });
+    return new Response("Invalid signature", { status: 401 });
+  }
 
   const messageId = request.headers.get("Kick-Event-Message-Id") || "";
   const eventType = request.headers.get("Kick-Event-Type") || "";
@@ -636,7 +653,7 @@ async function handleWebhook(request, env, ctx) {
   if (!insert.meta?.changes) return new Response("duplicate", { status: 200 });
 
   let payload;
-  try { payload = JSON.parse(rawBody); }
+  try { payload = JSON.parse(new TextDecoder().decode(rawBytes)); }
   catch { return new Response("bad json", { status: 400 }); }
 
   ctx.waitUntil(processKickEvent(env, eventType, payload));
@@ -1079,6 +1096,11 @@ async function getCrownSnapshot(env, config) {
     enabled: Boolean(config.crown_enabled),
     stealCommand: normalizeCommand(config.crown_steal_command || "robar") || "robar",
     infoCommands: parseCommandAliases(config.crown_info_commands || "corona,rey"),
+    overlay: {
+      scalePercent: Math.min(250, Math.max(50, Number(config.crown_overlay_scale || 100))),
+      right: Math.min(1200, Math.max(0, Number(config.crown_overlay_right ?? 34))),
+      bottom: Math.min(1200, Math.max(0, Number(config.crown_overlay_bottom ?? 34))),
+    },
     serverNow: now,
     state: serializeCrownState(state),
     top,
@@ -1968,19 +1990,120 @@ async function parseApiResponse(response, label) {
   return data;
 }
 
-async function verifyKickWebhook(headers, rawBody) {
+// Kick may rotate its signing key. Keep the documented key as a fast fallback,
+// but refresh from Kick's official /public-key endpoint whenever verification
+// with the cached/documented key fails. The in-memory cache is best-effort and
+// survives while the Worker isolate stays warm.
+let kickWebhookKeyCache = { pem: KICK_PUBLIC_KEY_PEM, expiresAt: 0 };
+
+async function verifyKickWebhook(headers, rawBodyBytes, env) {
   const messageId = headers.get("Kick-Event-Message-Id");
   const timestamp = headers.get("Kick-Event-Message-Timestamp");
   const signature = headers.get("Kick-Event-Signature");
   if (!messageId || !timestamp || !signature) return false;
-  const signed = `${messageId}.${timestamp}.${rawBody}`;
-  const publicKey = await importRsaPublicKey(KICK_PUBLIC_KEY_PEM);
-  return crypto.subtle.verify(
-    { name: "RSASSA-PKCS1-v1_5" },
-    publicKey,
-    base64ToBytes(signature),
-    new TextEncoder().encode(signed)
-  );
+
+  let signatureBytes;
+  try { signatureBytes = base64ToBytes(signature); }
+  catch { return false; }
+
+  const bodyBytes = rawBodyBytes instanceof Uint8Array
+    ? rawBodyBytes
+    : new TextEncoder().encode(String(rawBodyBytes || ""));
+  const prefix = new TextEncoder().encode(`${messageId}.${timestamp}.`);
+  const signedBytes = new Uint8Array(prefix.length + bodyBytes.length);
+  signedBytes.set(prefix, 0);
+  signedBytes.set(bodyBytes, prefix.length);
+
+  const tried = new Set();
+  const tryPem = async (pem) => {
+    const clean = String(pem || "").trim();
+    if (!clean || tried.has(clean)) return false;
+    tried.add(clean);
+    try {
+      const publicKey = await importRsaPublicKey(clean);
+      return await crypto.subtle.verify(
+        { name: "RSASSA-PKCS1-v1_5" },
+        publicKey,
+        signatureBytes,
+        signedBytes
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  // Use a recently fetched key first, then the documented fallback.
+  if (kickWebhookKeyCache.pem && kickWebhookKeyCache.expiresAt > Date.now()) {
+    if (await tryPem(kickWebhookKeyCache.pem)) return true;
+  }
+  if (await tryPem(KICK_PUBLIC_KEY_PEM)) return true;
+
+  // If Kick rotated keys (or the docs lag behind), retrieve the current key and
+  // retry. This endpoint is part of Kick's official API.
+  try {
+    const freshPem = await fetchKickWebhookPublicKey(env);
+    if (freshPem) {
+      kickWebhookKeyCache = { pem: freshPem, expiresAt: Date.now() + 6 * 60 * 60 * 1000 };
+      if (await tryPem(freshPem)) return true;
+    }
+  } catch (error) {
+    console.warn("Could not refresh Kick webhook public key", String(error?.message || error));
+  }
+
+  return false;
+}
+
+async function fetchKickWebhookPublicKey(env) {
+  let accessToken = "";
+  try { accessToken = await getKickAccessToken(env); } catch {}
+
+  const headers = { "Accept": "application/json" };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  let response = await fetch(`${KICK_API}/public-key`, { headers });
+  // Some deployments expose this endpoint without auth. If a stale/invalid user
+  // token is rejected, retry once without Authorization before giving up.
+  if ((response.status === 401 || response.status === 403) && accessToken) {
+    response = await fetch(`${KICK_API}/public-key`, { headers: { "Accept": "application/json" } });
+  }
+  if (!response.ok) throw new Error(`Kick public-key endpoint returned ${response.status}`);
+
+  const text = await response.text();
+
+  // Prefer parsing JSON first so escaped newlines (\n) become real PEM lines.
+  let parsed;
+  try { parsed = JSON.parse(text); } catch {}
+  const nestedPem = findPemInValue(parsed);
+  if (nestedPem) return nestedPem;
+
+  // Also support a plain-text PEM response.
+  const directPem = extractPublicKeyPem(text);
+  if (directPem) return directPem;
+  throw new Error("Kick public-key response did not contain a PEM key");
+}
+
+function extractPublicKeyPem(value) {
+  const text = String(value || "");
+  const match = text.match(/-----BEGIN PUBLIC KEY-----[\s\S]+?-----END PUBLIC KEY-----/);
+  return match ? match[0].trim() : "";
+}
+
+function findPemInValue(value) {
+  if (typeof value === "string") return extractPublicKeyPem(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findPemInValue(item);
+      if (found) return found;
+    }
+    return "";
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value)) {
+      const found = findPemInValue(item);
+      if (found) return found;
+    }
+  }
+  return "";
 }
 
 async function importRsaPublicKey(pem) {
