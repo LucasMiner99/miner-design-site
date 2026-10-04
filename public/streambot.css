@@ -18,17 +18,17 @@
 .overlay-preview-stage{position:relative;aspect-ratio:16/9;min-height:330px;border-radius:16px;border:1px solid #2d3137;background:linear-gradient(180deg,#11161c 0%,#0a0f14 100%);overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .overlay-preview-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);background-size:28px 28px;opacity:.5}
 .overlay-preview-screen-label{position:absolute;left:12px;top:10px;font-size:11px;color:#9097a3;background:rgba(7,10,13,.66);padding:4px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.06);z-index:2}
-.preview-widget{position:absolute;right:24px;bottom:24px;user-select:none;cursor:grab;touch-action:none;transform-origin:top left;background:url("assets/overlay-wow-panel.png") center/100% 100% no-repeat;padding:18px 18px 16px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));color:#ffe9b5}
+.preview-widget{position:absolute;right:24px;bottom:24px;user-select:none;cursor:grab;touch-action:none;transform-origin:top left;background:url("assets/overlay-wow-panel.png") center/100% 100% no-repeat;padding:15px 18px 13px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));color:#ffe9b5}
 .preview-widget.dragging{cursor:grabbing}
 .preview-wow-rivet{display:none}
-.preview-crown,.preview-subgoal{width:336px;min-height:134px}
+.preview-crown,.preview-subgoal{width:380px;min-height:100px}
 .preview-crown-main,.preview-subgoal-main{display:flex;align-items:center;gap:8px;min-width:0;position:relative;z-index:1}
 .preview-crown-icon,.preview-subgoal-icon{font-size:14px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));color:#ffd770}
 .preview-crown-title,.preview-subgoal-title{font-size:13px;font-weight:900;color:#f6db96}
-.preview-crown-name,.preview-subgoal-count{margin-left:auto;font-size:14px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.preview-crown-footer{position:relative;z-index:1;margin-top:14px;padding-top:10px;border-top:1px solid rgba(245,219,152,.13);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#e5d3ad}
+.preview-crown-name,.preview-subgoal-count{margin-left:auto;font-size:13px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preview-crown-footer{position:relative;z-index:1;margin-top:10px;padding-top:8px;border-top:1px solid rgba(245,219,152,.13);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#e5d3ad}
 .preview-crown-footer span:last-child{font-weight:800;color:#fff}
-.preview-subgoal-bar{position:relative;z-index:1;height:8px;margin-top:14px;border-radius:999px;background:rgba(20,12,5,.62);box-shadow:inset 0 1px 2px rgba(0,0,0,.55);overflow:hidden}
+.preview-subgoal-bar{position:relative;z-index:1;height:7px;margin-top:10px;border-radius:999px;background:rgba(20,12,5,.62);box-shadow:inset 0 1px 2px rgba(0,0,0,.55);overflow:hidden}
 .preview-subgoal-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(180deg,#f7d588,#c59633)}
 .overlay-tools{display:grid;gap:12px}
 .overlay-meta{font-size:11px;color:#9ca3af}

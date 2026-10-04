@@ -484,7 +484,7 @@ function initOverlayEditors() {
       nudgeUp: "crownNudgeUp", nudgeLeft: "crownNudgeLeft", nudgeDown: "crownNudgeDown", nudgeRight: "crownNudgeRight",
       presetDefault: "crownPresetDefault", presetSecondary: "crownPresetHigher", presetCorner: "crownPresetBottomRight",
       stageWidth: 2560, stageHeight: 1440,
-      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 120, baseWidth: 336, baseHeight: 134,
+      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 120, baseWidth: 380, baseHeight: 100,
     }),
     setupOverlayEditor({
       scaleInput: "sub_goal_overlay_scale", rightInput: "sub_goal_overlay_right", bottomInput: "sub_goal_overlay_bottom",
@@ -494,7 +494,7 @@ function initOverlayEditors() {
       nudgeUp: "subGoalNudgeUp", nudgeLeft: "subGoalNudgeLeft", nudgeDown: "subGoalNudgeDown", nudgeRight: "subGoalNudgeRight",
       presetDefault: "subGoalPresetDefault", presetSecondary: "subGoalPresetLower", presetCorner: "subGoalPresetBottomRight",
       stageWidth: 2560, stageHeight: 1440,
-      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 210, baseWidth: 336, baseHeight: 134,
+      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 210, baseWidth: 380, baseHeight: 100,
     }),
   ];
   syncOverlayEditors = () => editors.forEach((fn) => fn && fn());
