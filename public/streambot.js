@@ -107,6 +107,7 @@ function paintConfig() {
     if (el.type === "checkbox") el.checked = Boolean(config[id]);
     else el.value = config[id] ?? "";
   }
+  if (typeof syncOverlayEditors === "function") syncOverlayEditors();
 }
 
 function collectConfig() {
@@ -329,6 +330,155 @@ async function crownRelease() {
   catch (err) { showNotice(err.message, true); }
 }
 
+
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+function setupOverlayEditor(opts) {
+  const scaleInput = $(opts.scaleInput);
+  const rightInput = $(opts.rightInput);
+  const bottomInput = $(opts.bottomInput);
+  const scaleSlider = $(opts.scaleSlider);
+  const scaleReadout = $(opts.scaleReadout);
+  const rightReadout = $(opts.rightReadout);
+  const bottomReadout = $(opts.bottomReadout);
+  const stage = $(opts.stage);
+  const widget = $(opts.widget);
+  if (!scaleInput || !rightInput || !bottomInput || !scaleSlider || !stage || !widget) return () => {};
+
+  const BASE_STAGE_W = 1920;
+  const BASE_STAGE_H = 1080;
+
+  function widgetSize(scale) {
+    return {
+      w: opts.baseWidth * scale / 100,
+      h: opts.baseHeight * scale / 100,
+    };
+  }
+
+  function writeReadouts() {
+    if (scaleReadout) scaleReadout.textContent = `${Math.round(Number(scaleInput.value) || 100)}%`;
+    if (rightReadout) rightReadout.textContent = `${Math.round(Number(rightInput.value) || 0)}px`;
+    if (bottomReadout) bottomReadout.textContent = `${Math.round(Number(bottomInput.value) || 0)}px`;
+  }
+
+  function updatePreview() {
+    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
+    const right = clamp(Number(rightInput.value) || opts.defaultRight, 0, 1200);
+    const bottom = clamp(Number(bottomInput.value) || opts.defaultBottom, 0, 1200);
+    scaleInput.value = Math.round(scale);
+    rightInput.value = Math.round(right);
+    bottomInput.value = Math.round(bottom);
+    scaleSlider.value = String(Math.round(scale));
+    const rect = stage.getBoundingClientRect();
+    const { w, h } = widgetSize(scale);
+    widget.style.width = `${w}px`;
+    widget.style.height = `${h}px`;
+    const left = clamp(rect.width - w - (right / BASE_STAGE_W) * rect.width, 0, Math.max(0, rect.width - w));
+    const top = clamp(rect.height - h - (bottom / BASE_STAGE_H) * rect.height, 0, Math.max(0, rect.height - h));
+    widget.style.left = `${left}px`;
+    widget.style.top = `${top}px`;
+    writeReadouts();
+  }
+
+  function applyFromLeftTop(left, top) {
+    const rect = stage.getBoundingClientRect();
+    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
+    const { w, h } = widgetSize(scale);
+    const clampedLeft = clamp(left, 0, Math.max(0, rect.width - w));
+    const clampedTop = clamp(top, 0, Math.max(0, rect.height - h));
+    const right = ((rect.width - clampedLeft - w) / rect.width) * BASE_STAGE_W;
+    const bottom = ((rect.height - clampedTop - h) / rect.height) * BASE_STAGE_H;
+    rightInput.value = String(Math.round(clamp(right, 0, 1200)));
+    bottomInput.value = String(Math.round(clamp(bottom, 0, 1200)));
+    updatePreview();
+  }
+
+  scaleSlider.addEventListener("input", () => {
+    scaleInput.value = scaleSlider.value;
+    updatePreview();
+  });
+
+  const nudge = (dx, dy) => {
+    const left = parseFloat(widget.style.left || "0") + dx;
+    const top = parseFloat(widget.style.top || "0") + dy;
+    applyFromLeftTop(left, top);
+  };
+
+  [
+    [opts.nudgeUp, 0, -4],
+    [opts.nudgeLeft, -4, 0],
+    [opts.nudgeDown, 0, 4],
+    [opts.nudgeRight, 4, 0],
+  ].forEach(([id, dx, dy]) => {
+    const btn = $(id);
+    if (btn) btn.addEventListener("click", () => nudge(dx, dy));
+  });
+
+  const presetDefault = $(opts.presetDefault);
+  if (presetDefault) presetDefault.addEventListener("click", () => {
+    scaleInput.value = String(opts.defaultScale);
+    rightInput.value = String(opts.defaultRight);
+    bottomInput.value = String(opts.defaultBottom);
+    updatePreview();
+  });
+
+  const presetSecondary = $(opts.presetSecondary);
+  if (presetSecondary) presetSecondary.addEventListener("click", () => {
+    scaleInput.value = String(opts.defaultScale);
+    rightInput.value = String(opts.defaultRight);
+    bottomInput.value = String(opts.secondaryBottom);
+    updatePreview();
+  });
+
+  let drag = null;
+  widget.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    const rect = widget.getBoundingClientRect();
+    drag = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    widget.classList.add("dragging");
+    try { widget.setPointerCapture(e.pointerId); } catch {}
+  });
+  widget.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const stageRect = stage.getBoundingClientRect();
+    applyFromLeftTop(e.clientX - stageRect.left - drag.dx, e.clientY - stageRect.top - drag.dy);
+  });
+  const endDrag = (e) => {
+    if (!drag) return;
+    drag = null;
+    widget.classList.remove("dragging");
+    try { widget.releasePointerCapture?.(e.pointerId); } catch {}
+  };
+  widget.addEventListener("pointerup", endDrag);
+  widget.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", updatePreview);
+  updatePreview();
+  return updatePreview;
+}
+
+let syncOverlayEditors = null;
+function initOverlayEditors() {
+  const editors = [
+    setupOverlayEditor({
+      scaleInput: "crown_overlay_scale", rightInput: "crown_overlay_right", bottomInput: "crown_overlay_bottom",
+      scaleSlider: "crownScaleSlider", scaleReadout: "crownScaleReadout", rightReadout: "crownRightReadout", bottomReadout: "crownBottomReadout",
+      stage: "crownPreviewStage", widget: "crownPreviewWidget",
+      nudgeUp: "crownNudgeUp", nudgeLeft: "crownNudgeLeft", nudgeDown: "crownNudgeDown", nudgeRight: "crownNudgeRight",
+      presetDefault: "crownPresetDefault", presetSecondary: "crownPresetHigher",
+      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 90, baseWidth: 270, baseHeight: 72,
+    }),
+    setupOverlayEditor({
+      scaleInput: "sub_goal_overlay_scale", rightInput: "sub_goal_overlay_right", bottomInput: "sub_goal_overlay_bottom",
+      scaleSlider: "subGoalScaleSlider", scaleReadout: "subGoalScaleReadout", rightReadout: "subGoalRightReadout", bottomReadout: "subGoalBottomReadout",
+      stage: "subGoalPreviewStage", widget: "subGoalPreviewWidget",
+      nudgeUp: "subGoalNudgeUp", nudgeLeft: "subGoalNudgeLeft", nudgeDown: "subGoalNudgeDown", nudgeRight: "subGoalNudgeRight",
+      presetDefault: "subGoalPresetDefault", presetSecondary: "subGoalPresetLower",
+      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 180, baseWidth: 270, baseHeight: 68,
+    }),
+  ];
+  syncOverlayEditors = () => editors.forEach((fn) => fn && fn());
+}
+
 function paintLogs(logs = []) {
   const host = $("logsList");
   host.innerHTML = "";
@@ -380,10 +530,13 @@ if ($("crownShowTop")) $("crownShowTop").addEventListener("click", crownShowTop)
 if ($("crownTestAlert")) $("crownTestAlert").addEventListener("click", crownTestAlert);
 if ($("crownRelease")) $("crownRelease").addEventListener("click", crownRelease);
 
+initOverlayEditors();
+
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
   document.querySelectorAll(".panel-section").forEach(s => s.classList.remove("active"));
   $(`section-${button.dataset.section}`).classList.add("active");
+  if (typeof syncOverlayEditors === "function") syncOverlayEditors();
   if (button.dataset.section === "logs") loadLogs();
   if (button.dataset.section === "mods") loadMods();
   if (button.dataset.section === "crown") loadCrown();

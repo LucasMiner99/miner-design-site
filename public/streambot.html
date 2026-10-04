@@ -180,13 +180,41 @@
             <label class="field"><span>Duración del Top 5 (seg)</span><input id="crown_top_seconds" type="number" min="1" max="60" /></label>
           </div>
           <div class="card-subsection">
-            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Ajustá el tamaño y la posición del cartel de la corona.</small></div>
-            <div class="three-cols">
-              <label class="field"><span>Tamaño (%)</span><input id="crown_overlay_scale" type="number" min="50" max="250" step="5" /></label>
-              <label class="field"><span>Margen derecha (px)</span><input id="crown_overlay_right" type="number" min="0" max="1200" step="1" /></label>
-              <label class="field"><span>Margen abajo (px)</span><input id="crown_overlay_bottom" type="number" min="0" max="1200" step="1" /></label>
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Marco estilo WoW. Arrastrá el cartel en la vista previa o usá las flechas finas.</small></div>
+            <div class="overlay-editor" id="crownOverlayEditor">
+              <input id="crown_overlay_scale" type="number" min="50" max="250" step="5" hidden />
+              <input id="crown_overlay_right" type="number" min="0" max="1200" step="1" hidden />
+              <input id="crown_overlay_bottom" type="number" min="0" max="1200" step="1" hidden />
+              <label class="overlay-slider-label"><span>Tamaño</span><input id="crownScaleSlider" type="range" min="50" max="250" step="5" /><b id="crownScaleReadout">100%</b></label>
+              <div class="overlay-editor-layout">
+                <div id="crownPreviewStage" class="overlay-preview-stage">
+                  <div class="overlay-preview-grid"></div>
+                  <div class="overlay-preview-screen-label">Vista previa OBS · arrastrá el cartel</div>
+                  <div id="crownPreviewWidget" class="preview-widget preview-crown">
+                    <div class="preview-wow-rivet rivet-tl"></div><div class="preview-wow-rivet rivet-tr"></div><div class="preview-wow-rivet rivet-bl"></div><div class="preview-wow-rivet rivet-br"></div>
+                    <div class="preview-crown-main"><span class="preview-crown-icon">👑</span><span class="preview-crown-title">Rey</span><span class="preview-crown-name">MinerDesign</span></div>
+                    <div class="preview-crown-footer"><span>Se puede robar en 12:34</span><span>!robar</span></div>
+                  </div>
+                </div>
+                <div class="overlay-tools">
+                  <div class="overlay-readouts">
+                    <div><span>Derecha</span><b id="crownRightReadout">34px</b></div>
+                    <div><span>Abajo</span><b id="crownBottomReadout">34px</b></div>
+                  </div>
+                  <div class="overlay-nudge" aria-label="Mover overlay corona">
+                    <button type="button" class="secondary-button small" id="crownNudgeUp">↑</button>
+                    <button type="button" class="secondary-button small" id="crownNudgeLeft">←</button>
+                    <button type="button" class="secondary-button small" id="crownNudgeDown">↓</button>
+                    <button type="button" class="secondary-button small" id="crownNudgeRight">→</button>
+                  </div>
+                  <div class="overlay-presets">
+                    <button type="button" class="ghost-button small" id="crownPresetDefault">Reset</button>
+                    <button type="button" class="ghost-button small" id="crownPresetHigher">Subir un poco</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="hint">100% es el tamaño original. Si te queda chico en OBS, probá 140–170%.</p>
+            <p class="hint">Tip: 100% es el tamaño base. Para OBS suele quedar bien entre 140% y 170%.</p>
           </div>
           <label class="field"><span>Duración del cartel al robar (seg)</span><input id="crown_alert_seconds" type="number" min="1" max="60" /></label>
           <div class="button-row">
@@ -214,11 +242,39 @@
           </div>
           <p class="hint">El contador es editable por si necesitás corregirlo manualmente. Al empezar un mes nuevo vuelve a 0 automáticamente.</p>
           <div class="card-subsection">
-            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Misma estética que Corona: negro, borde blanco fino.</small></div>
-            <div class="three-cols">
-              <label class="field"><span>Tamaño (%)</span><input id="sub_goal_overlay_scale" type="number" min="50" max="250" step="5" /></label>
-              <label class="field"><span>Margen derecha (px)</span><input id="sub_goal_overlay_right" type="number" min="0" max="1200" step="1" /></label>
-              <label class="field"><span>Margen abajo (px)</span><input id="sub_goal_overlay_bottom" type="number" min="0" max="1200" step="1" /></label>
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Mismo marco estilo WoW que Corona. Podés arrastrarlo o moverlo fino.</small></div>
+            <div class="overlay-editor" id="subGoalOverlayEditor">
+              <input id="sub_goal_overlay_scale" type="number" min="50" max="250" step="5" hidden />
+              <input id="sub_goal_overlay_right" type="number" min="0" max="1200" step="1" hidden />
+              <input id="sub_goal_overlay_bottom" type="number" min="0" max="1200" step="1" hidden />
+              <label class="overlay-slider-label"><span>Tamaño</span><input id="subGoalScaleSlider" type="range" min="50" max="250" step="5" /><b id="subGoalScaleReadout">100%</b></label>
+              <div class="overlay-editor-layout">
+                <div id="subGoalPreviewStage" class="overlay-preview-stage">
+                  <div class="overlay-preview-grid"></div>
+                  <div class="overlay-preview-screen-label">Vista previa OBS · arrastrá el cartel</div>
+                  <div id="subGoalPreviewWidget" class="preview-widget preview-subgoal">
+                    <div class="preview-wow-rivet rivet-tl"></div><div class="preview-wow-rivet rivet-tr"></div><div class="preview-wow-rivet rivet-bl"></div><div class="preview-wow-rivet rivet-br"></div>
+                    <div class="preview-subgoal-main"><span class="preview-subgoal-icon">★</span><span class="preview-subgoal-title">Meta de subs</span><span class="preview-subgoal-count">12 / 50</span></div>
+                    <div class="preview-subgoal-bar"><span style="width:42%"></span></div>
+                  </div>
+                </div>
+                <div class="overlay-tools">
+                  <div class="overlay-readouts">
+                    <div><span>Derecha</span><b id="subGoalRightReadout">34px</b></div>
+                    <div><span>Abajo</span><b id="subGoalBottomReadout">132px</b></div>
+                  </div>
+                  <div class="overlay-nudge" aria-label="Mover overlay meta subs">
+                    <button type="button" class="secondary-button small" id="subGoalNudgeUp">↑</button>
+                    <button type="button" class="secondary-button small" id="subGoalNudgeLeft">←</button>
+                    <button type="button" class="secondary-button small" id="subGoalNudgeDown">↓</button>
+                    <button type="button" class="secondary-button small" id="subGoalNudgeRight">→</button>
+                  </div>
+                  <div class="overlay-presets">
+                    <button type="button" class="ghost-button small" id="subGoalPresetDefault">Reset</button>
+                    <button type="button" class="ghost-button small" id="subGoalPresetLower">Bajar un poco</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
