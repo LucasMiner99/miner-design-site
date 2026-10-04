@@ -9,6 +9,8 @@ const fields = [
   "follow_message","sub_message","renewal_message","gift_message",
   "title_command_enabled","title_command_name","title_command_mods_allowed",
   "game_command_enabled","game_command_name","game_command_mods_allowed","stream_command_confirm",
+  "crown_enabled","crown_steal_command","crown_info_commands","crown_min_minutes","crown_max_minutes",
+  "crown_open_seconds","crown_alert_seconds","crown_top_seconds",
   "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
@@ -275,6 +277,55 @@ async function addMod() {
   finally { $("addMod").disabled = false; }
 }
 
+
+function formatCrownTime(ms) {
+  const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  return [h, m, sec].map(n => String(n).padStart(2, "0")).join(":");
+}
+
+async function loadCrown() {
+  const stateHost = $("crownAdminState");
+  const topHost = $("crownAdminTop");
+  if (!stateHost || !topHost) return;
+  try {
+    const data = await api("/crown/admin");
+    const st = data.state || {};
+    const now = Number(data.serverNow || Date.now());
+    const held = st.crownedAt ? Math.max(0, now - Number(st.crownedAt)) : 0;
+    const username = st.currentUsername || "Sin rey";
+    let nextText = "Corona libre";
+    if (st.currentUsername && st.stealOpenAt && st.stealCloseAt) {
+      if (now < Number(st.stealOpenAt)) nextText = `Se abre en ${formatCrownTime(Number(st.stealOpenAt) - now)}`;
+      else if (now < Number(st.stealCloseAt)) nextText = `ABIERTA · quedan ${formatCrownTime(Number(st.stealCloseAt) - now)}`;
+      else nextText = "Programando próxima ventana…";
+    }
+    stateHost.innerHTML = `<div><span>Rey actual</span><b>👑 ${esc(username)}</b></div><div><span>Tiempo</span><b>${formatCrownTime(held)}</b></div><div><span>Estado</span><b>${esc(nextText)}</b></div>`;
+    topHost.innerHTML = (data.top || []).length ? `<h3>Top 5 · tiempo total</h3>${(data.top || []).map((row, i) => `<div class="crown-top-row"><span>${i + 1}. ${esc(row.username)}${row.isCurrent ? " 👑" : ""}</span><b>${formatCrownTime(row.totalMs)}</b></div>`).join("")}` : '<p class="hint">Todavía no hay historial de la corona.</p>';
+  } catch (err) {
+    stateHost.textContent = err.message;
+    topHost.innerHTML = '<p class="hint">Si acabás de instalar esta función, ejecutá <code>streambot-v12-crown-migration.sql</code> en D1.</p>';
+  }
+}
+
+async function crownShowTop() {
+  try { await api("/crown/show-top", { method: "POST" }); showNotice("Top 5 mostrado en OBS."); }
+  catch (err) { showNotice(err.message, true); }
+}
+
+async function crownTestAlert() {
+  try { await api("/crown/test-alert", { method: "POST", body: JSON.stringify({}) }); showNotice("Alerta de corona enviada a OBS."); }
+  catch (err) { showNotice(err.message, true); }
+}
+
+async function crownRelease() {
+  if (!confirm("¿Liberar la corona actual? El tiempo del rey se guarda en el ranking.")) return;
+  try { await api("/crown/release", { method: "POST" }); await loadCrown(); showNotice("Corona liberada."); }
+  catch (err) { showNotice(err.message, true); }
+}
+
 function paintLogs(logs = []) {
   const host = $("logsList");
   host.innerHTML = "";
@@ -322,6 +373,9 @@ $("addCommand").addEventListener("click", () => {
 $("lockButton").addEventListener("click", () => { localStorage.removeItem("streambot_admin_key"); adminKey = ""; $("adminKeyInput").value = ""; $("lockScreen").classList.remove("hidden"); });
 if ($("addMod")) $("addMod").addEventListener("click", addMod);
 if ($("newModUsername")) $("newModUsername").addEventListener("keydown", e => { if (e.key === "Enter") addMod(); });
+if ($("crownShowTop")) $("crownShowTop").addEventListener("click", crownShowTop);
+if ($("crownTestAlert")) $("crownTestAlert").addEventListener("click", crownTestAlert);
+if ($("crownRelease")) $("crownRelease").addEventListener("click", crownRelease);
 
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
@@ -329,6 +383,7 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
   $(`section-${button.dataset.section}`).classList.add("active");
   if (button.dataset.section === "logs") loadLogs();
   if (button.dataset.section === "mods") loadMods();
+  if (button.dataset.section === "crown") loadCrown();
 }));
 
 (async () => {

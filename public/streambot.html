@@ -18,6 +18,7 @@
       <nav>
         <button class="nav-link active" data-section="general">General</button>
         <button class="nav-link" data-section="tts">TTS</button>
+        <button class="nav-link" data-section="crown">Corona</button>
         <button class="nav-link" data-section="commands">Comandos</button>
         <button class="nav-link" data-section="mods">Mods</button>
         <button class="nav-link" data-section="logs">Actividad</button>
@@ -152,9 +153,9 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h2>Widget global de OBS</h2><p>El mismo Browser Source maneja TTS y el nuevo Overlay Control.</p></div></div>
+          <div class="card-head"><div><h2>Widget global de OBS</h2><p>El mismo Browser Source maneja TTS, Corona y Overlay Control.</p></div></div>
           <div class="copy-row"><input id="overlayUrl" type="text" readonly /><button id="copyOverlay" class="secondary-button">Copiar URL</button></div>
-          <p class="hint">No agregues otro Browser Source: la URL actual sirve para las cuatro voces y para imágenes/videos de los mods.</p>
+          <p class="hint">No agregues otro Browser Source: la URL actual sirve para TTS, Corona e imágenes/videos de los mods.</p>
           <div class="tts-preview">
             <div class="audio-badge">
               <span class="audio-icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
@@ -162,6 +163,34 @@
             </div>
             <small>El cartel funciona igual para cualquiera de las cuatro voces.</small>
           </div>
+        </div>
+      </section>
+
+      <section id="section-crown" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>The Crown</h2><p>Un rey, una corona. Cuando se abre la ventana, el primero que escribe el comando se la roba.</p></div></div>
+          <label class="toggle-row"><span><b>Corona activa</b><small>Muestra el widget en OBS y escucha los comandos.</small></span><input id="crown_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Comando para robar</span><input id="crown_steal_command" type="text" maxlength="40" placeholder="robar" /></label>
+            <label class="field"><span>Comandos para mostrar Top 5</span><input id="crown_info_commands" type="text" maxlength="100" placeholder="corona,rey" /></label>
+            <label class="field"><span>Mínimo hasta poder robar (min)</span><input id="crown_min_minutes" type="number" min="1" max="240" /></label>
+            <label class="field"><span>Máximo hasta poder robar (min)</span><input id="crown_max_minutes" type="number" min="1" max="240" /></label>
+            <label class="field"><span>Ventana para robar (seg)</span><input id="crown_open_seconds" type="number" min="1" max="120" /></label>
+            <label class="field"><span>Duración del Top 5 (seg)</span><input id="crown_top_seconds" type="number" min="1" max="60" /></label>
+          </div>
+          <label class="field"><span>Duración del cartel al robar (seg)</span><input id="crown_alert_seconds" type="number" min="1" max="60" /></label>
+          <div class="button-row">
+            <button id="crownShowTop" class="secondary-button">Mostrar Top 5 en OBS</button>
+            <button id="crownTestAlert" class="secondary-button">Probar alerta</button>
+            <button id="crownRelease" class="delete-button">Liberar corona</button>
+          </div>
+          <p class="hint">Por defecto: entre 10 y 20 minutos, se abre durante 20 segundos. Si todavía no hay rey, el primer <code>!robar</code> la reclama al instante.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h2>Estado actual</h2><p>Vista rápida de lo que está mostrando OBS.</p></div></div>
+          <div id="crownAdminState" class="crown-admin-state">Cargando…</div>
+          <div id="crownAdminTop" class="crown-admin-top"></div>
         </div>
       </section>
 

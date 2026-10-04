@@ -29,6 +29,17 @@ const DEFAULT_CONFIG = {
   game_command_name: "juego",
   game_command_mods_allowed: true,
   stream_command_confirm: true,
+
+  // The Crown · minijuego persistente del chat.
+  crown_enabled: true,
+  crown_steal_command: "robar",
+  crown_info_commands: "corona,rey",
+  crown_min_minutes: 10,
+  crown_max_minutes: 20,
+  crown_open_seconds: 20,
+  crown_alert_seconds: 5,
+  crown_top_seconds: 10,
+
   tts_enabled: true,
   tts_max_chars: 140,
   tts_daily_chars: 4000,
@@ -140,6 +151,9 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/overlay/media-file/") && request.method === "GET") {
       return await overlayMediaFile(request, env);
     }
+    if (path === "/api/streambot/crown/state" && request.method === "GET") {
+      return await crownOverlayState(request, env);
+    }
     if (path === "/api/streambot/realtime/ws" && request.method === "GET") {
       return await handleRealtimeWebSocket(request, env);
     }
@@ -205,6 +219,18 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/mods/") && request.method === "DELETE") {
       return await adminDeleteMod(request, env);
     }
+    if (path === "/api/streambot/crown/admin" && request.method === "GET") {
+      return await crownAdminState(env);
+    }
+    if (path === "/api/streambot/crown/show-top" && request.method === "POST") {
+      return await crownAdminShowTop(env);
+    }
+    if (path === "/api/streambot/crown/test-alert" && request.method === "POST") {
+      return await crownAdminTestAlert(request, env);
+    }
+    if (path === "/api/streambot/crown/release" && request.method === "POST") {
+      return await crownAdminRelease(env);
+    }
     if (path === "/api/streambot/disconnect" && request.method === "POST") {
       await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_tokens WHERE provider='kick'").run();
       await setSetting(env, "kick_user_id", "");
@@ -268,6 +294,18 @@ async function updateConfig(request, env) {
     return json({ error: "!titulo y !juego no pueden tener el mismo nombre." }, 400);
   }
 
+  const nextCrownCommand = normalizeCommand(
+    "crown_steal_command" in incoming ? incoming.crown_steal_command : current.crown_steal_command
+  ) || "robar";
+  if (nextCrownCommand === nextTitleCommand || nextCrownCommand === nextGameCommand) {
+    return json({ error: "El comando de la corona no puede ser igual a !titulo o !juego." }, 400);
+  }
+  incoming.crown_steal_command = nextCrownCommand;
+  if ("crown_info_commands" in incoming) {
+    const aliases = parseCommandAliases(incoming.crown_info_commands);
+    incoming.crown_info_commands = aliases.length ? aliases.join(",") : "corona,rey";
+  }
+
   incoming.title_command_name = nextTitleCommand;
   incoming.game_command_name = nextGameCommand;
 
@@ -278,16 +316,25 @@ async function updateConfig(request, env) {
   const allowed = Object.keys(DEFAULT_CONFIG).filter((key) => !protectedKeys.has(key));
   const positiveIntegerKeys = new Set([
     "tts_reward_cost", "tts_voice_2_cost", "tts_voice_3_cost", "tts_voice_4_cost",
-    "tts_max_chars", "tts_daily_chars"
+    "tts_max_chars", "tts_daily_chars",
+    "crown_min_minutes", "crown_max_minutes", "crown_open_seconds", "crown_alert_seconds", "crown_top_seconds"
   ]);
   for (const key of allowed) {
     if (!(key in incoming)) continue;
     let value = incoming[key];
     if (positiveIntegerKeys.has(key)) value = Math.max(1, Math.round(Number(value) || 1));
     if (key === "tts_volume") value = Math.min(1, Math.max(0, Number(value) || 0));
+    if (key === "crown_min_minutes" || key === "crown_max_minutes") value = Math.min(240, value);
+    if (key === "crown_open_seconds") value = Math.min(120, value);
+    if (key === "crown_alert_seconds" || key === "crown_top_seconds") value = Math.min(60, value);
     if (typeof DEFAULT_CONFIG[key] === "boolean") value = Boolean(value);
     await setSetting(env, key, typeof value === "string" ? value.trim() : JSON.stringify(value));
   }
+  const saved = await getConfig(env);
+  if (saved.crown_max_minutes < saved.crown_min_minutes) {
+    await setSetting(env, "crown_max_minutes", saved.crown_min_minutes);
+  }
+  await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
   return json({ ok: true, config: await getConfig(env) });
 }
 
@@ -605,10 +652,26 @@ async function processKickEvent(env, eventType, payload) {
       const content = String(payload.content || "").trim();
       if (!content.startsWith("!")) return;
 
-      // Comandos del stream configurables desde el dashboard.
       const commandMatch = content.match(/^!([^\s]+)(?:\s+([\s\S]+))?$/);
+      const invokedCommand = commandMatch ? normalizeCommand(commandMatch[1]) : "";
+
+      // The Crown: se procesa antes que los comandos personalizados.
+      if (config.crown_enabled && invokedCommand) {
+        const stealCommand = normalizeCommand(config.crown_steal_command || "robar");
+        const infoCommands = parseCommandAliases(config.crown_info_commands || "corona,rey");
+        if (invokedCommand === stealCommand) {
+          await handleCrownSteal(env, payload.sender || {}, config);
+          return;
+        }
+        if (infoCommands.includes(invokedCommand)) {
+          await showCrownTop(env, config);
+          return;
+        }
+      }
+
+      // Comandos del stream configurables desde el dashboard.
       if (commandMatch) {
-        const invoked = normalizeCommand(commandMatch[1]);
+        const invoked = invokedCommand;
         const titleCommand = normalizeCommand(config.title_command_name || "titulo");
         const gameCommand = normalizeCommand(config.game_command_name || "juego");
 
@@ -946,6 +1009,270 @@ async function overlayComplete(request, env) {
   return json({ ok: true });
 }
 
+
+
+// -----------------------------------------------------------------------------
+// The Crown · minijuego de chat persistente
+// -----------------------------------------------------------------------------
+
+async function crownOverlayState(request, env) {
+  const config = await getConfig(env);
+  if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
+  const snapshot = await getCrownSnapshot(env, config);
+  return json(snapshot);
+}
+
+async function crownAdminState(env) {
+  const config = await getConfig(env);
+  return json(await getCrownSnapshot(env, config));
+}
+
+async function crownAdminShowTop(env) {
+  const config = await getConfig(env);
+  const top = await getCrownTop(env, Date.now(), 5);
+  await realtimeBroadcast(env, {
+    type: "crown.showTop",
+    top,
+    durationMs: Math.max(1000, Number(config.crown_top_seconds || 10) * 1000),
+  }, "overlay");
+  return json({ ok: true, top });
+}
+
+async function crownAdminTestAlert(request, env) {
+  const config = await getConfig(env);
+  const body = await readJson(request);
+  const username = String(body.username || config.kick_username || "MinerDesign").trim().slice(0, 80) || "MinerDesign";
+  await realtimeBroadcast(env, {
+    type: "crown.alert",
+    username,
+    previousUsername: "",
+    initial: false,
+    durationMs: Math.max(1000, Number(config.crown_alert_seconds || 5) * 1000),
+  }, "overlay");
+  return json({ ok: true });
+}
+
+async function crownAdminRelease(env) {
+  const config = await getConfig(env);
+  const now = Date.now();
+  const state = await getCrownState(env);
+  if (state?.current_user_id && state.crowned_at_ms) {
+    await finalizeCrownReign(env, state.current_user_id, state.current_username, Math.max(0, now - Number(state.crowned_at_ms)));
+  }
+  await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_crown_state
+    SET current_user_id=NULL, current_username=NULL, crowned_at_ms=NULL,
+        steal_open_at_ms=NULL, steal_close_at_ms=NULL, version=version+1, updated_at=CURRENT_TIMESTAMP
+    WHERE id=1
+  `).run();
+  await safeLog(env, "info", "crown-release", null, "Corona liberada manualmente desde el dashboard.");
+  await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+  return json({ ok: true, ...(await getCrownSnapshot(env, config)) });
+}
+
+async function getCrownSnapshot(env, config) {
+  const now = Date.now();
+  let state = await ensureCrownSchedule(env, config, now);
+  if (!state) state = await getCrownState(env);
+  const top = await getCrownTop(env, now, 5);
+  return {
+    enabled: Boolean(config.crown_enabled),
+    stealCommand: normalizeCommand(config.crown_steal_command || "robar") || "robar",
+    infoCommands: parseCommandAliases(config.crown_info_commands || "corona,rey"),
+    serverNow: now,
+    state: serializeCrownState(state),
+    top,
+  };
+}
+
+function serializeCrownState(state) {
+  if (!state) return {
+    currentUserId: null, currentUsername: null, crownedAt: null,
+    stealOpenAt: null, stealCloseAt: null, version: 0,
+  };
+  return {
+    currentUserId: state.current_user_id || null,
+    currentUsername: state.current_username || null,
+    crownedAt: numberOrNull(state.crowned_at_ms),
+    stealOpenAt: numberOrNull(state.steal_open_at_ms),
+    stealCloseAt: numberOrNull(state.steal_close_at_ms),
+    version: Number(state.version || 0),
+  };
+}
+
+function numberOrNull(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function getCrownState(env) {
+  try {
+    return await env.STREAMBOT_DB.prepare("SELECT * FROM streambot_crown_state WHERE id=1").first();
+  } catch (error) {
+    if (String(error?.message || error).toLowerCase().includes("no such table")) {
+      throw new Error("Falta ejecutar streambot-v12-crown-migration.sql en D1.");
+    }
+    throw error;
+  }
+}
+
+async function ensureCrownSchedule(env, config, now = Date.now()) {
+  let state = await getCrownState(env);
+  if (!state || !config.crown_enabled || !state.current_user_id) return state;
+
+  const openAt = numberOrNull(state.steal_open_at_ms);
+  const closeAt = numberOrNull(state.steal_close_at_ms);
+  const needsSchedule = !openAt || !closeAt || now >= closeAt;
+  if (!needsSchedule) return state;
+
+  const next = makeCrownWindow(config, now);
+  const result = await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_crown_state
+    SET steal_open_at_ms=?, steal_close_at_ms=?, version=version+1, updated_at=CURRENT_TIMESTAMP
+    WHERE id=1 AND version=?
+  `).bind(next.openAt, next.closeAt, Number(state.version || 0)).run();
+  if (result.meta?.changes) {
+    state = await getCrownState(env);
+    await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+    return state;
+  }
+  return await getCrownState(env);
+}
+
+function makeCrownWindow(config, now = Date.now()) {
+  const minMinutes = Math.max(1, Number(config.crown_min_minutes || 10));
+  const maxMinutes = Math.max(minMinutes, Number(config.crown_max_minutes || 20));
+  const waitMinutes = minMinutes + Math.random() * (maxMinutes - minMinutes);
+  const openAt = now + Math.round(waitMinutes * 60_000);
+  const closeAt = openAt + Math.max(1, Number(config.crown_open_seconds || 20)) * 1000;
+  return { openAt, closeAt };
+}
+
+async function handleCrownSteal(env, sender, config) {
+  const username = String(sender?.username || "").trim().slice(0, 80);
+  const userId = String(sender?.user_id || sender?.id || username.toLowerCase()).trim().slice(0, 120);
+  if (!username || !userId) return;
+
+  const now = Date.now();
+  let state = await ensureCrownSchedule(env, config, now);
+  if (!state) return;
+
+  // Si todavía no hay rey, el primer !robar reclama la corona inmediatamente.
+  if (!state.current_user_id) {
+    const window = makeCrownWindow(config, now);
+    const result = await env.STREAMBOT_DB.prepare(`
+      UPDATE streambot_crown_state
+      SET current_user_id=?, current_username=?, crowned_at_ms=?, steal_open_at_ms=?, steal_close_at_ms=?,
+          version=version+1, updated_at=CURRENT_TIMESTAMP
+      WHERE id=1 AND current_user_id IS NULL
+    `).bind(userId, username, now, window.openAt, window.closeAt).run();
+    if (!result.meta?.changes) return;
+    await touchCrownWinner(env, userId, username);
+    await safeLog(env, "info", "crown-claim", username, "Reclamó la corona libre.");
+    await realtimeBroadcast(env, {
+      type: "crown.alert", username, previousUsername: "", initial: true,
+      durationMs: Math.max(1000, Number(config.crown_alert_seconds || 5) * 1000),
+    }, "overlay");
+    await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+    return;
+  }
+
+  if (String(state.current_user_id) === userId) return;
+  const openAt = Number(state.steal_open_at_ms || 0);
+  const closeAt = Number(state.steal_close_at_ms || 0);
+  if (!openAt || !closeAt || now < openAt || now >= closeAt) return;
+
+  const previousId = String(state.current_user_id);
+  const previousUsername = String(state.current_username || "");
+  const previousStartedAt = Number(state.crowned_at_ms || now);
+  const window = makeCrownWindow(config, now);
+  const result = await env.STREAMBOT_DB.prepare(`
+    UPDATE streambot_crown_state
+    SET current_user_id=?, current_username=?, crowned_at_ms=?, steal_open_at_ms=?, steal_close_at_ms=?,
+        version=version+1, updated_at=CURRENT_TIMESTAMP
+    WHERE id=1 AND version=? AND current_user_id=? AND steal_open_at_ms<=? AND steal_close_at_ms>?
+  `).bind(
+    userId, username, now, window.openAt, window.closeAt,
+    Number(state.version || 0), previousId, now, now
+  ).run();
+  if (!result.meta?.changes) return;
+
+  await finalizeCrownReign(env, previousId, previousUsername, Math.max(0, now - previousStartedAt));
+  await touchCrownWinner(env, userId, username);
+  await safeLog(env, "info", "crown-steal", username, `Le robó la corona a @${previousUsername || "otro viewer"}.`);
+  await realtimeBroadcast(env, {
+    type: "crown.alert", username, previousUsername, initial: false,
+    durationMs: Math.max(1000, Number(config.crown_alert_seconds || 5) * 1000),
+  }, "overlay");
+  await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+}
+
+async function touchCrownWinner(env, userId, username) {
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_crown_users (user_id, username, crowns_won, total_reign_ms, best_reign_ms, updated_at)
+    VALUES (?, ?, 1, 0, 0, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET
+      username=excluded.username,
+      crowns_won=streambot_crown_users.crowns_won+1,
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(userId, username).run();
+}
+
+async function finalizeCrownReign(env, userId, username, durationMs) {
+  const duration = Math.max(0, Math.round(Number(durationMs) || 0));
+  if (!userId || duration <= 0) return;
+  await env.STREAMBOT_DB.prepare(`
+    INSERT INTO streambot_crown_users (user_id, username, crowns_won, total_reign_ms, best_reign_ms, updated_at)
+    VALUES (?, ?, 0, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id) DO UPDATE SET
+      username=excluded.username,
+      total_reign_ms=streambot_crown_users.total_reign_ms+excluded.total_reign_ms,
+      best_reign_ms=MAX(streambot_crown_users.best_reign_ms, excluded.best_reign_ms),
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(userId, username || userId, duration, duration).run();
+}
+
+async function getCrownTop(env, now = Date.now(), limit = 5) {
+  const state = await getCrownState(env);
+  const result = await env.STREAMBOT_DB.prepare(`
+    SELECT user_id, username, crowns_won, total_reign_ms, best_reign_ms
+    FROM streambot_crown_users
+  `).all();
+  const currentId = String(state?.current_user_id || "");
+  const currentStartedAt = Number(state?.crowned_at_ms || 0);
+  return (result.results || [])
+    .map((row) => ({
+      userId: String(row.user_id),
+      username: String(row.username || "viewer"),
+      crownsWon: Number(row.crowns_won || 0),
+      totalMs: Number(row.total_reign_ms || 0) + (currentId === String(row.user_id) && currentStartedAt ? Math.max(0, now - currentStartedAt) : 0),
+      bestMs: Math.max(Number(row.best_reign_ms || 0), currentId === String(row.user_id) && currentStartedAt ? Math.max(0, now - currentStartedAt) : 0),
+      isCurrent: currentId === String(row.user_id),
+    }))
+    .sort((a, b) => b.totalMs - a.totalMs || b.bestMs - a.bestMs || a.username.localeCompare(b.username))
+    .slice(0, Math.max(1, Math.min(20, Number(limit) || 5)));
+}
+
+async function showCrownTop(env, config) {
+  const top = await getCrownTop(env, Date.now(), 5);
+  await realtimeBroadcast(env, {
+    type: "crown.showTop",
+    top,
+    durationMs: Math.max(1000, Number(config.crown_top_seconds || 10) * 1000),
+  }, "overlay");
+  await safeLog(env, "info", "crown-top", null, "Top 5 de la corona mostrado en OBS.");
+}
+
+function parseCommandAliases(value) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of String(value || "").split(/[;,\s]+/)) {
+    const command = normalizeCommand(raw);
+    if (command && !seen.has(command)) { seen.add(command); out.push(command); }
+  }
+  return out.slice(0, 8);
+}
 
 // -----------------------------------------------------------------------------
 // Realtime overlay channel (Durable Object + WebSockets)

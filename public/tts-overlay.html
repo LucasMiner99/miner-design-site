@@ -6,18 +6,94 @@
 <meta name="robots" content="noindex,nofollow,noarchive" />
 <title>MinerBot Global Overlay</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.stage{position:fixed;inset:0;pointer-events:none}.media-layer,.tts-layer{position:absolute;inset:0;pointer-events:none}.media-item{position:absolute;transform-origin:center center;pointer-events:none}.media-item img,.media-item video{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}.badge{position:absolute;left:36px;bottom:36px;display:flex;align-items:center;gap:10px;background:rgba(10,12,15,.92);color:#fff;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:10px 14px 10px 10px;box-shadow:0 10px 32px rgba(0,0,0,.28);opacity:0;transform:translateY(12px) scale(.97);transition:opacity .2s ease,transform .2s ease}.badge.show{opacity:1;transform:translateY(0) scale(1)}.icon{width:30px;height:30px;border-radius:9px;background:#53fc18;color:#071006;display:grid;place-items:center}.icon svg{width:18px;height:18px;fill:currentColor}.icon svg path:nth-child(n+2){fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}.name{font-size:15px;font-weight:800;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bars{display:flex;align-items:center;gap:2px;height:14px;margin-left:2px}.bars i{width:2px;height:5px;background:#53fc18;border-radius:2px;animation:wave .65s ease-in-out infinite alternate}.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.08s}@keyframes wave{to{height:14px}}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.stage{position:fixed;inset:0;pointer-events:none}
+.media-layer,.tts-layer,.crown-layer{position:absolute;inset:0;pointer-events:none}
+.media-item{position:absolute;transform-origin:center center;pointer-events:none}
+.media-item img,.media-item video{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+
+/* TTS */
+.badge{position:absolute;left:36px;bottom:36px;display:flex;align-items:center;gap:10px;background:rgba(10,12,15,.92);color:#fff;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:10px 14px 10px 10px;box-shadow:0 10px 32px rgba(0,0,0,.28);opacity:0;transform:translateY(12px) scale(.97);transition:opacity .2s ease,transform .2s ease}
+.badge.show{opacity:1;transform:translateY(0) scale(1)}
+.icon{width:30px;height:30px;border-radius:9px;background:#53fc18;color:#071006;display:grid;place-items:center}
+.icon svg{width:18px;height:18px;fill:currentColor}.icon svg path:nth-child(n+2){fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.name{font-size:15px;font-weight:800;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars{display:flex;align-items:center;gap:2px;height:14px;margin-left:2px}.bars i{width:2px;height:5px;background:#53fc18;border-radius:2px;animation:wave .65s ease-in-out infinite alternate}.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.08s}@keyframes wave{to{height:14px}}
+
+/* The Crown */
+.crown-widget{position:absolute;right:34px;bottom:34px;width:300px;padding:12px 14px 11px;background:rgba(7,8,12,.91);border:1px solid rgba(158,79,255,.78);border-radius:11px;color:#f7f4fb;box-shadow:0 9px 28px rgba(0,0,0,.28);opacity:0;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.crown-widget.show{opacity:1;transform:translateY(0)}
+.crown-widget.open{border-color:#bd7aff;box-shadow:0 0 0 1px rgba(177,93,255,.14),0 0 24px rgba(151,60,255,.18),0 9px 28px rgba(0,0,0,.30)}
+.crown-main{display:flex;align-items:center;gap:9px;min-width:0}
+.crown-emoji{font-size:19px;line-height:1;filter:drop-shadow(0 1px 5px rgba(255,199,77,.22))}
+.crown-label{font-size:11px;color:#a9a3b2;font-weight:700;margin-right:1px}
+.crown-king{font-size:15px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:#fff}
+.crown-held{font-size:12px;font-variant-numeric:tabular-nums;color:#d8d2df;font-weight:750;white-space:nowrap}
+.crown-status{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.07)}
+.crown-countdown{font-size:11px;color:#bbb4c4;font-variant-numeric:tabular-nums}
+.crown-countdown strong{color:#c986ff;font-weight:850}
+.crown-widget.open .crown-countdown strong{color:#e0adff}
+.crown-hint{font-size:10px;color:#777181;white-space:nowrap}.crown-hint b{color:#b86dff;font-weight:850}
+.crown-free .crown-held{display:none}
+
+.crown-alert{position:absolute;left:50%;top:52px;transform:translate(-50%,-10px) scale(.98);display:flex;align-items:center;gap:10px;max-width:min(520px,80vw);padding:10px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(158,79,255,.8);border-radius:10px;color:#fff;box-shadow:0 10px 34px rgba(0,0,0,.32);opacity:0;transition:opacity .2s ease,transform .2s ease}
+.crown-alert.show{opacity:1;transform:translate(-50%,0) scale(1)}
+.crown-alert .mini-crown{font-size:18px}.crown-alert-text{font-size:14px;font-weight:750}.crown-alert-text b{color:#c986ff}
+
+.crown-top{position:absolute;right:34px;bottom:132px;width:300px;padding:12px 14px;background:rgba(7,8,12,.94);border:1px solid rgba(158,79,255,.72);border-radius:11px;color:#fff;box-shadow:0 10px 32px rgba(0,0,0,.3);opacity:0;transform:translateY(8px) scale(.985);transition:opacity .2s ease,transform .2s ease}
+.crown-top.show{opacity:1;transform:translateY(0) scale(1)}
+.crown-top-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:850;margin-bottom:8px}.crown-top-title span{color:#c986ff}
+.crown-top-row{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,.06);font-size:11px}.crown-top-row:first-of-type{border-top:0}.crown-rank{color:#8f8799;font-weight:800}.crown-top-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:750}.crown-top-time{font-variant-numeric:tabular-nums;color:#c9c3cf;font-weight:700}.crown-top-empty{font-size:11px;color:#8f8799;padding:3px 0}
+
+@media(max-width:900px){.crown-widget,.crown-top{right:20px}.crown-widget{bottom:20px}.crown-top{bottom:118px}}
 </style>
 </head>
 <body>
 <div class="stage">
   <div id="mediaLayer" class="media-layer"></div>
-  <div class="tts-layer"><div id="badge" class="badge"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span><span id="name" class="name">@usuario</span><span class="bars"><i></i><i></i><i></i><i></i></span></div></div>
+  <div class="tts-layer">
+    <div id="badge" class="badge">
+      <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8.5c1.2 1 1.8 2.1 1.8 3.5s-.6 2.5-1.8 3.5"/><path d="M18.5 6c2 1.7 3 3.7 3 6s-1 4.3-3 6"/></svg></span>
+      <span id="name" class="name">@usuario</span>
+      <span class="bars"><i></i><i></i><i></i><i></i></span>
+    </div>
+  </div>
+  <div class="crown-layer">
+    <div id="crownAlert" class="crown-alert"><span class="mini-crown">👑</span><span id="crownAlertText" class="crown-alert-text"></span></div>
+    <div id="crownTop" class="crown-top"></div>
+    <div id="crownWidget" class="crown-widget">
+      <div class="crown-main">
+        <span class="crown-emoji">👑</span>
+        <span class="crown-label">Rey</span>
+        <span id="crownKing" class="crown-king">Sin rey</span>
+        <span id="crownHeld" class="crown-held">00:00:00</span>
+      </div>
+      <div class="crown-status">
+        <span id="crownCountdown" class="crown-countdown">Corona libre</span>
+        <span id="crownHint" class="crown-hint">Escribí <b>!robar</b></span>
+      </div>
+    </div>
+  </div>
 </div>
 <script>
 const key=new URLSearchParams(location.search).get('key')||'';
-const badge=document.getElementById('badge');const nameEl=document.getElementById('name');const mediaLayer=document.getElementById('mediaLayer');
-let busy=false;const mediaNodes=new Map();let socket=null,reconnectTimer=null,fallbackTimer=null;
+const badge=document.getElementById('badge');
+const nameEl=document.getElementById('name');
+const mediaLayer=document.getElementById('mediaLayer');
+const crownWidget=document.getElementById('crownWidget');
+const crownKing=document.getElementById('crownKing');
+const crownHeld=document.getElementById('crownHeld');
+const crownCountdown=document.getElementById('crownCountdown');
+const crownHint=document.getElementById('crownHint');
+const crownAlert=document.getElementById('crownAlert');
+const crownAlertText=document.getElementById('crownAlertText');
+const crownTop=document.getElementById('crownTop');
+
+let busy=false;
+const mediaNodes=new Map();
+let socket=null,reconnectTimer=null,fallbackTimer=null;
+let crownData=null,crownClockOffset=0,crownAlertTimer=null,crownTopTimer=null,crownPollTimer=null,crownExpiryPollAt=0;
 
 async function pollTts(){if(busy||!key)return;try{const r=await fetch(`/api/streambot/overlay/next?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d.item)playTts(d.item)}catch{}}
 async function completeTts(id){try{await fetch(`/api/streambot/overlay/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})}catch{}}
@@ -48,17 +124,78 @@ function scheduleExpiry(entry,item){const until=Number(item.visibleUntil||0);if(
 async function finishMedia(item){const id=String(item.id);const entry=mediaNodes.get(id);if(entry){clearTimeout(entry.expiryTimer);entry.el.remove();mediaNodes.delete(id)}await completeMedia(item)}
 async function completeMedia(item){try{await fetch(`/api/streambot/overlay/media/complete?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:item.id,playNonce:item.playNonce})})}catch{}}
 
+async function pollCrown(){
+  if(!key)return;
+  try{
+    const r=await fetch(`/api/streambot/crown/state?key=${encodeURIComponent(key)}`,{cache:'no-store'});
+    if(!r.ok){if(r.status===500)crownWidget.classList.remove('show');return}
+    const d=await r.json();
+    crownData=d;crownClockOffset=Number(d.serverNow||Date.now())-Date.now();
+    renderCrown();
+  }catch{}
+}
+function crownNow(){return Date.now()+crownClockOffset}
+function formatTime(ms,withHours=true){
+  const total=Math.max(0,Math.floor(Number(ms||0)/1000));
+  const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60;
+  if(!withHours&&h===0)return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function escHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderCrown(){
+  if(!crownData||!crownData.enabled){crownWidget.classList.remove('show','open');return}
+  const st=crownData.state||{},now=crownNow(),command=String(crownData.stealCommand||'robar').replace(/^!+/,'');
+  crownHint.innerHTML=`Escribí <b>!${escHtml(command)}</b> cuando se abra`;
+  crownWidget.classList.add('show');
+  if(!st.currentUsername){
+    crownWidget.classList.add('crown-free','open');crownKing.textContent='Sin rey';crownHeld.textContent='';
+    crownCountdown.innerHTML='<strong>Corona libre</strong>';
+    crownHint.innerHTML=`Escribí <b>!${escHtml(command)}</b> para reclamarla`;
+    return;
+  }
+  crownWidget.classList.remove('crown-free');crownKing.textContent=st.currentUsername;
+  crownHeld.textContent=formatTime(now-Number(st.crownedAt||now));
+  const openAt=Number(st.stealOpenAt||0),closeAt=Number(st.stealCloseAt||0);
+  if(openAt&&now<openAt){
+    crownWidget.classList.remove('open');
+    crownCountdown.innerHTML=`Se puede robar en <strong>${formatTime(openAt-now,false)}</strong>`;
+  }else if(closeAt&&now<closeAt){
+    crownWidget.classList.add('open');
+    crownCountdown.innerHTML=`<strong>¡ROBA AHORA! ${formatTime(closeAt-now,false)}</strong>`;
+  }else{
+    crownWidget.classList.remove('open');
+    crownCountdown.innerHTML='Preparando próxima ventana…';
+    if(closeAt&&Date.now()>=crownExpiryPollAt){crownExpiryPollAt=Date.now()+3000;pollCrown()}
+  }
+}
+function showCrownAlert(msg){
+  clearTimeout(crownAlertTimer);
+  const username=String(msg.username||'viewer');
+  crownAlertText.innerHTML=msg.initial?`<b>${escHtml(username)}</b> se quedó con la corona`:`<b>${escHtml(username)}</b> robó la corona`;
+  crownAlert.classList.add('show');
+  crownAlertTimer=setTimeout(()=>crownAlert.classList.remove('show'),Math.max(1000,Number(msg.durationMs||5000)));
+}
+function showCrownTop(msg){
+  clearTimeout(crownTopTimer);
+  const top=Array.isArray(msg.top)?msg.top:[];
+  crownTop.innerHTML=`<div class="crown-top-title">👑 <span>Top Reyes</span></div>${top.length?top.slice(0,5).map((row,i)=>`<div class="crown-top-row"><span class="crown-rank">${i+1}.</span><span class="crown-top-name">${escHtml(row.username)}${row.isCurrent?' 👑':''}</span><span class="crown-top-time">${formatTime(row.totalMs)}</span></div>`).join(''):'<div class="crown-top-empty">Todavía no hay historial.</div>'}`;
+  crownTop.classList.add('show');
+  crownTopTimer=setTimeout(()=>crownTop.classList.remove('show'),Math.max(1000,Number(msg.durationMs||10000)));
+}
+
 function realtimeUrl(){const proto=location.protocol==='https:'?'wss':'ws';return `${proto}://${location.host}/api/streambot/realtime/ws?role=overlay&key=${encodeURIComponent(key)}`}
 function connectRealtime(){if(!key)return;clearTimeout(reconnectTimer);try{if(socket&&socket.readyState<=1)socket.close()}catch{};let ws;try{ws=new WebSocket(realtimeUrl())}catch{return startFallback()};socket=ws;
-  ws.addEventListener('open',()=>{stopFallback();pollTts();pollMedia()});
-  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch{return};if(msg.type==='tts.available'){pollTts();return}if(msg.type==='scene.refresh'){pollMedia();return}if(msg.type==='scene.preview'&&msg.item){applyPreview(msg.item)}});
+  ws.addEventListener('open',()=>{stopFallback();pollTts();pollMedia();pollCrown()});
+  ws.addEventListener('message',event=>{let msg;try{msg=JSON.parse(event.data)}catch{return};if(msg.type==='tts.available'){pollTts();return}if(msg.type==='scene.refresh'){pollMedia();return}if(msg.type==='scene.preview'&&msg.item){applyPreview(msg.item);return}if(msg.type==='crown.refresh'){pollCrown();return}if(msg.type==='crown.alert'){showCrownAlert(msg);pollCrown();return}if(msg.type==='crown.showTop'){showCrownTop(msg);return}});
   ws.addEventListener('close',()=>{startFallback();reconnectTimer=setTimeout(connectRealtime,1800)});
   ws.addEventListener('error',()=>{try{ws.close()}catch{}});
 }
-function startFallback(){if(fallbackTimer)return;fallbackTimer=setInterval(()=>{pollTts();pollMedia()},15000)}
+function startFallback(){if(fallbackTimer)return;fallbackTimer=setInterval(()=>{pollTts();pollMedia();pollCrown()},15000)}
 function stopFallback(){clearInterval(fallbackTimer);fallbackTimer=null}
 
-pollTts();pollMedia();connectRealtime();
+setInterval(renderCrown,500);
+crownPollTimer=setInterval(pollCrown,20000);
+pollTts();pollMedia();pollCrown();connectRealtime();
 </script>
 </body>
 </html>
