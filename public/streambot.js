@@ -11,9 +11,7 @@ const fields = [
   "game_command_enabled","game_command_name","game_command_mods_allowed","stream_command_confirm",
   "crown_enabled","crown_steal_command","crown_info_commands","crown_min_minutes","crown_max_minutes",
   "crown_open_seconds","crown_alert_seconds","crown_top_seconds",
-  "crown_overlay_scale","crown_overlay_right","crown_overlay_bottom",
   "sub_goal_enabled","sub_goal_current","sub_goal_target",
-  "sub_goal_overlay_scale","sub_goal_overlay_right","sub_goal_overlay_bottom",
   "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
@@ -89,6 +87,12 @@ function paintStatus() {
   $("rewardStatus").textContent = rewardCount ? `${rewardCount}/4 configuradas` : "Sin crear";
   $("queueStatus").textContent = String(status.queueCount || 0);
   $("overlayUrl").value = status.overlayUrl || "";
+  try {
+    const overlayBase = new URL(status.overlayUrl || "", location.origin);
+    const overlayKey = overlayBase.searchParams.get("key") || "";
+    if ($("crownOverlayUrl")) $("crownOverlayUrl").value = `${location.origin}/crown-overlay.html?key=${encodeURIComponent(overlayKey)}`;
+    if ($("subGoalOverlayUrl")) $("subGoalOverlayUrl").value = `${location.origin}/subgoal-overlay.html?key=${encodeURIComponent(overlayKey)}`;
+  } catch {}
   if ($("controlUrl")) $("controlUrl").value = status.controlUrl || `${location.origin}/control.html`;
   if ($("mediaStorageStatus")) {
     $("mediaStorageStatus").textContent = status.mediaReady ? "R2 conectado · listo" : "Falta binding R2 STREAMBOT_MEDIA";
@@ -107,7 +111,6 @@ function paintConfig() {
     if (el.type === "checkbox") el.checked = Boolean(config[id]);
     else el.value = config[id] ?? "";
   }
-  if (typeof syncOverlayEditors === "function") syncOverlayEditors();
 }
 
 function collectConfig() {
@@ -331,175 +334,6 @@ async function crownRelease() {
 }
 
 
-function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-
-function setupOverlayEditor(opts) {
-  const scaleInput = $(opts.scaleInput);
-  const rightInput = $(opts.rightInput);
-  const bottomInput = $(opts.bottomInput);
-  const leftInput = $(opts.leftInput);
-  const topInput = $(opts.topInput);
-  const stepInput = $(opts.stepInput);
-  const scaleSlider = $(opts.scaleSlider);
-  const scaleReadout = $(opts.scaleReadout);
-  const rightReadout = $(opts.rightReadout);
-  const bottomReadout = $(opts.bottomReadout);
-  const stage = $(opts.stage);
-  const widget = $(opts.widget);
-  if (!scaleInput || !rightInput || !bottomInput || !scaleSlider || !stage || !widget) return () => {};
-
-  const BASE_STAGE_W = opts.stageWidth || 2560;
-  const BASE_STAGE_H = opts.stageHeight || 1440;
-
-  function getStep() { return clamp(Number(stepInput?.value) || 4, 1, 100); }
-
-  function widgetSize(scale) {
-    return { w: opts.baseWidth * scale / 100, h: opts.baseHeight * scale / 100 };
-  }
-
-  function syncVisibleFields(left, top) {
-    if (leftInput) leftInput.value = String(Math.round(left));
-    if (topInput) topInput.value = String(Math.round(top));
-    if (scaleReadout) scaleReadout.textContent = `${Math.round(Number(scaleInput.value) || opts.defaultScale)}%`;
-    if (rightReadout) rightReadout.textContent = `${Math.round(Number(rightInput.value) || 0)}px`;
-    if (bottomReadout) bottomReadout.textContent = `${Math.round(Number(bottomInput.value) || 0)}px`;
-  }
-
-  function updatePreview() {
-    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
-    const maxRight = BASE_STAGE_W;
-    const maxBottom = BASE_STAGE_H;
-    const right = clamp(Number(rightInput.value) || opts.defaultRight, 0, maxRight);
-    const bottom = clamp(Number(bottomInput.value) || opts.defaultBottom, 0, maxBottom);
-    scaleInput.value = Math.round(scale);
-    rightInput.value = Math.round(right);
-    bottomInput.value = Math.round(bottom);
-    scaleSlider.value = String(Math.round(scale));
-    const rect = stage.getBoundingClientRect();
-    const { w, h } = widgetSize(scale);
-    widget.style.width = `${w}px`;
-    widget.style.minHeight = `${h}px`;
-    const left = clamp(rect.width - w - (right / BASE_STAGE_W) * rect.width, 0, Math.max(0, rect.width - w));
-    const top = clamp(rect.height - h - (bottom / BASE_STAGE_H) * rect.height, 0, Math.max(0, rect.height - h));
-    widget.style.left = `${left}px`;
-    widget.style.top = `${top}px`;
-    syncVisibleFields((left / rect.width) * BASE_STAGE_W, (top / rect.height) * BASE_STAGE_H);
-  }
-
-  function applyFromLeftTop(leftPx, topPx) {
-    const rect = stage.getBoundingClientRect();
-    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
-    const { w, h } = widgetSize(scale);
-    const previewLeft = clamp((leftPx / BASE_STAGE_W) * rect.width, 0, Math.max(0, rect.width - w));
-    const previewTop = clamp((topPx / BASE_STAGE_H) * rect.height, 0, Math.max(0, rect.height - h));
-    const right = ((rect.width - previewLeft - w) / rect.width) * BASE_STAGE_W;
-    const bottom = ((rect.height - previewTop - h) / rect.height) * BASE_STAGE_H;
-    rightInput.value = String(Math.round(clamp(right, 0, BASE_STAGE_W)));
-    bottomInput.value = String(Math.round(clamp(bottom, 0, BASE_STAGE_H)));
-    updatePreview();
-  }
-
-  scaleSlider.addEventListener("input", () => {
-    scaleInput.value = scaleSlider.value;
-    updatePreview();
-  });
-
-  leftInput?.addEventListener("input", () => applyFromLeftTop(Number(leftInput.value) || 0, Number(topInput?.value) || 0));
-  topInput?.addEventListener("input", () => applyFromLeftTop(Number(leftInput?.value) || 0, Number(topInput.value) || 0));
-
-  const nudge = (dx, dy) => {
-    const step = getStep();
-    const nextLeft = (Number(leftInput?.value) || 0) + dx * step;
-    const nextTop = (Number(topInput?.value) || 0) + dy * step;
-    applyFromLeftTop(nextLeft, nextTop);
-  };
-
-  [[opts.nudgeUp,0,-1],[opts.nudgeLeft,-1,0],[opts.nudgeDown,0,1],[opts.nudgeRight,1,0]].forEach(([id,dx,dy]) => {
-    const btn = $(id);
-    if (btn) btn.addEventListener("click", () => nudge(dx, dy));
-  });
-
-  const presetDefault = $(opts.presetDefault);
-  if (presetDefault) presetDefault.addEventListener("click", () => {
-    scaleInput.value = String(opts.defaultScale);
-    rightInput.value = String(opts.defaultRight);
-    bottomInput.value = String(opts.defaultBottom);
-    updatePreview();
-  });
-  const presetSecondary = $(opts.presetSecondary);
-  if (presetSecondary) presetSecondary.addEventListener("click", () => {
-    scaleInput.value = String(opts.defaultScale);
-    rightInput.value = String(opts.defaultRight);
-    bottomInput.value = String(opts.secondaryBottom);
-    updatePreview();
-  });
-  const presetCorner = $(opts.presetCorner);
-  if (presetCorner) presetCorner.addEventListener("click", () => {
-    scaleInput.value = String(opts.defaultScale);
-    rightInput.value = String(opts.defaultRight);
-    bottomInput.value = String(opts.defaultBottom);
-    updatePreview();
-  });
-
-  let drag = null;
-  widget.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    const rect = widget.getBoundingClientRect();
-    drag = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
-    widget.classList.add("dragging");
-    try { widget.setPointerCapture(e.pointerId); } catch {}
-  });
-  widget.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    const stageRect = stage.getBoundingClientRect();
-    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
-    const { w, h } = widgetSize(scale);
-    const previewLeft = clamp(e.clientX - stageRect.left - drag.dx, 0, Math.max(0, stageRect.width - w));
-    const previewTop = clamp(e.clientY - stageRect.top - drag.dy, 0, Math.max(0, stageRect.height - h));
-    const leftPx = (previewLeft / stageRect.width) * BASE_STAGE_W;
-    const topPx = (previewTop / stageRect.height) * BASE_STAGE_H;
-    applyFromLeftTop(leftPx, topPx);
-  });
-  const endDrag = (e) => {
-    if (!drag) return;
-    drag = null;
-    widget.classList.remove("dragging");
-    try { widget.releasePointerCapture?.(e.pointerId); } catch {}
-  };
-  widget.addEventListener("pointerup", endDrag);
-  widget.addEventListener("pointercancel", endDrag);
-  window.addEventListener("resize", updatePreview);
-  updatePreview();
-  return updatePreview;
-}
-
-let syncOverlayEditors = null;
-function initOverlayEditors() {
-  const editors = [
-    setupOverlayEditor({
-      scaleInput: "crown_overlay_scale", rightInput: "crown_overlay_right", bottomInput: "crown_overlay_bottom",
-      leftInput: "crownLeftInput", topInput: "crownTopInput", stepInput: "crownNudgeStep",
-      scaleSlider: "crownScaleSlider", scaleReadout: "crownScaleReadout", rightReadout: "crownRightReadout", bottomReadout: "crownBottomReadout",
-      stage: "crownPreviewStage", widget: "crownPreviewWidget",
-      nudgeUp: "crownNudgeUp", nudgeLeft: "crownNudgeLeft", nudgeDown: "crownNudgeDown", nudgeRight: "crownNudgeRight",
-      presetDefault: "crownPresetDefault", presetSecondary: "crownPresetHigher", presetCorner: "crownPresetBottomRight",
-      stageWidth: 2560, stageHeight: 1440,
-      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 120, baseWidth: 380, baseHeight: 100,
-    }),
-    setupOverlayEditor({
-      scaleInput: "sub_goal_overlay_scale", rightInput: "sub_goal_overlay_right", bottomInput: "sub_goal_overlay_bottom",
-      leftInput: "subGoalLeftInput", topInput: "subGoalTopInput", stepInput: "subGoalNudgeStep",
-      scaleSlider: "subGoalScaleSlider", scaleReadout: "subGoalScaleReadout", rightReadout: "subGoalRightReadout", bottomReadout: "subGoalBottomReadout",
-      stage: "subGoalPreviewStage", widget: "subGoalPreviewWidget",
-      nudgeUp: "subGoalNudgeUp", nudgeLeft: "subGoalNudgeLeft", nudgeDown: "subGoalNudgeDown", nudgeRight: "subGoalNudgeRight",
-      presetDefault: "subGoalPresetDefault", presetSecondary: "subGoalPresetLower", presetCorner: "subGoalPresetBottomRight",
-      stageWidth: 2560, stageHeight: 1440,
-      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 210, baseWidth: 380, baseHeight: 100,
-    }),
-  ];
-  syncOverlayEditors = () => editors.forEach((fn) => fn && fn());
-}
-
 function paintLogs(logs = []) {
   const host = $("logsList");
   host.innerHTML = "";
@@ -537,6 +371,8 @@ for (let slot = 1; slot <= 4; slot++) {
 $("testChat").addEventListener("click", testChat);
 $("refreshLogs").addEventListener("click", loadLogs);
 $("copyOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("overlayUrl").value); showNotice("URL copiada."); });
+if ($("copyCrownOverlay")) $("copyCrownOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("crownOverlayUrl").value); showNotice("URL de Corona copiada."); });
+if ($("copySubGoalOverlay")) $("copySubGoalOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("subGoalOverlayUrl").value); showNotice("URL de Meta de subs copiada."); });
 $("addCommand").addEventListener("click", () => {
   const host = $("commandsList");
   if (host.querySelector(".hint")) host.innerHTML = "";
@@ -551,13 +387,10 @@ if ($("crownShowTop")) $("crownShowTop").addEventListener("click", crownShowTop)
 if ($("crownTestAlert")) $("crownTestAlert").addEventListener("click", crownTestAlert);
 if ($("crownRelease")) $("crownRelease").addEventListener("click", crownRelease);
 
-initOverlayEditors();
-
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
   document.querySelectorAll(".panel-section").forEach(s => s.classList.remove("active"));
   $(`section-${button.dataset.section}`).classList.add("active");
-  if (typeof syncOverlayEditors === "function") syncOverlayEditors();
   if (button.dataset.section === "logs") loadLogs();
   if (button.dataset.section === "mods") loadMods();
   if (button.dataset.section === "crown") loadCrown();
