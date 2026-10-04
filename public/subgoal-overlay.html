@@ -1,16 +1,13 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Meta Subs Overlay</title>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Meta Subs Overlay</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Zalando+Sans:ital,wght@0,200..900;1,200..900&display=swap');
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:#fff;font-family:'Zalando Sans',Arial,sans-serif}body{display:grid;place-items:center}
-.panel{width:100%;height:100%;min-width:520px;min-height:145px;background:rgba(6,7,9,.96);border:2px solid #666b74;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.32);padding:20px 26px 18px;display:flex;flex-direction:column}
-.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end}.eyebrow{display:block;font-size:11px;line-height:1;color:#90959e;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}.title{font-size:28px;line-height:1;font-weight:850;color:#fff}.count{font-size:30px;line-height:1;font-weight:850;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
-.bar{height:7px;margin-top:17px;background:#252930;border-radius:3px;overflow:hidden}.fill{height:100%;width:0;background:#fff;border-radius:3px;transition:width .35s ease}
-.foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8f959e}.pct{font-size:13px;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.03em}
-</style>
-</head><body>
+.panel{width:min(calc(100% - 16px),580px);height:min(calc(100% - 16px),205px);background:rgba(6,7,9,.96);border:2px solid #666b74;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.32);padding:20px 24px 18px;display:flex;flex-direction:column}
+.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end}.eyebrow{display:block;font-size:11px;line-height:1;color:#90959e;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}.title{font-size:35px;line-height:.96;font-weight:850;color:#fff}.count{font-size:36px;line-height:1;font-weight:850;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar{height:8px;margin-top:18px;background:#252930;border-radius:4px;overflow:hidden}.fill{height:100%;width:0;background:#fff;border-radius:4px;transition:width .35s ease}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:14px;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#8f959e}.pct{font-size:16px;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+</style></head><body>
 <div id="panel" class="panel"><div class="head"><div><span class="eyebrow">Meta mensual</span><span class="title">Meta de subs</span></div><span id="count" class="count">0 / 50</span></div><div class="bar"><div id="fill" class="fill"></div></div><div class="foot"><span id="month">Meta mensual</span><span id="pct" class="pct">0%</span></div></div>
 <script>
 const key=new URLSearchParams(location.search).get('key')||'',panel=document.getElementById('panel'),count=document.getElementById('count'),fill=document.getElementById('fill'),month=document.getElementById('month'),pct=document.getElementById('pct');let ws=null;
@@ -18,5 +15,4 @@ function monthName(k){const m=String(k||'').match(/^(\d{4})-(\d{2})$/),n=['enero
 async function poll(){if(!key)return;try{const r=await fetch(`/api/streambot/subgoal/state?key=${encodeURIComponent(key)}`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(!d.enabled){panel.style.display='none';return}panel.style.display='flex';const cur=Math.max(0,Math.round(Number(d.current)||0)),target=Math.max(1,Math.round(Number(d.target)||1)),p=Math.max(0,Math.round(cur/target*100));count.textContent=`${cur} / ${target}`;fill.style.width=`${Math.min(100,p)}%`;month.textContent=monthName(d.month);pct.textContent=`${p}%`}catch{}}
 function connect(){if(!key)return;const proto=location.protocol==='https:'?'wss':'ws';try{ws=new WebSocket(`${proto}://${location.host}/api/streambot/realtime/ws?role=overlay&key=${encodeURIComponent(key)}`)}catch{return}ws.addEventListener('open',poll);ws.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch{return}if(m.type==='subgoal.refresh')poll()});ws.addEventListener('close',()=>setTimeout(connect,1800));ws.addEventListener('error',()=>{try{ws.close()}catch{}})}
 setInterval(poll,20000);poll();connect();
-</script>
-</body></html>
+</script></body></html>
