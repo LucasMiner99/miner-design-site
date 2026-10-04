@@ -337,6 +337,9 @@ function setupOverlayEditor(opts) {
   const scaleInput = $(opts.scaleInput);
   const rightInput = $(opts.rightInput);
   const bottomInput = $(opts.bottomInput);
+  const leftInput = $(opts.leftInput);
+  const topInput = $(opts.topInput);
+  const stepInput = $(opts.stepInput);
   const scaleSlider = $(opts.scaleSlider);
   const scaleReadout = $(opts.scaleReadout);
   const rightReadout = $(opts.rightReadout);
@@ -345,26 +348,29 @@ function setupOverlayEditor(opts) {
   const widget = $(opts.widget);
   if (!scaleInput || !rightInput || !bottomInput || !scaleSlider || !stage || !widget) return () => {};
 
-  const BASE_STAGE_W = 1920;
-  const BASE_STAGE_H = 1080;
+  const BASE_STAGE_W = opts.stageWidth || 2560;
+  const BASE_STAGE_H = opts.stageHeight || 1440;
+
+  function getStep() { return clamp(Number(stepInput?.value) || 4, 1, 100); }
 
   function widgetSize(scale) {
-    return {
-      w: opts.baseWidth * scale / 100,
-      h: opts.baseHeight * scale / 100,
-    };
+    return { w: opts.baseWidth * scale / 100, h: opts.baseHeight * scale / 100 };
   }
 
-  function writeReadouts() {
-    if (scaleReadout) scaleReadout.textContent = `${Math.round(Number(scaleInput.value) || 100)}%`;
+  function syncVisibleFields(left, top) {
+    if (leftInput) leftInput.value = String(Math.round(left));
+    if (topInput) topInput.value = String(Math.round(top));
+    if (scaleReadout) scaleReadout.textContent = `${Math.round(Number(scaleInput.value) || opts.defaultScale)}%`;
     if (rightReadout) rightReadout.textContent = `${Math.round(Number(rightInput.value) || 0)}px`;
     if (bottomReadout) bottomReadout.textContent = `${Math.round(Number(bottomInput.value) || 0)}px`;
   }
 
   function updatePreview() {
     const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
-    const right = clamp(Number(rightInput.value) || opts.defaultRight, 0, 1200);
-    const bottom = clamp(Number(bottomInput.value) || opts.defaultBottom, 0, 1200);
+    const maxRight = BASE_STAGE_W;
+    const maxBottom = BASE_STAGE_H;
+    const right = clamp(Number(rightInput.value) || opts.defaultRight, 0, maxRight);
+    const bottom = clamp(Number(bottomInput.value) || opts.defaultBottom, 0, maxBottom);
     scaleInput.value = Math.round(scale);
     rightInput.value = Math.round(right);
     bottomInput.value = Math.round(bottom);
@@ -372,24 +378,24 @@ function setupOverlayEditor(opts) {
     const rect = stage.getBoundingClientRect();
     const { w, h } = widgetSize(scale);
     widget.style.width = `${w}px`;
-    widget.style.height = `${h}px`;
+    widget.style.minHeight = `${h}px`;
     const left = clamp(rect.width - w - (right / BASE_STAGE_W) * rect.width, 0, Math.max(0, rect.width - w));
     const top = clamp(rect.height - h - (bottom / BASE_STAGE_H) * rect.height, 0, Math.max(0, rect.height - h));
     widget.style.left = `${left}px`;
     widget.style.top = `${top}px`;
-    writeReadouts();
+    syncVisibleFields((left / rect.width) * BASE_STAGE_W, (top / rect.height) * BASE_STAGE_H);
   }
 
-  function applyFromLeftTop(left, top) {
+  function applyFromLeftTop(leftPx, topPx) {
     const rect = stage.getBoundingClientRect();
     const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
     const { w, h } = widgetSize(scale);
-    const clampedLeft = clamp(left, 0, Math.max(0, rect.width - w));
-    const clampedTop = clamp(top, 0, Math.max(0, rect.height - h));
-    const right = ((rect.width - clampedLeft - w) / rect.width) * BASE_STAGE_W;
-    const bottom = ((rect.height - clampedTop - h) / rect.height) * BASE_STAGE_H;
-    rightInput.value = String(Math.round(clamp(right, 0, 1200)));
-    bottomInput.value = String(Math.round(clamp(bottom, 0, 1200)));
+    const previewLeft = clamp((leftPx / BASE_STAGE_W) * rect.width, 0, Math.max(0, rect.width - w));
+    const previewTop = clamp((topPx / BASE_STAGE_H) * rect.height, 0, Math.max(0, rect.height - h));
+    const right = ((rect.width - previewLeft - w) / rect.width) * BASE_STAGE_W;
+    const bottom = ((rect.height - previewTop - h) / rect.height) * BASE_STAGE_H;
+    rightInput.value = String(Math.round(clamp(right, 0, BASE_STAGE_W)));
+    bottomInput.value = String(Math.round(clamp(bottom, 0, BASE_STAGE_H)));
     updatePreview();
   }
 
@@ -398,18 +404,17 @@ function setupOverlayEditor(opts) {
     updatePreview();
   });
 
+  leftInput?.addEventListener("input", () => applyFromLeftTop(Number(leftInput.value) || 0, Number(topInput?.value) || 0));
+  topInput?.addEventListener("input", () => applyFromLeftTop(Number(leftInput?.value) || 0, Number(topInput.value) || 0));
+
   const nudge = (dx, dy) => {
-    const left = parseFloat(widget.style.left || "0") + dx;
-    const top = parseFloat(widget.style.top || "0") + dy;
-    applyFromLeftTop(left, top);
+    const step = getStep();
+    const nextLeft = (Number(leftInput?.value) || 0) + dx * step;
+    const nextTop = (Number(topInput?.value) || 0) + dy * step;
+    applyFromLeftTop(nextLeft, nextTop);
   };
 
-  [
-    [opts.nudgeUp, 0, -4],
-    [opts.nudgeLeft, -4, 0],
-    [opts.nudgeDown, 0, 4],
-    [opts.nudgeRight, 4, 0],
-  ].forEach(([id, dx, dy]) => {
+  [[opts.nudgeUp,0,-1],[opts.nudgeLeft,-1,0],[opts.nudgeDown,0,1],[opts.nudgeRight,1,0]].forEach(([id,dx,dy]) => {
     const btn = $(id);
     if (btn) btn.addEventListener("click", () => nudge(dx, dy));
   });
@@ -421,12 +426,18 @@ function setupOverlayEditor(opts) {
     bottomInput.value = String(opts.defaultBottom);
     updatePreview();
   });
-
   const presetSecondary = $(opts.presetSecondary);
   if (presetSecondary) presetSecondary.addEventListener("click", () => {
     scaleInput.value = String(opts.defaultScale);
     rightInput.value = String(opts.defaultRight);
     bottomInput.value = String(opts.secondaryBottom);
+    updatePreview();
+  });
+  const presetCorner = $(opts.presetCorner);
+  if (presetCorner) presetCorner.addEventListener("click", () => {
+    scaleInput.value = String(opts.defaultScale);
+    rightInput.value = String(opts.defaultRight);
+    bottomInput.value = String(opts.defaultBottom);
     updatePreview();
   });
 
@@ -441,7 +452,13 @@ function setupOverlayEditor(opts) {
   widget.addEventListener("pointermove", (e) => {
     if (!drag) return;
     const stageRect = stage.getBoundingClientRect();
-    applyFromLeftTop(e.clientX - stageRect.left - drag.dx, e.clientY - stageRect.top - drag.dy);
+    const scale = clamp(Number(scaleInput.value) || opts.defaultScale, 50, 250);
+    const { w, h } = widgetSize(scale);
+    const previewLeft = clamp(e.clientX - stageRect.left - drag.dx, 0, Math.max(0, stageRect.width - w));
+    const previewTop = clamp(e.clientY - stageRect.top - drag.dy, 0, Math.max(0, stageRect.height - h));
+    const leftPx = (previewLeft / stageRect.width) * BASE_STAGE_W;
+    const topPx = (previewTop / stageRect.height) * BASE_STAGE_H;
+    applyFromLeftTop(leftPx, topPx);
   });
   const endDrag = (e) => {
     if (!drag) return;
@@ -461,19 +478,23 @@ function initOverlayEditors() {
   const editors = [
     setupOverlayEditor({
       scaleInput: "crown_overlay_scale", rightInput: "crown_overlay_right", bottomInput: "crown_overlay_bottom",
+      leftInput: "crownLeftInput", topInput: "crownTopInput", stepInput: "crownNudgeStep",
       scaleSlider: "crownScaleSlider", scaleReadout: "crownScaleReadout", rightReadout: "crownRightReadout", bottomReadout: "crownBottomReadout",
       stage: "crownPreviewStage", widget: "crownPreviewWidget",
       nudgeUp: "crownNudgeUp", nudgeLeft: "crownNudgeLeft", nudgeDown: "crownNudgeDown", nudgeRight: "crownNudgeRight",
-      presetDefault: "crownPresetDefault", presetSecondary: "crownPresetHigher",
-      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 90, baseWidth: 270, baseHeight: 72,
+      presetDefault: "crownPresetDefault", presetSecondary: "crownPresetHigher", presetCorner: "crownPresetBottomRight",
+      stageWidth: 2560, stageHeight: 1440,
+      defaultScale: 100, defaultRight: 34, defaultBottom: 34, secondaryBottom: 120, baseWidth: 336, baseHeight: 134,
     }),
     setupOverlayEditor({
       scaleInput: "sub_goal_overlay_scale", rightInput: "sub_goal_overlay_right", bottomInput: "sub_goal_overlay_bottom",
+      leftInput: "subGoalLeftInput", topInput: "subGoalTopInput", stepInput: "subGoalNudgeStep",
       scaleSlider: "subGoalScaleSlider", scaleReadout: "subGoalScaleReadout", rightReadout: "subGoalRightReadout", bottomReadout: "subGoalBottomReadout",
       stage: "subGoalPreviewStage", widget: "subGoalPreviewWidget",
       nudgeUp: "subGoalNudgeUp", nudgeLeft: "subGoalNudgeLeft", nudgeDown: "subGoalNudgeDown", nudgeRight: "subGoalNudgeRight",
-      presetDefault: "subGoalPresetDefault", presetSecondary: "subGoalPresetLower",
-      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 180, baseWidth: 270, baseHeight: 68,
+      presetDefault: "subGoalPresetDefault", presetSecondary: "subGoalPresetLower", presetCorner: "subGoalPresetBottomRight",
+      stageWidth: 2560, stageHeight: 1440,
+      defaultScale: 100, defaultRight: 34, defaultBottom: 132, secondaryBottom: 210, baseWidth: 336, baseHeight: 134,
     }),
   ];
   syncOverlayEditors = () => editors.forEach((fn) => fn && fn());

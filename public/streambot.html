@@ -180,16 +180,16 @@
             <label class="field"><span>Duración del Top 5 (seg)</span><input id="crown_top_seconds" type="number" min="1" max="60" /></label>
           </div>
           <div class="card-subsection">
-            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Marco estilo WoW. Arrastrá el cartel en la vista previa o usá las flechas finas.</small></div>
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Usa el nuevo fondo WoW. Base real: 2560×1440, igual que tu monitor y OBS.</small></div>
             <div class="overlay-editor" id="crownOverlayEditor">
               <input id="crown_overlay_scale" type="number" min="50" max="250" step="5" hidden />
-              <input id="crown_overlay_right" type="number" min="0" max="1200" step="1" hidden />
-              <input id="crown_overlay_bottom" type="number" min="0" max="1200" step="1" hidden />
+              <input id="crown_overlay_right" type="number" min="0" max="2560" step="1" hidden />
+              <input id="crown_overlay_bottom" type="number" min="0" max="1440" step="1" hidden />
               <label class="overlay-slider-label"><span>Tamaño</span><input id="crownScaleSlider" type="range" min="50" max="250" step="5" /><b id="crownScaleReadout">100%</b></label>
               <div class="overlay-editor-layout">
                 <div id="crownPreviewStage" class="overlay-preview-stage">
                   <div class="overlay-preview-grid"></div>
-                  <div class="overlay-preview-screen-label">Vista previa OBS · arrastrá el cartel</div>
+                  <div class="overlay-preview-screen-label">Vista previa OBS 2560×1440 · arrastrá el cartel</div>
                   <div id="crownPreviewWidget" class="preview-widget preview-crown">
                     <div class="preview-wow-rivet rivet-tl"></div><div class="preview-wow-rivet rivet-tr"></div><div class="preview-wow-rivet rivet-bl"></div><div class="preview-wow-rivet rivet-br"></div>
                     <div class="preview-crown-main"><span class="preview-crown-icon">👑</span><span class="preview-crown-title">Rey</span><span class="preview-crown-name">MinerDesign</span></div>
@@ -197,10 +197,16 @@
                   </div>
                 </div>
                 <div class="overlay-tools">
-                  <div class="overlay-readouts">
+                  <div class="overlay-meta">Base real del canvas: <b>2560 × 1440</b></div>
+                  <div class="overlay-pos-grid">
+                    <label class="overlay-mini-field"><span>X</span><input id="crownLeftInput" type="number" min="0" max="2560" step="1" /></label>
+                    <label class="overlay-mini-field"><span>Y</span><input id="crownTopInput" type="number" min="0" max="1440" step="1" /></label>
+                  </div>
+                  <div class="overlay-readouts compact">
                     <div><span>Derecha</span><b id="crownRightReadout">34px</b></div>
                     <div><span>Abajo</span><b id="crownBottomReadout">34px</b></div>
                   </div>
+                  <label class="overlay-step-field"><span>Paso flechas</span><input id="crownNudgeStep" type="number" min="1" max="100" step="1" value="4" /><small>px</small></label>
                   <div class="overlay-nudge" aria-label="Mover overlay corona">
                     <button type="button" class="secondary-button small" id="crownNudgeUp">↑</button>
                     <button type="button" class="secondary-button small" id="crownNudgeLeft">←</button>
@@ -210,6 +216,7 @@
                   <div class="overlay-presets">
                     <button type="button" class="ghost-button small" id="crownPresetDefault">Reset</button>
                     <button type="button" class="ghost-button small" id="crownPresetHigher">Subir un poco</button>
+                    <button type="button" class="ghost-button small" id="crownPresetBottomRight">Abajo der.</button>
                   </div>
                 </div>
               </div>
@@ -242,16 +249,16 @@
           </div>
           <p class="hint">El contador es editable por si necesitás corregirlo manualmente. Al empezar un mes nuevo vuelve a 0 automáticamente.</p>
           <div class="card-subsection">
-            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Mismo marco estilo WoW que Corona. Podés arrastrarlo o moverlo fino.</small></div>
+            <div class="card-subsection-title"><b>Overlay en OBS</b><small>Mismo fondo WoW que Corona. Base real: 2560×1440 para que coincida con OBS.</small></div>
             <div class="overlay-editor" id="subGoalOverlayEditor">
               <input id="sub_goal_overlay_scale" type="number" min="50" max="250" step="5" hidden />
-              <input id="sub_goal_overlay_right" type="number" min="0" max="1200" step="1" hidden />
-              <input id="sub_goal_overlay_bottom" type="number" min="0" max="1200" step="1" hidden />
+              <input id="sub_goal_overlay_right" type="number" min="0" max="2560" step="1" hidden />
+              <input id="sub_goal_overlay_bottom" type="number" min="0" max="1440" step="1" hidden />
               <label class="overlay-slider-label"><span>Tamaño</span><input id="subGoalScaleSlider" type="range" min="50" max="250" step="5" /><b id="subGoalScaleReadout">100%</b></label>
               <div class="overlay-editor-layout">
                 <div id="subGoalPreviewStage" class="overlay-preview-stage">
                   <div class="overlay-preview-grid"></div>
-                  <div class="overlay-preview-screen-label">Vista previa OBS · arrastrá el cartel</div>
+                  <div class="overlay-preview-screen-label">Vista previa OBS 2560×1440 · arrastrá el cartel</div>
                   <div id="subGoalPreviewWidget" class="preview-widget preview-subgoal">
                     <div class="preview-wow-rivet rivet-tl"></div><div class="preview-wow-rivet rivet-tr"></div><div class="preview-wow-rivet rivet-bl"></div><div class="preview-wow-rivet rivet-br"></div>
                     <div class="preview-subgoal-main"><span class="preview-subgoal-icon">★</span><span class="preview-subgoal-title">Meta de subs</span><span class="preview-subgoal-count">12 / 50</span></div>
@@ -259,10 +266,16 @@
                   </div>
                 </div>
                 <div class="overlay-tools">
-                  <div class="overlay-readouts">
+                  <div class="overlay-meta">Base real del canvas: <b>2560 × 1440</b></div>
+                  <div class="overlay-pos-grid">
+                    <label class="overlay-mini-field"><span>X</span><input id="subGoalLeftInput" type="number" min="0" max="2560" step="1" /></label>
+                    <label class="overlay-mini-field"><span>Y</span><input id="subGoalTopInput" type="number" min="0" max="1440" step="1" /></label>
+                  </div>
+                  <div class="overlay-readouts compact">
                     <div><span>Derecha</span><b id="subGoalRightReadout">34px</b></div>
                     <div><span>Abajo</span><b id="subGoalBottomReadout">132px</b></div>
                   </div>
+                  <label class="overlay-step-field"><span>Paso flechas</span><input id="subGoalNudgeStep" type="number" min="1" max="100" step="1" value="4" /><small>px</small></label>
                   <div class="overlay-nudge" aria-label="Mover overlay meta subs">
                     <button type="button" class="secondary-button small" id="subGoalNudgeUp">↑</button>
                     <button type="button" class="secondary-button small" id="subGoalNudgeLeft">←</button>
@@ -272,6 +285,7 @@
                   <div class="overlay-presets">
                     <button type="button" class="ghost-button small" id="subGoalPresetDefault">Reset</button>
                     <button type="button" class="ghost-button small" id="subGoalPresetLower">Bajar un poco</button>
+                    <button type="button" class="ghost-button small" id="subGoalPresetBottomRight">Abajo der.</button>
                   </div>
                 </div>
               </div>
