@@ -333,6 +333,12 @@ async function crownRelease() {
   catch (err) { showNotice(err.message, true); }
 }
 
+async function crownResetLeaderboard() {
+  if (!confirm("¿Reiniciar el leaderboard de la corona? Esto borra el Top y los tiempos acumulados.")) return;
+  try { await api("/crown/reset-leaderboard", { method: "POST" }); await loadCrown(); showNotice("Leaderboard reiniciado."); }
+  catch (err) { showNotice(err.message, true); }
+}
+
 
 function paintLogs(logs = []) {
   const host = $("logsList");
@@ -386,6 +392,7 @@ if ($("newModUsername")) $("newModUsername").addEventListener("keydown", e => { 
 if ($("crownShowTop")) $("crownShowTop").addEventListener("click", crownShowTop);
 if ($("crownTestAlert")) $("crownTestAlert").addEventListener("click", crownTestAlert);
 if ($("crownRelease")) $("crownRelease").addEventListener("click", crownRelease);
+if ($("crownResetLeaderboard")) $("crownResetLeaderboard").addEventListener("click", crownResetLeaderboard);
 
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));

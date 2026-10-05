@@ -246,6 +246,9 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path === "/api/streambot/crown/release" && request.method === "POST") {
       return await crownAdminRelease(env);
     }
+    if (path === "/api/streambot/crown/reset-leaderboard" && request.method === "POST") {
+      return await crownAdminResetLeaderboard(env);
+    }
     if (path === "/api/streambot/disconnect" && request.method === "POST") {
       await env.STREAMBOT_DB.prepare("DELETE FROM streambot_oauth_tokens WHERE provider='kick'").run();
       await setSetting(env, "kick_user_id", "");
@@ -1171,6 +1174,27 @@ async function crownAdminRelease(env) {
     WHERE id=1
   `).run();
   await safeLog(env, "info", "crown-release", null, "Corona liberada manualmente desde el dashboard.");
+  await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
+  return json({ ok: true, ...(await getCrownSnapshot(env, config)) });
+}
+
+async function crownAdminResetLeaderboard(env) {
+  const config = await getConfig(env);
+  const state = await getCrownState(env);
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_crown_users").run();
+  if (state?.current_user_id) {
+    await env.STREAMBOT_DB.prepare(`
+      INSERT INTO streambot_crown_users (user_id, username, crowns_won, total_reign_ms, best_reign_ms, updated_at)
+      VALUES (?, ?, 1, 0, 0, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        username=excluded.username,
+        crowns_won=excluded.crowns_won,
+        total_reign_ms=excluded.total_reign_ms,
+        best_reign_ms=excluded.best_reign_ms,
+        updated_at=CURRENT_TIMESTAMP
+    `).bind(String(state.current_user_id), String(state.current_username || state.current_user_id)).run();
+  }
+  await safeLog(env, "info", "crown-reset-leaderboard", null, "Leaderboard de la corona reiniciado manualmente desde el dashboard.");
   await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
   return json({ ok: true, ...(await getCrownSnapshot(env, config)) });
 }
