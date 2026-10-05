@@ -1,21 +1,302 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Corona Overlay</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Corona Overlay</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Zalando+Sans:ital,wght@0,200..900;1,200..900&display=swap');
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:#fff;font-family:'Zalando Sans',Arial,sans-serif}body{display:grid;place-items:center}
-.panel{position:relative;width:min(calc(100% - 16px),580px);height:min(calc(100% - 16px),250px);background:rgba(6,7,9,.96);border:2px solid #666b74;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.32);overflow:hidden}
-.main{height:100%;display:flex;flex-direction:column;padding:22px 24px 20px}
-.top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:18px;min-width:0}
-.identity{min-width:0;display:flex;gap:12px;align-items:flex-start}.crown{font-size:24px;line-height:1;color:#fff;opacity:.95;margin-top:5px}.eyebrow{display:block;font-size:11px;line-height:1;color:#90959e;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}.name{display:block;font-size:40px;line-height:.94;font-weight:850;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.time{font-size:34px;line-height:1;font-weight:850;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.01em;padding-top:16px}
-.bottom{margin-top:auto;padding-top:18px;border-top:1px solid #343840;display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:end}
-.block-label{display:block;font-size:10px;line-height:1;color:#858b94;font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin-bottom:8px}.countdown{display:block;font-size:42px;line-height:.92;font-weight:850;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap}.hint{font-size:17px;line-height:1.15;font-weight:650;color:#d9dce1}.hint strong{font-weight:900;color:#fff}.bottom-right{text-align:right;align-self:end}
-.panel.open{border-color:#9499a2}.panel.open .countdown{font-weight:900}
-.alert,.topview{position:absolute;inset:0;background:rgba(6,7,9,.98);display:none}.alert.show{display:grid;place-items:center;padding:30px;text-align:center;font-size:31px;line-height:1.08;font-weight:850}.alert b{font-weight:900}.topview.show{display:flex;flex-direction:column;padding:20px 24px}.top-title{font-size:18px;font-weight:850;margin-bottom:10px}.top-row{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #292d34;font-size:15px;font-weight:700}.top-row:first-of-type{border-top:0}.rank{color:#8d939d}.row-time{font-variant-numeric:tabular-nums;color:#fff}.main.hidden{visibility:hidden}
-</style></head><body>
-<div id="panel" class="panel"><div id="main" class="main"><div class="top"><div class="identity"><span class="crown">♛</span><div><span class="eyebrow">Rey</span><span id="king" class="name">Sin rey</span></div></div><span id="held" class="time">00:00:00</span></div><div class="bottom"><div><span class="block-label">Se puede robar en</span><span id="countdown" class="countdown">00:00</span></div><div class="bottom-right"><span class="block-label">Cómo robar</span><span id="hint" class="hint">Escribí <strong>!robar</strong><br>cuando se abra</span></div></div></div><div id="alert" class="alert"></div><div id="top" class="topview"></div></div>
+
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:transparent;
+  color:#fff;
+  font-family:'Zalando Sans',Arial,sans-serif;
+}
+body{display:grid;place-items:center}
+
+.panel{
+  position:relative;
+  width:min(calc(100% - 16px),580px);
+  height:min(calc(100% - 16px),250px);
+  overflow:hidden;
+  background:linear-gradient(180deg,rgba(8,10,15,.985),rgba(5,7,11,.985));
+  border:2px solid #717887;
+  border-radius:10px;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.36),
+    inset 0 1px 0 rgba(255,255,255,.025);
+}
+.main{
+  height:100%;
+  display:grid;
+  grid-template-rows:88px 1px minmax(0,1fr);
+  padding:14px 18px 13px;
+}
+
+.top{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:16px;
+  align-items:center;
+  min-width:0;
+}
+.identity{
+  min-width:0;
+  display:flex;
+  gap:13px;
+  align-items:center;
+}
+.icon-tile{
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border:1px solid #313846;
+  border-radius:9px;
+  background:linear-gradient(180deg,#141925,#0f131c);
+  color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.crown{
+  font-size:24px;
+  line-height:1;
+  transform:translateY(-1px);
+}
+.eyebrow{
+  display:block;
+  margin-bottom:5px;
+  font-size:11px;
+  line-height:1;
+  font-weight:850;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  color:#aab0bc;
+}
+.name{
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:36px;
+  line-height:.92;
+  font-weight:900;
+  letter-spacing:-.035em;
+  color:#fff;
+}
+.time{
+  align-self:center;
+  font-size:34px;
+  line-height:.9;
+  font-weight:900;
+  letter-spacing:-.02em;
+  color:#fff;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.divider{background:#303641}
+
+.bottom{
+  display:grid;
+  grid-template-columns:1fr 1.08fr;
+  gap:16px;
+  padding-top:12px;
+  min-height:0;
+}
+.bottom-left,
+.bottom-right{
+  min-width:0;
+}
+.bottom-left{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  column-gap:10px;
+  align-items:start;
+}
+.hourglass-tile{
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  margin-top:2px;
+  border:1px solid #33405e;
+  border-radius:9px;
+  background:linear-gradient(180deg,#151a27,#10141d);
+  color:#fff;
+  font-size:22px;
+  line-height:1;
+}
+.bottom-content{min-width:0}
+.block-label{
+  display:block;
+  margin-bottom:7px;
+  font-size:14px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#d8dce5;
+  white-space:nowrap;
+}
+.countdown-wrap{
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 10px 6px;
+  border:1px solid #3a4262;
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(68,54,155,.14),rgba(19,22,34,.96));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.countdown{
+  display:block;
+  font-size:43px;
+  line-height:.88;
+  font-weight:900;
+  letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;
+  color:#fff;
+  white-space:nowrap;
+}
+.bottom-right{
+  padding-left:16px;
+  border-left:1px solid #303641;
+}
+.hint-box{
+  min-height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 10px;
+  border:1px solid #303744;
+  border-radius:10px;
+  background:#10141c;
+}
+.hint{
+  display:block;
+  width:100%;
+  text-align:center;
+  font-size:21px;
+  line-height:1.02;
+  font-weight:800;
+  letter-spacing:-.018em;
+  color:#fff;
+}
+.hint strong{font-weight:950;color:#fff}
+
+.panel.open{
+  border-color:#7b6cff;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.36),
+    0 0 20px rgba(91,75,255,.16),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+.panel.open .countdown-wrap{
+  border-color:#6b59ff;
+  background:linear-gradient(180deg,rgba(91,67,219,.22),rgba(18,21,34,.97));
+  box-shadow:0 0 16px rgba(91,75,255,.22),inset 0 1px 0 rgba(255,255,255,.035);
+}
+.panel.open .countdown{font-size:29px;font-weight:950;letter-spacing:-.015em}
+
+.alert,.topview{
+  position:absolute;
+  inset:0;
+  background:rgba(6,8,13,.99);
+  display:none;
+}
+.alert.show{
+  display:grid;
+  place-items:center;
+  padding:30px;
+  text-align:center;
+  font-size:32px;
+  line-height:1.06;
+  font-weight:850;
+}
+.alert b{font-weight:950}
+.topview.show{
+  display:flex;
+  flex-direction:column;
+  padding:20px 24px;
+}
+.top-title{
+  font-size:20px;
+  line-height:1;
+  font-weight:900;
+  margin-bottom:11px;
+}
+.top-row{
+  display:grid;
+  grid-template-columns:30px 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:9px 0;
+  border-top:1px solid #292e38;
+  font-size:16px;
+  font-weight:750;
+}
+.top-row:first-of-type{border-top:0}
+.rank{color:#969daa}
+.row-time{font-variant-numeric:tabular-nums;color:#fff}
+.main.hidden{visibility:hidden}
+
+@media (max-width:520px){
+  .main{padding-left:16px;padding-right:16px}
+  .top{gap:12px}
+  .icon-tile{width:46px;height:46px;flex-basis:46px}
+  .name{font-size:36px}
+  .time{font-size:34px}
+  .bottom{gap:14px}
+  .bottom-right{padding-left:14px}
+  .block-label{font-size:13px}
+  .countdown{font-size:43px}
+  .hint{font-size:21px}
+}
+</style>
+</head>
+<body>
+<div id="panel" class="panel">
+  <div id="main" class="main">
+    <div class="top">
+      <div class="identity">
+        <span class="icon-tile crown">♛</span>
+        <div>
+          <span class="eyebrow">Rey</span>
+          <span id="king" class="name">Sin rey</span>
+        </div>
+      </div>
+      <span id="held" class="time">00:00:00</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="bottom">
+      <div class="bottom-left">
+        <span class="hourglass-tile">⌛</span>
+        <div class="bottom-content">
+          <span class="block-label">Se puede robar en</span>
+          <div class="countdown-wrap"><span id="countdown" class="countdown">00:00</span></div>
+        </div>
+      </div>
+
+      <div class="bottom-right">
+        <span class="block-label">Cómo robar</span>
+        <div class="hint-box"><span id="hint" class="hint">Escribí <strong>!robar</strong><br>cuando se abra</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="alert" class="alert"></div>
+  <div id="top" class="topview"></div>
+</div>
 <script>
 const key=new URLSearchParams(location.search).get('key')||'';const panel=document.getElementById('panel'),main=document.getElementById('main'),king=document.getElementById('king'),held=document.getElementById('held'),countdown=document.getElementById('countdown'),hint=document.getElementById('hint'),alertBox=document.getElementById('alert'),topBox=document.getElementById('top');let data=null,offset=0,ws=null,alertTimer=null,topTimer=null;
 function now(){return Date.now()+offset}function fmt(ms,hours=true){const t=Math.max(0,Math.floor(Number(ms||0)/1000)),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;if(!hours&&h===0)return`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
@@ -26,4 +307,6 @@ function showAlert(m){clearTimeout(alertTimer);main.classList.add('hidden');topB
 function showTop(m){clearTimeout(topTimer);alertBox.classList.remove('show');main.classList.add('hidden');const rows=(Array.isArray(m.top)?m.top:[]).slice(0,5);topBox.innerHTML=`<div class="top-title">Top Reyes</div>${rows.map((r,i)=>`<div class="top-row"><span class="rank">${i+1}</span><span>${esc(r.username)}</span><span class="row-time">${fmt(r.totalMs)}</span></div>`).join('')||'<div class="top-row"><span></span><span>Sin historial todavía.</span><span></span></div>'}`;topBox.classList.add('show');topTimer=setTimeout(()=>{topBox.classList.remove('show');main.classList.remove('hidden')},Math.max(1000,Number(m.durationMs||10000)))}
 function connect(){if(!key)return;const proto=location.protocol==='https:'?'wss':'ws';try{ws=new WebSocket(`${proto}://${location.host}/api/streambot/realtime/ws?role=overlay&key=${encodeURIComponent(key)}`)}catch{return}ws.addEventListener('open',poll);ws.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch{return}if(m.type==='crown.refresh')poll();else if(m.type==='crown.alert'){showAlert(m);poll()}else if(m.type==='crown.showTop')showTop(m)});ws.addEventListener('close',()=>setTimeout(connect,1800));ws.addEventListener('error',()=>{try{ws.close()}catch{}})}
 setInterval(render,500);setInterval(poll,20000);poll();connect();
-</script></body></html>
+</script>
+</body>
+</html>
