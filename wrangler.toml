@@ -7,6 +7,11 @@ directory = "./public/"
 binding = "ASSETS"
 run_worker_first = ["/api/*"]
 
+# MinerBot v14 · mensajes automáticos.
+# El cron corre cada minuto y envía únicamente los mensajes que ya están vencidos.
+[triggers]
+crons = ["* * * * *"]
+
 [[d1_databases]]
 binding = "STREAMBOT_DB"
 database_name = "miner-streambot"

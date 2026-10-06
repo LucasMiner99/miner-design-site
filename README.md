@@ -107,3 +107,7 @@ Portfolio update:
 
 Home order update:
 - Portfolio movido debajo de Cursos en la página principal.
+
+
+## MinerBot v14 · mensajes automáticos
+El dashboard permite crear mensajes automáticos con texto, intervalo en minutos y estado activo/pausado. `wrangler.toml` incluye un Cron Trigger cada minuto; el Worker sólo publica los mensajes que estén vencidos. La tabla D1 se crea automáticamente y también queda disponible `streambot-v14-timed-messages.sql` para crearla manualmente si se desea.

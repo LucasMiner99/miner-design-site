@@ -76,6 +76,7 @@ async function loadAll() {
   paintStatus();
   paintConfig();
   paintCommands(data.commands || []);
+  paintTimedMessages(data.timedMessages || []);
   paintLogs(data.logs || []);
 }
 
@@ -184,6 +185,71 @@ function paintCommands(commands) {
   host.innerHTML = "";
   for (const command of commands) host.appendChild(commandRow(command));
   if (!commands.length) host.innerHTML = '<p class="hint">Todavía no hay comandos.</p>';
+}
+
+function paintTimedMessages(items = []) {
+  const host = $("timedMessagesList");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const item of items) host.appendChild(timedMessageRow(item));
+  if (!items.length) host.innerHTML = '<p class="hint">Todavía no hay mensajes automáticos.</p>';
+}
+
+function timedMessageRow(item = { id: null, message: "", interval_minutes: 15, enabled: 1, next_run_ms: 0, last_sent_ms: null }) {
+  const row = document.createElement("div");
+  row.className = "timed-message-row";
+  const nextText = item.id && item.enabled && Number(item.next_run_ms)
+    ? `Próximo: ${new Date(Number(item.next_run_ms)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : (item.enabled ? "Se programará al guardar" : "Pausado");
+  const lastText = item.last_sent_ms
+    ? `Último: ${new Date(Number(item.last_sent_ms)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "Todavía no enviado";
+
+  row.innerHTML = `
+    <textarea class="timed-message-text" rows="2" maxlength="500" placeholder="Ej: 📲 Sumate al canal de WhatsApp: https://...">${esc(item.message)}</textarea>
+    <div class="timed-message-controls">
+      <label class="timed-interval"><span>Cada</span><input class="timed-message-interval" type="number" min="1" max="1440" step="1" value="${Math.max(1, Number(item.interval_minutes) || 15)}"><span>min</span></label>
+      <label class="timed-enabled"><input class="mini-toggle timed-message-enabled" type="checkbox" ${item.enabled ? "checked" : ""}><span>Activo</span></label>
+      <button class="primary-button small timed-save">Guardar</button>
+      <button class="secondary-button small timed-send-now" ${item.id ? "" : "disabled"}>Enviar ahora</button>
+      <button class="delete-button timed-delete">Eliminar</button>
+    </div>
+    <div class="timed-message-meta"><span>${esc(nextText)}</span><span>${esc(lastText)}</span></div>`;
+
+  const save = async () => {
+    const payload = {
+      message: row.querySelector(".timed-message-text").value,
+      interval_minutes: Number(row.querySelector(".timed-message-interval").value),
+      enabled: row.querySelector(".timed-message-enabled").checked,
+    };
+    try {
+      const data = await api(item.id ? `/timed-messages/${item.id}` : "/timed-messages", {
+        method: item.id ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      });
+      paintTimedMessages(data.timedMessages || []);
+      showNotice("Mensaje automático guardado.");
+    } catch (err) { showNotice(err.message, true); }
+  };
+
+  row.querySelector(".timed-save").addEventListener("click", save);
+  row.querySelector(".timed-send-now").addEventListener("click", async () => {
+    if (!item.id) return;
+    try {
+      const data = await api(`/timed-messages/${item.id}/send`, { method: "POST" });
+      paintTimedMessages(data.timedMessages || []);
+      showNotice("Mensaje enviado al chat y temporizador reiniciado.");
+    } catch (err) { showNotice(err.message, true); }
+  });
+  row.querySelector(".timed-delete").addEventListener("click", async () => {
+    if (!item.id) { row.remove(); return; }
+    try {
+      const data = await api(`/timed-messages/${item.id}`, { method: "DELETE" });
+      paintTimedMessages(data.timedMessages || []);
+      showNotice("Mensaje automático eliminado.");
+    } catch (err) { showNotice(err.message, true); }
+  });
+  return row;
 }
 
 function commandRow(command = { id: null, name: "", response: "", enabled: 1 }) {
@@ -385,6 +451,13 @@ $("addCommand").addEventListener("click", () => {
   const row = commandRow();
   host.prepend(row);
   row.querySelector(".command-name").focus();
+});
+if ($("addTimedMessage")) $("addTimedMessage").addEventListener("click", () => {
+  const host = $("timedMessagesList");
+  if (host.querySelector(".hint")) host.innerHTML = "";
+  const row = timedMessageRow();
+  host.prepend(row);
+  row.querySelector(".timed-message-text").focus();
 });
 $("lockButton").addEventListener("click", () => { localStorage.removeItem("streambot_admin_key"); adminKey = ""; $("adminKeyInput").value = ""; $("lockScreen").classList.remove("hidden"); });
 if ($("addMod")) $("addMod").addEventListener("click", addMod);

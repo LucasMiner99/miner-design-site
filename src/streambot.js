@@ -204,6 +204,21 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/commands/") && request.method === "DELETE") {
       return await deleteCommand(request, env);
     }
+    if (path === "/api/streambot/timed-messages" && request.method === "GET") {
+      return await listTimedMessages(env);
+    }
+    if (path === "/api/streambot/timed-messages" && request.method === "POST") {
+      return await createTimedMessage(request, env);
+    }
+    if (path.match(/^\/api\/streambot\/timed-messages\/\d+\/send$/) && request.method === "POST") {
+      return await sendTimedMessageNow(request, env);
+    }
+    if (path.match(/^\/api\/streambot\/timed-messages\/\d+$/) && request.method === "PUT") {
+      return await updateTimedMessage(request, env);
+    }
+    if (path.match(/^\/api\/streambot\/timed-messages\/\d+$/) && request.method === "DELETE") {
+      return await deleteTimedMessage(request, env);
+    }
     if (path === "/api/streambot/oauth/start" && request.method === "GET") {
       return await oauthStart(request, env);
     }
@@ -405,6 +420,131 @@ async function deleteCommand(request, env) {
   return listCommands(env);
 }
 
+async function ensureTimedMessagesTable(env) {
+  await env.STREAMBOT_DB.prepare(`
+    CREATE TABLE IF NOT EXISTS streambot_timed_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message TEXT NOT NULL,
+      interval_minutes INTEGER NOT NULL DEFAULT 15,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      next_run_ms INTEGER NOT NULL,
+      last_sent_ms INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+  await env.STREAMBOT_DB.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_streambot_timed_messages_due
+    ON streambot_timed_messages(enabled, next_run_ms)
+  `).run();
+}
+
+function normalizeTimedMessageInput(body = {}) {
+  const message = String(body.message || "").trim().slice(0, 500);
+  const intervalMinutes = Math.min(1440, Math.max(1, Math.round(Number(body.interval_minutes) || 15)));
+  const enabled = body.enabled === false ? 0 : 1;
+  return { message, intervalMinutes, enabled };
+}
+
+async function listTimedMessages(env) {
+  await ensureTimedMessagesTable(env);
+  const result = await env.STREAMBOT_DB.prepare(
+    "SELECT id, message, interval_minutes, enabled, next_run_ms, last_sent_ms FROM streambot_timed_messages ORDER BY id DESC"
+  ).all();
+  return json({ timedMessages: result.results || [] });
+}
+
+async function createTimedMessage(request, env) {
+  await ensureTimedMessagesTable(env);
+  const input = normalizeTimedMessageInput(await readJson(request));
+  if (!input.message) return json({ error: "El texto del mensaje es obligatorio." }, 400);
+  const now = Date.now();
+  await env.STREAMBOT_DB.prepare(
+    "INSERT INTO streambot_timed_messages (message, interval_minutes, enabled, next_run_ms) VALUES (?, ?, ?, ?)"
+  ).bind(input.message, input.intervalMinutes, input.enabled, now + input.intervalMinutes * 60_000).run();
+  return listTimedMessages(env);
+}
+
+async function updateTimedMessage(request, env) {
+  await ensureTimedMessagesTable(env);
+  const parts = new URL(request.url).pathname.split("/");
+  const id = Number(parts[parts.length - 1]);
+  const input = normalizeTimedMessageInput(await readJson(request));
+  if (!id || !input.message) return json({ error: "Datos del mensaje inválidos." }, 400);
+  const nextRun = Date.now() + input.intervalMinutes * 60_000;
+  await env.STREAMBOT_DB.prepare(
+    "UPDATE streambot_timed_messages SET message=?, interval_minutes=?, enabled=?, next_run_ms=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
+  ).bind(input.message, input.intervalMinutes, input.enabled, nextRun, id).run();
+  return listTimedMessages(env);
+}
+
+async function deleteTimedMessage(request, env) {
+  await ensureTimedMessagesTable(env);
+  const parts = new URL(request.url).pathname.split("/");
+  const id = Number(parts[parts.length - 1]);
+  if (!id) return json({ error: "ID inválido." }, 400);
+  await env.STREAMBOT_DB.prepare("DELETE FROM streambot_timed_messages WHERE id=?").bind(id).run();
+  return listTimedMessages(env);
+}
+
+async function sendTimedMessageNow(request, env) {
+  await ensureTimedMessagesTable(env);
+  const parts = new URL(request.url).pathname.split("/");
+  const id = Number(parts[parts.length - 2]);
+  if (!id) return json({ error: "ID inválido." }, 400);
+  const row = await env.STREAMBOT_DB.prepare(
+    "SELECT id, message, interval_minutes FROM streambot_timed_messages WHERE id=?"
+  ).bind(id).first();
+  if (!row) return json({ error: "No encontré ese mensaje automático." }, 404);
+
+  await sendKickChat(env, row.message);
+  const now = Date.now();
+  const intervalMinutes = Math.min(1440, Math.max(1, Number(row.interval_minutes) || 15));
+  await env.STREAMBOT_DB.prepare(
+    "UPDATE streambot_timed_messages SET last_sent_ms=?, next_run_ms=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
+  ).bind(now, now + intervalMinutes * 60_000, id).run();
+  await safeLog(env, "info", "timed-message", null, `Mensaje automático #${id} enviado manualmente.`);
+  return listTimedMessages(env);
+}
+
+export async function handleStreamBotScheduled(env) {
+  if (!env.STREAMBOT_DB) return;
+  await ensureTimedMessagesTable(env);
+
+  const config = await getConfig(env);
+  if (!config.bot_enabled) return;
+
+  const now = Date.now();
+  const due = await env.STREAMBOT_DB.prepare(
+    "SELECT id, message, interval_minutes, next_run_ms FROM streambot_timed_messages WHERE enabled=1 AND next_run_ms<=? ORDER BY next_run_ms ASC LIMIT 20"
+  ).bind(now).all();
+
+  for (const row of due.results || []) {
+    const intervalMinutes = Math.min(1440, Math.max(1, Number(row.interval_minutes) || 15));
+    const nextRun = now + intervalMinutes * 60_000;
+
+    // Claim atómico: evita duplicados si dos cron invocations se pisan.
+    const claim = await env.STREAMBOT_DB.prepare(
+      "UPDATE streambot_timed_messages SET next_run_ms=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND enabled=1 AND next_run_ms<=?"
+    ).bind(nextRun, row.id, now).run();
+    if (!claim.meta?.changes) continue;
+
+    try {
+      await sendKickChat(env, row.message);
+      await env.STREAMBOT_DB.prepare(
+        "UPDATE streambot_timed_messages SET last_sent_ms=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
+      ).bind(now, row.id).run();
+      await safeLog(env, "info", "timed-message", null, `Mensaje automático #${row.id} enviado.`);
+    } catch (error) {
+      // Si Kick falla, reintentamos en un minuto en vez de esperar todo el intervalo.
+      await env.STREAMBOT_DB.prepare(
+        "UPDATE streambot_timed_messages SET next_run_ms=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"
+      ).bind(now + 60_000, row.id).run();
+      await safeLog(env, "error", "timed-message", null, error?.message || String(error));
+    }
+  }
+}
+
 async function oauthStart(request, env) {
   assertKickSecrets(env);
   const origin = new URL(request.url).origin;
@@ -497,17 +637,20 @@ async function exchangeKickCode(env, code, stateRow) {
 }
 
 async function getBootstrap(request, env) {
+  await ensureTimedMessagesTable(env);
   const [
     settingsResult,
     tokenResult,
     queueResult,
     commandsResult,
+    timedMessagesResult,
     logsResult,
   ] = await env.STREAMBOT_DB.batch([
     env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings"),
     env.STREAMBOT_DB.prepare("SELECT expires_at FROM streambot_oauth_tokens WHERE provider='kick' LIMIT 1"),
     env.STREAMBOT_DB.prepare("SELECT COUNT(*) AS count FROM streambot_tts_queue WHERE status IN ('ready','playing')"),
     env.STREAMBOT_DB.prepare("SELECT id, name, response, enabled FROM streambot_commands ORDER BY name COLLATE NOCASE"),
+    env.STREAMBOT_DB.prepare("SELECT id, message, interval_minutes, enabled, next_run_ms, last_sent_ms FROM streambot_timed_messages ORDER BY id DESC"),
     env.STREAMBOT_DB.prepare("SELECT id, level, type, username, message, created_at FROM streambot_logs ORDER BY id DESC LIMIT 80"),
   ]);
 
@@ -529,6 +672,7 @@ async function getBootstrap(request, env) {
     },
     config,
     commands: commandsResult.results || [],
+    timedMessages: timedMessagesResult.results || [],
     logs: logsResult.results || [],
   });
 }

@@ -1,4 +1,4 @@
-import { handleStreamBotRequest } from "./streambot.js";
+import { handleStreamBotRequest, handleStreamBotScheduled } from "./streambot.js";
 export { OverlayRoom } from "./realtime.js";
 
 const CHANNEL_ID = "UC7ICe-QlKsiyClI3uA8WU3g";
@@ -47,6 +47,9 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(handleStreamBotScheduled(env));
   },
 };
 
