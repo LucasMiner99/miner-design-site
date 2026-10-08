@@ -71,7 +71,7 @@ function render(timestamp) {
     $('floors').textContent = Math.round(state.floors).toLocaleString('es-AR');
     $('popup').classList.toggle('show',celebrate);
     $('turbo').hidden = !turbo;
-    drawAnimation(celebrate?'dance':'mop',celebrate?10:(turbo?state.boostFps:state.normalFps),timestamp);
+    drawAnimation(celebrate?'dance':'mop',celebrate?60:(turbo?state.boostFps:state.normalFps),timestamp);
     // El personaje se desplaza muy suavemente sin tapar los bordes del piso.
     const sway = celebrate ? 0 : Math.sin(timestamp / 1450) * 15;
     const bounce = celebrate ? Math.sin(timestamp / 180) * 4 : 0;
