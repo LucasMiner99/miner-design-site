@@ -20,6 +20,9 @@
         <button class="nav-link" data-section="tts">TTS</button>
         <button class="nav-link" data-section="crown">Corona</button>
         <button class="nav-link" data-section="subgoal">Meta subs</button>
+        <button class="nav-link" data-section="cleaning">🐧 Limpiando</button>
+        <button class="nav-link" data-section="chat">💬 Chat OBS</button>
+        <button class="nav-link" data-section="alerts">🔔 Alertas OBS</button>
         <button class="nav-link" data-section="commands">Comandos</button>
         <button class="nav-link" data-section="mods">Mods</button>
         <button class="nav-link" data-section="logs">Actividad</button>
@@ -218,6 +221,57 @@
         </div>
       </section>
 
+      <section id="section-cleaning" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>🐧 Limpiando el piso</h2><p>El pingüino limpia todo el tiempo. Cada follow aumenta la velocidad por un minuto; al completar un piso, baila y aparece “¡PISO LIMPIO!”.</p></div></div>
+          <label class="toggle-row"><span><b>Minijuego activo</b><small>Controla si el overlay aparece y si el progreso avanza.</small></span><input id="cleaning_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Minutos por piso (sin viewers)</span><input id="cleaning_floor_minutes" type="number" min="1" max="240" step="1"></label>
+            <label class="field"><span>Velocidad extra por cada 100 viewers (%)</span><input id="cleaning_bonus_per_100" type="number" min="0" max="300" step="1"></label>
+            <label class="field"><span>Multiplicador por follow (×)</span><input id="cleaning_boost_multiplier" type="number" min="1" max="20" step="0.5"></label>
+            <label class="field"><span>Duración del boost (seg)</span><input id="cleaning_boost_seconds" type="number" min="5" max="600" step="1"></label>
+            <label class="field"><span>Baile al terminar (seg)</span><input id="cleaning_celebration_seconds" type="number" min="1" max="60" step="1"></label>
+            <label class="field"><span>FPS GIF normal</span><input id="cleaning_normal_fps" type="number" min="3" max="50" step="1"></label>
+            <label class="field"><span>FPS durante follow</span><input id="cleaning_boost_fps" type="number" min="5" max="500" step="1"></label>
+            <label class="field"><span>Viewers usados</span><select id="cleaning_viewers_mode"><option value="auto">Kick (automático)</option><option value="manual">Manual (pruebas)</option></select></label>
+            <label class="field"><span>Viewers manuales</span><input id="cleaning_manual_viewers" type="number" min="0" max="1000000" step="1"></label>
+          </div>
+          <p class="hint">El boost por follow usa los webhooks actuales de Kick (no depende del mensaje de agradecimiento). Si llega otro follow, el minuto empieza de nuevo. Los viewers de Kick se consultan cada minuto desde el Worker.</p>
+          <div class="card-subsection overlay-link-card">
+            <div class="card-subsection-title"><b>URL independiente de OBS</b><small>Fuente de navegador separada; movela libremente en OBS.</small></div>
+            <div class="copy-row"><input id="cleaningOverlayUrl" type="text" readonly><button id="copyCleaningOverlay" class="secondary-button">Copiar URL</button></div>
+            <p class="hint">OBS → <b>Fuente de navegador</b>. Resolución de fuente: <code>620 × 430</code> píxeles. Fondo transparente. Escalala y acomodala en tu escena 2560 × 1440. No hace falta meterla en el overlay global de TTS.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Estado y pruebas</h2><p>Los contadores se guardan en Cloudflare D1, también cuando OBS está cerrado.</p></div></div>
+          <div class="cleaning-stats">
+            <div><span>Viewers</span><strong id="cleaningViewersState">—</strong></div>
+            <div><span>Progreso</span><strong id="cleaningProgressState">—</strong></div>
+            <div><span>Pisos</span><strong id="cleaningFloorsState">—</strong></div>
+            <div><span>Estado</span><strong id="cleaningBoostState">—</strong></div>
+          </div>
+          <div class="button-row">
+            <button id="cleaningRefresh" class="secondary-button">Actualizar estado</button>
+            <button id="cleaningRefreshViewers" class="secondary-button">Actualizar viewers Kick</button>
+            <button id="cleaningTestFollow" class="primary-button">Probar follow ⚡</button>
+            <button id="cleaningTestFinish" class="secondary-button">Probar piso limpio 🎉</button>
+          </div>
+          <div class="two-cols cleaning-manual-controls">
+            <label class="field"><span>Editar progreso (0–99%)</span><input id="cleaningProgressInput" type="number" min="0" max="99" step="1"></label>
+            <label class="field"><span>Editar pisos acumulados</span><input id="cleaningFloorsInput" type="number" min="0" step="1"></label>
+          </div>
+          <div class="button-row">
+            <button id="cleaningSetProgress" class="secondary-button">Aplicar progreso</button>
+            <button id="cleaningSetFloors" class="secondary-button">Aplicar pisos</button>
+            <button id="cleaningResetProgress" class="secondary-button">Reiniciar progreso</button>
+            <button id="cleaningResetFloors" class="delete-button">Reiniciar pisos</button>
+            <button id="cleaningResetAll" class="delete-button">Reiniciar todo</button>
+          </div>
+          <p class="hint">Para pruebas manuales de viewers, poné «Manual» arriba y guardá los cambios. No requiere ejecutar una migración D1 a mano.</p>
+        </div>
+      </section>
+
       <section id="section-commands" class="panel-section">
         <div class="card">
           <div class="card-head"><div><h2>Comandos del stream</h2><p>Cambian título y categoría de Kick. Vos siempre tenés permiso; podés decidir si también los mods.</p></div></div>
@@ -250,6 +304,81 @@
         </div>
       </section>
 
+
+      <section id="section-chat" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>Chat OBS · iMessage V5</h2><p>Burbujas minimalistas, nombre con color de Kick y todas las badges del usuario. Solo es un overlay, no un chat dentro del dashboard.</p></div></div>
+          <label class="toggle-row"><span><b>Chat overlay activo</b><small>Recibe mensajes desde los webhooks oficiales de Kick.</small></span><input id="chat_overlay_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Máximo de mensajes visibles</span><input id="chat_max_messages" type="number" min="1" max="10" step="1"></label>
+            <label class="field"><span>Duración de cada mensaje (seg, 0 = sin caducar)</span><input id="chat_message_seconds" type="number" min="0" max="180" step="1"></label>
+            <label class="field"><span>Tamaño del texto (px)</span><input id="chat_font_size" type="number" min="11" max="38" step="1"></label>
+            <label class="field"><span>Separación entre globos (px)</span><input id="chat_gap" type="number" min="0" max="24" step="1"></label>
+            <label class="field"><span>Entrada de mensaje (ms)</span><input id="chat_animation_ms" type="number" min="100" max="450" step="5"></label>
+          </div>
+          <label class="toggle-row"><span><b>Mostrar las badges de Kick</b><small>Íconos para MOD, VIP, OG, verificado, etc. y las insignias de suscripción personalizadas si cargás sus URLs.</small></span><input id="chat_badges_enabled" type="checkbox"><i></i></label>
+          <label class="field" style="margin:12px 0 14px;display:block"><span style="display:block;margin-bottom:6px">Imágenes personalizadas de badges (opcional)</span><textarea id="chat_badge_image_map" rows="4" spellcheck="false" placeholder="subscriber:1=https://.../mes1.png&#10;subscriber:3=https://.../mes3.png&#10;subscriber:6=https://.../mes6.png" style="width:100%;min-height:88px;border-radius:9px;background:#101116;border:1px solid #4b4b55;color:white;padding:10px;resize:vertical;font:12px/1.5 monospace"></textarea><small>Una por línea. Para badges de suscripción, se usa la mayor cantidad de meses definida que no supere los meses del usuario. También admite vip=https://... y otras insignias. URLs públicas HTTPS.</small></label>
+          <label class="toggle-row"><span><b>Emotes 7TV</b><small>Globales y, si tenés uno enlazado, set de tu canal de Kick.</small></span><input id="chat_7tv_enabled" type="checkbox"><i></i></label>
+          <label class="toggle-row"><span><b>Emotes nativos de Kick</b><small>Incluye emotes GIF animados de Kick.</small></span><input id="chat_kick_emotes_enabled" type="checkbox"><i></i></label>
+          <label class="toggle-row"><span><b>Ocultar mensajes que empiezan con !</b><small>Es opcional; de forma predeterminada se muestran.</small></span><input id="chat_hide_commands" type="checkbox"><i></i></label>
+          <p class="hint">Guardá con «Guardar cambios» arriba a la derecha. Estos ajustes son globales; cada fuente de OBS también puede llevar valores propios en su URL.</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Una URL responsive para OBS</h2><p>Usá exactamente la misma URL en una o varias fuentes de navegador: los globos, la letra y las badges se ajustan automáticamente al ancho de cada fuente.</p></div></div>
+          <div class="card-subsection overlay-link-card">
+            <div class="card-subsection-title"><b>Chat OBS — responsive</b><small>Recomendado a alta resolución: 1000 × 1300 px en OBS (y luego escalás a gusto). También funciona a 420 × 650 px.</small></div>
+            <div class="copy-row"><input id="chatOverlayUrl" type="text" readonly><button id="copyChatOverlay" class="secondary-button">Copiar URL</button></div>
+          </div>
+          <p class="hint">La tipografía y los emotes se renderizan nítidos a la resolución que pongas en OBS. Si usás dos fuentes con distintos tamaños, ambas pueden usar esta misma URL. Los controles del dashboard son globales, pero podés ajustar cada fuente por separado agregando <code>&amp;max=4&amp;font=20&amp;duration=30&amp;gap=8</code> a su URL. El parámetro opcional <code>&amp;scale=1</code> desactiva el escalado automático de letra.</p>
+          <div class="button-row" style="margin-top:16px">
+            <button id="chatTestMessage" class="primary-button">Probar mensaje en OBS 💬</button>
+            <button id="chatTest7tv" class="secondary-button">Probar texto con 7TV</button>
+          </div>
+          <p class="hint">Para recibir mensajes reales, en General verificá que Kick esté conectado y tocá «Sincronizar eventos». No hace falta una migración manual en D1.</p>
+        </div>
+      </section>
+
+      <section id="section-alerts" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>🔔 Alertas OBS · MinerBot</h2><p>Logo y sonido propios · borde fino · Zalando Expanded · violeta y azul. Una fuente de navegador independiente en OBS.</p></div></div>
+          <label class="toggle-row"><span><b>Activar alertas en OBS</b><small>Funciona aunque desactives los mensajes del bot en el chat.</small></span><input id="alerts_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Duración de cada alerta (segundos)</span><input id="alerts_duration_seconds" type="number" min="2" max="15" step="1"></label>
+            <label class="field"><span>Escala del diseño (%)</span><input id="alerts_scale_percent" type="number" min="60" max="170" step="5"></label>
+          </div>
+          <label class="toggle-row"><span><b>Reproducir sonido</b><small>Usa el MP3 que adjuntaste. En OBS, no silencies el audio de la fuente.</small></span><input id="alerts_sound_enabled" type="checkbox"><i></i></label>
+          <label class="field" style="display:block;margin:9px 0 16px"><span style="display:block;margin-bottom:5px">Volumen del sonido (0–100%)</span><input id="alerts_volume" type="range" min="0" max="1" step="0.05" style="width:100%;accent-color:#8565eb"></label>
+          <div class="card-subsection">
+            <div class="card-subsection-title"><b>Eventos automáticos de Kick</b><small>Activá las alertas que querés mostrar.</small></div>
+            <label class="toggle-row"><span><b>Nuevo seguidor</b></span><input id="alerts_follow" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>Nuevo suscriptor</b></span><input id="alerts_sub" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>Renovación de sub</b></span><input id="alerts_renewal" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>Subs regaladas</b></span><input id="alerts_gift" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>KICKs recibidos</b></span><input id="alerts_kicks" type="checkbox"><i></i></label>
+          </div>
+          <div class="card-subsection" style="margin-top:14px">
+            <div class="card-subsection-title"><b>Raid / Host (manuales por ahora)</b><small>La API oficial de Kick todavía no ofrece esos eventos en webhooks; se pueden probar pero no se activan solos.</small></div>
+            <label class="toggle-row"><span><b>Diseño de Raid</b></span><input id="alerts_raid" type="checkbox"><i></i></label>
+            <label class="toggle-row"><span><b>Diseño de Host</b></span><input id="alerts_host" type="checkbox"><i></i></label>
+          </div>
+          <p class="hint">Después de guardar, usá «Sincronizar eventos» en General para habilitar el nuevo evento <b>kicks.gifted</b>. No hay migraciones manuales en D1.</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Fuente independiente para OBS</h2><p>Copiá esta URL en una nueva fuente de navegador. El fondo es transparente y el diseño se adapta al tamaño.</p></div></div>
+          <div class="copy-row"><input id="alertsOverlayUrl" type="text" readonly><button id="copyAlertsOverlay" class="secondary-button">Copiar URL</button></div>
+          <p class="hint">Resolución recomendada en OBS: <b>960 × 300 px</b> (después escalás la fuente). Activá el audio de la fuente de navegador y evitá duplicarla con sonido en varias escenas.</p>
+          <div class="button-row" id="alertsTests" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px">
+            <button class="secondary-button" data-alert-test="follow">▶ Seguidor</button>
+            <button class="secondary-button" data-alert-test="sub">▶ Suscriptor</button>
+            <button class="secondary-button" data-alert-test="renewal">▶ Renovación</button>
+            <button class="secondary-button" data-alert-test="gift">▶ Gift subs</button>
+            <button class="secondary-button" data-alert-test="kicks">▶ KICKs</button>
+            <button class="secondary-button" data-alert-test="raid">▶ Raid (manual)</button>
+            <button class="secondary-button" data-alert-test="host">▶ Host (manual)</button>
+          </div>
+          <p class="hint">Estas pruebas solo aparecen en OBS: no se envían a Kick, no suman subs ni cambian contadores.</p>
+        </div>
+      </section>
 
       <section id="section-mods" class="panel-section">
         <div class="card">

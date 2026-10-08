@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Zalando+Sans:wght@300;400;600;700;900&family=Zalando+Sans+Expanded:wght@300;400;700;800;900&display=swap');
+:root{--s:1;--duration:5s;--accent:#9776ff}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent!important;color:#fff}
+body{font-family:'Zalando Sans Expanded','Zalando Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#alerts-stage{height:100%;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px}
+.alert{position:relative;isolation:isolate;flex:0 1 auto;display:flex;align-items:center;gap:calc(16px * var(--s));width:min(calc(720px * var(--s)),100%);min-height:calc(116px * var(--s));padding:calc(16px * var(--s)) calc(23px * var(--s)) calc(18px * var(--s)) calc(15px * var(--s));border:1px solid rgba(140,142,166,.58);border-radius:calc(15px * var(--s));background:linear-gradient(110deg,rgba(15,17,25,.985),rgba(20,19,31,.98));box-shadow:0 calc(12px * var(--s)) calc(34px * var(--s)) rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);overflow:hidden;transform:translateZ(0);will-change:opacity,transform}
+.alert[hidden]{display:none!important}
+.alert-gradient{position:absolute;inset:0;background:linear-gradient(100deg,rgba(105,81,218,.12),rgba(80,132,235,.06) 62%,rgba(110,75,213,.09));pointer-events:none;z-index:0}
+.logo-block{position:relative;flex:0 0 calc(86px * var(--s));width:calc(86px * var(--s));height:calc(82px * var(--s));z-index:1;display:grid;place-items:center;border-radius:calc(12px * var(--s));background:linear-gradient(150deg,rgba(60,62,95,.16),rgba(18,19,32,.25));border:1px solid rgba(154,153,212,.14)}
+.logo-block img{width:79%;height:79%;object-fit:contain;filter:drop-shadow(0 0 calc(6px * var(--s)) rgba(77,115,255,.35))}
+.copy{position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(3px * var(--s));overflow:hidden}
+.eyebrow{font-size:calc(11px * var(--s));font-weight:800;letter-spacing:calc(.75px * var(--s));line-height:1.2;color:#b7abff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.username{font-size:calc(29px * var(--s));font-weight:900;line-height:1.08;letter-spacing:-.025em;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subtitle{font-size:calc(14px * var(--s));line-height:1.27;font-weight:300;letter-spacing:.005em;color:#e1dfeb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.time-track{position:absolute;left:0;right:0;bottom:0;height:calc(3px * var(--s));background:#343143;overflow:hidden;z-index:2}
+.time-fill{height:100%;width:100%;background:linear-gradient(90deg,#7350d9,#9666fa,#5b8ef7);transform-origin:left}
+.alert.enter{animation:alert-entry 260ms cubic-bezier(.16,.96,.27,1) both}
+.alert.enter .logo-block{animation:logo-entry 330ms cubic-bezier(.14,1.15,.28,1) both}
+.alert.enter .copy{animation:text-entry 290ms 48ms ease-out both}
+.alert.leave{animation:alert-exit 195ms cubic-bezier(.4,0,1,1) both}
+.alert.running .time-fill{animation:bar-shrink var(--duration) linear forwards}
+@keyframes alert-entry{from{opacity:0;transform:translateY(calc(21px * var(--s))) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes logo-entry{from{opacity:0;transform:translateY(calc(8px * var(--s))) scale(.88)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes text-entry{from{opacity:0;transform:translateY(calc(8px * var(--s)))}to{opacity:1;transform:translateY(0)}}
+@keyframes alert-exit{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(calc(-11px * var(--s)))}}
+@keyframes bar-shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media(prefers-reduced-motion:reduce){.alert.enter,.alert.enter .logo-block,.alert.enter .copy,.alert.leave{animation:none!important}}
