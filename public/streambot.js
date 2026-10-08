@@ -12,6 +12,11 @@ const fields = [
   "crown_enabled","crown_steal_command","crown_info_commands","crown_min_minutes","crown_max_minutes",
   "crown_open_seconds","crown_alert_seconds","crown_top_seconds",
   "sub_goal_enabled","sub_goal_current","sub_goal_target",
+  "cleaning_enabled","cleaning_floor_minutes","cleaning_bonus_per_100","cleaning_boost_multiplier",
+  "cleaning_boost_seconds","cleaning_celebration_seconds","cleaning_normal_fps","cleaning_boost_fps",
+  "cleaning_viewers_mode","cleaning_manual_viewers",
+  "chat_overlay_enabled","chat_max_messages","chat_font_size","chat_message_seconds","chat_animation_ms","chat_gap",
+  "chat_badges_enabled","chat_7tv_enabled","chat_kick_emotes_enabled","chat_hide_commands",
   "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
@@ -93,6 +98,9 @@ function paintStatus() {
     const overlayKey = overlayBase.searchParams.get("key") || "";
     if ($("crownOverlayUrl")) $("crownOverlayUrl").value = `${location.origin}/crown-overlay.html?key=${encodeURIComponent(overlayKey)}`;
     if ($("subGoalOverlayUrl")) $("subGoalOverlayUrl").value = `${location.origin}/subgoal-overlay.html?key=${encodeURIComponent(overlayKey)}`;
+    if ($("cleaningOverlayUrl")) $("cleaningOverlayUrl").value = `${location.origin}/cleaning-overlay.html?key=${encodeURIComponent(overlayKey)}`;
+    if ($("chatOverlayUrlCompact")) $("chatOverlayUrlCompact").value = `${location.origin}/chat-overlay.html?key=${encodeURIComponent(overlayKey)}`;
+    if ($("chatOverlayUrlWide")) $("chatOverlayUrlWide").value = `${location.origin}/chat-overlay.html?key=${encodeURIComponent(overlayKey)}&max=4&font=23`;
   } catch {}
   if ($("controlUrl")) $("controlUrl").value = status.controlUrl || `${location.origin}/control.html`;
   if ($("mediaStorageStatus")) {
@@ -445,6 +453,7 @@ $("refreshLogs").addEventListener("click", loadLogs);
 $("copyOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("overlayUrl").value); showNotice("URL copiada."); });
 if ($("copyCrownOverlay")) $("copyCrownOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("crownOverlayUrl").value); showNotice("URL de Corona copiada."); });
 if ($("copySubGoalOverlay")) $("copySubGoalOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("subGoalOverlayUrl").value); showNotice("URL de Meta de subs copiada."); });
+if ($("copyCleaningOverlay")) $("copyCleaningOverlay").addEventListener("click", async () => { await navigator.clipboard.writeText($("cleaningOverlayUrl").value); showNotice("URL del pingüino copiada."); });
 $("addCommand").addEventListener("click", () => {
   const host = $("commandsList");
   if (host.querySelector(".hint")) host.innerHTML = "";
@@ -467,6 +476,60 @@ if ($("crownTestAlert")) $("crownTestAlert").addEventListener("click", crownTest
 if ($("crownRelease")) $("crownRelease").addEventListener("click", crownRelease);
 if ($("crownResetLeaderboard")) $("crownResetLeaderboard").addEventListener("click", crownResetLeaderboard);
 
+
+// Limpiando: todos los controles pasan por la API privada (no por la key de OBS).
+async function cleaningLoad() {
+  try {
+    const d = await api('/cleaning/admin');
+    $('cleaningViewersState').textContent = d.viewers == null ? '—' : String(d.viewers);
+    $('cleaningProgressState').textContent = `${Math.floor(d.progress)}%`;
+    $('cleaningFloorsState').textContent = String(d.floors);
+    $('cleaningBoostState').textContent = d.celebrationUntilMs > d.now ? '🎉 Bailando' : d.boostUntilMs > d.now ? '⚡ Turbo' : d.enabled ? 'Trapeando' : 'Pausado';
+  } catch (err) { showNotice(err.message, true); }
+}
+async function cleaningAction(action, value = undefined) {
+  if (['reset-all','reset-floors'].includes(action) && !confirm('¿Seguro que querés reiniciar el contador?')) return;
+  try {
+    const d = await api('/cleaning/control', { method:'POST', body:JSON.stringify({ action, value }) });
+    $('cleaningViewersState').textContent = d.viewers == null ? '—' : String(d.viewers);
+    $('cleaningProgressState').textContent = `${Math.floor(d.progress)}%`;
+    $('cleaningFloorsState').textContent = String(d.floors);
+    $('cleaningBoostState').textContent = d.celebrationUntilMs > d.now ? '🎉 Bailando' : d.boostUntilMs > d.now ? '⚡ Turbo' : 'Trapeando';
+    showNotice('Minijuego actualizado en OBS.');
+  } catch (err) { showNotice(err.message, true); }
+}
+for (const [id, action] of [
+  ['cleaningTestFollow','follow-test'],['cleaningTestFinish','finish-test'],
+  ['cleaningResetProgress','reset-progress'],['cleaningResetFloors','reset-floors'],
+  ['cleaningResetAll','reset-all'],
+]) $(id).addEventListener('click', () => cleaningAction(action));
+$('cleaningSetProgress').addEventListener('click', () => cleaningAction('set-progress', Number($('cleaningProgressInput').value)));
+$('cleaningSetFloors').addEventListener('click', () => cleaningAction('set-floors', Number($('cleaningFloorsInput').value)));
+$('cleaningRefresh').addEventListener('click', cleaningLoad);
+$('cleaningRefreshViewers').addEventListener('click', async () => {
+  try {
+    const d = await api('/cleaning/refresh-viewers', { method:'POST' });
+    await cleaningLoad();
+    const status = d.viewerUpdate?.status;
+    showNotice(status === 'error' ? `Kick: ${d.viewerUpdate.message}` : status === 'manual' ? 'Modo manual: cambiá a automático para actualizar desde Kick.' : status === 'no-channel' ? 'Primero conectá tu cuenta de Kick.' : 'Viewers actualizados.', status === 'error');
+  } catch(err) { showNotice(err.message,true); }
+});
+
+async function chatTest(content) {
+  try {
+    await api('/chat/test', { method: 'POST', body: JSON.stringify({ username: 'MinerBotTest', content }) });
+    showNotice('Mensaje enviado al overlay. Si OBS no lo muestra, revisá su URL y si el chat está activo.');
+  } catch(err) { showNotice(err.message,true); }
+}
+$("chatTestMessage").addEventListener("click",()=>chatTest('Así se ve nuestro chat 💜'));
+$("chatTest7tv").addEventListener("click",()=>chatTest('KEKW OMEGALUL peepoHappy'));
+for(const [id,target] of [['copyChatCompact','chatOverlayUrlCompact'],['copyChatWide','chatOverlayUrlWide']]) {
+  $(id).addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText($(target).value);showNotice('URL del chat copiada.');}
+    catch(err){showNotice('No pude copiar la URL: '+err.message,true);}
+  });
+}
+
 document.querySelectorAll(".nav-link").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
   document.querySelectorAll(".panel-section").forEach(s => s.classList.remove("active"));
@@ -474,6 +537,7 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
   if (button.dataset.section === "logs") loadLogs();
   if (button.dataset.section === "mods") loadMods();
   if (button.dataset.section === "crown") loadCrown();
+  if (button.dataset.section === "cleaning") cleaningLoad();
 }));
 
 (async () => {
