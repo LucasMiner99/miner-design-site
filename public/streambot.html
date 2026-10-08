@@ -20,6 +20,7 @@
         <button class="nav-link" data-section="tts">TTS</button>
         <button class="nav-link" data-section="crown">Corona</button>
         <button class="nav-link" data-section="subgoal">Meta subs</button>
+        <button class="nav-link" data-section="cleaning">🐧 Limpiando</button>
         <button class="nav-link" data-section="commands">Comandos</button>
         <button class="nav-link" data-section="mods">Mods</button>
         <button class="nav-link" data-section="logs">Actividad</button>
@@ -215,6 +216,57 @@
             <div class="copy-row"><input id="subGoalOverlayUrl" type="text" readonly /><button id="copySubGoalOverlay" class="secondary-button">Copiar URL</button></div>
             <p class="hint">En OBS agregá otra <b>Fuente de navegador</b>. Tamaño recomendado: <code>580 × 205</code>.</p>
           </div>
+        </div>
+      </section>
+
+      <section id="section-cleaning" class="panel-section">
+        <div class="card">
+          <div class="card-head"><div><h2>🐧 Limpiando el piso</h2><p>El pingüino limpia todo el tiempo. Cada follow aumenta la velocidad por un minuto; al completar un piso, baila y aparece “¡PISO LIMPIO!”.</p></div></div>
+          <label class="toggle-row"><span><b>Minijuego activo</b><small>Controla si el overlay aparece y si el progreso avanza.</small></span><input id="cleaning_enabled" type="checkbox"><i></i></label>
+          <div class="two-cols">
+            <label class="field"><span>Minutos por piso (sin viewers)</span><input id="cleaning_floor_minutes" type="number" min="1" max="240" step="1"></label>
+            <label class="field"><span>Velocidad extra por cada 100 viewers (%)</span><input id="cleaning_bonus_per_100" type="number" min="0" max="300" step="1"></label>
+            <label class="field"><span>Multiplicador por follow (×)</span><input id="cleaning_boost_multiplier" type="number" min="1" max="20" step="0.5"></label>
+            <label class="field"><span>Duración del boost (seg)</span><input id="cleaning_boost_seconds" type="number" min="5" max="600" step="1"></label>
+            <label class="field"><span>Baile al terminar (seg)</span><input id="cleaning_celebration_seconds" type="number" min="1" max="60" step="1"></label>
+            <label class="field"><span>FPS GIF normal</span><input id="cleaning_normal_fps" type="number" min="3" max="50" step="1"></label>
+            <label class="field"><span>FPS durante follow</span><input id="cleaning_boost_fps" type="number" min="5" max="100" step="1"></label>
+            <label class="field"><span>Viewers usados</span><select id="cleaning_viewers_mode"><option value="auto">Kick (automático)</option><option value="manual">Manual (pruebas)</option></select></label>
+            <label class="field"><span>Viewers manuales</span><input id="cleaning_manual_viewers" type="number" min="0" max="1000000" step="1"></label>
+          </div>
+          <p class="hint">El boost por follow usa los webhooks actuales de Kick (no depende del mensaje de agradecimiento). Si llega otro follow, el minuto empieza de nuevo. Los viewers de Kick se consultan cada minuto desde el Worker.</p>
+          <div class="card-subsection overlay-link-card">
+            <div class="card-subsection-title"><b>URL independiente de OBS</b><small>Fuente de navegador separada; movela libremente en OBS.</small></div>
+            <div class="copy-row"><input id="cleaningOverlayUrl" type="text" readonly><button id="copyCleaningOverlay" class="secondary-button">Copiar URL</button></div>
+            <p class="hint">OBS → <b>Fuente de navegador</b>. Resolución de fuente: <code>620 × 430</code> píxeles. Fondo transparente. Escalala y acomodala en tu escena 2560 × 1440. No hace falta meterla en el overlay global de TTS.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Estado y pruebas</h2><p>Los contadores se guardan en Cloudflare D1, también cuando OBS está cerrado.</p></div></div>
+          <div class="cleaning-stats">
+            <div><span>Viewers</span><strong id="cleaningViewersState">—</strong></div>
+            <div><span>Progreso</span><strong id="cleaningProgressState">—</strong></div>
+            <div><span>Pisos</span><strong id="cleaningFloorsState">—</strong></div>
+            <div><span>Estado</span><strong id="cleaningBoostState">—</strong></div>
+          </div>
+          <div class="button-row">
+            <button id="cleaningRefresh" class="secondary-button">Actualizar estado</button>
+            <button id="cleaningRefreshViewers" class="secondary-button">Actualizar viewers Kick</button>
+            <button id="cleaningTestFollow" class="primary-button">Probar follow ⚡</button>
+            <button id="cleaningTestFinish" class="secondary-button">Probar piso limpio 🎉</button>
+          </div>
+          <div class="two-cols cleaning-manual-controls">
+            <label class="field"><span>Editar progreso (0–99%)</span><input id="cleaningProgressInput" type="number" min="0" max="99" step="1"></label>
+            <label class="field"><span>Editar pisos acumulados</span><input id="cleaningFloorsInput" type="number" min="0" step="1"></label>
+          </div>
+          <div class="button-row">
+            <button id="cleaningSetProgress" class="secondary-button">Aplicar progreso</button>
+            <button id="cleaningSetFloors" class="secondary-button">Aplicar pisos</button>
+            <button id="cleaningResetProgress" class="secondary-button">Reiniciar progreso</button>
+            <button id="cleaningResetFloors" class="delete-button">Reiniciar pisos</button>
+            <button id="cleaningResetAll" class="delete-button">Reiniciar todo</button>
+          </div>
+          <p class="hint">Para pruebas manuales de viewers, poné «Manual» arriba y guardá los cambios. No requiere ejecutar una migración D1 a mano.</p>
         </div>
       </section>
 

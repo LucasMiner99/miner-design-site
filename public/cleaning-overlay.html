@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>MinerBot · Limpiando</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zalando+Sans:ital,wght@0,200..900;1,200..900&display=swap');
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;color:#fff;font-family:'Zalando Sans',Arial,sans-serif}
+body{display:grid;place-items:center}
+.panel{
+ width:600px;height:410px;flex:none;display:flex;flex-direction:column;gap:6px;padding:16px 20px 14px;
+ background:linear-gradient(180deg,rgba(8,10,15,.98),rgba(5,7,11,.98));
+ border:2px solid #717887;border-radius:10px;
+ box-shadow:0 12px 30px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.header{height:37px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{font-size:33px;line-height:1;font-weight:900;letter-spacing:-.035em;color:#fff}
+.viewers{font-size:19px;line-height:1;font-weight:850;white-space:nowrap;color:#c7cbd7;font-variant-numeric:tabular-nums}
+.viewers b{color:#fff}
+.stage{position:relative;min-height:0;flex:1;overflow:hidden}
+.floor{position:absolute;left:0;bottom:0;width:100%;height:auto;display:block;pointer-events:none;user-select:none}
+.floor.dirty{transition:opacity .08s linear}
+.character{position:absolute;bottom:20px;left:50%;width:270px;height:auto;aspect-ratio:498/403;will-change:transform;pointer-events:none}
+.popup{
+ position:absolute;z-index:3;left:50%;top:2px;width:max-content;max-width:94%;
+ padding:13px 18px;border-radius:10px;
+ border:2px solid #a893ff;background:linear-gradient(135deg,#171225 0%,#111825 100%);
+ box-shadow:0 5px 20px rgba(37,24,79,.7),0 0 25px rgba(119,91,255,.25);
+ font-size:27px;font-weight:900;line-height:1.1;letter-spacing:-.03em;
+ transform:translate(-50%,0) scale(.8);opacity:0;pointer-events:none;
+}
+.popup.show{opacity:1;transform:translate(-50%,0) scale(1);transition:opacity .16s ease,transform .2s ease}
+.popup .spark{color:#a893ff}
+.progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;height:34px;flex-shrink:0}
+.bar{position:relative;height:15px;overflow:hidden;border:1px solid #444a56;border-radius:999px;background:#1d2129;box-shadow:inset 0 1px 5px rgba(0,0,0,.45)}
+.fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:999px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.11) 0 9px,rgba(255,255,255,.02) 9px 18px),linear-gradient(90deg,#914cff 0%,#685cff 52%,#428bff 100%);box-shadow:0 0 16px rgba(96,83,255,.55)}
+.pct{min-width:68px;height:31px;display:grid;place-items:center;padding:0 10px;border:1px solid #3e4657;border-radius:8px;background:#11151d;font-size:20px;line-height:1;font-weight:900;letter-spacing:.01em;color:#fff;font-variant-numeric:tabular-nums}
+.footer{display:flex;align-items:center;justify-content:center;gap:9px;height:36px;flex-shrink:0;color:#fff;font-size:25px;line-height:1;font-weight:900;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.floor-count{color:#a491ff;font-size:30px}
+.pill{font-size:13px;line-height:1;font-weight:900;border-radius:6px;padding:6px 7px;color:#e1d8ff;background:rgba(122,91,255,.2);border:1px solid rgba(147,115,255,.35);margin-left:7px}
+.pill[hidden]{display:none}
+body.error .title{color:#fff}
+@media (max-width:615px),(max-height:425px){body{place-items:start center}}
+</style>
+</head>
+<body>
+<div class="panel" id="panel">
+  <div class="header"><div class="title">Limpiando...</div><div class="viewers">👥 <b id="viewers">—</b> viewers</div></div>
+  <div class="stage">
+    <img class="floor clean" src="/assets/cleaning/clean.png" alt="" draggable="false">
+    <img id="dirty" class="floor dirty" src="/assets/cleaning/dirty.png" alt="" draggable="false">
+    <canvas class="character" id="penguin" width="498" height="403" aria-label="Pingüino animado"></canvas>
+    <div class="popup" id="popup"><span class="spark">✦</span> ¡PISO LIMPIO! <span class="spark">✦</span></div>
+  </div>
+  <div class="progress-row"><div class="bar"><div class="fill" id="fill"></div></div><div class="pct" id="pct">0%</div></div>
+  <div class="footer">Pisos limpiados: <span class="floor-count" id="floors">0</span> <span class="pill" id="turbo" hidden>⚡ TURBO</span></div>
+</div>
+<script src="/cleaning-overlay.js"></script>
+</body>
+</html>

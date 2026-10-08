@@ -1,3 +1,5 @@
+import { ensureCleaningTable, getCleaningSnapshot, applyCleaningFollow, changeCleaningState, mutateCleaning, cleaningSnapshot } from "./cleaning.js";
+
 const KICK_API = "https://api.kick.com/public/v1";
 const KICK_OAUTH = "https://id.kick.com";
 const ELEVEN_TTS = "https://api.elevenlabs.io/v1/text-to-speech";
@@ -51,6 +53,18 @@ const DEFAULT_CONFIG = {
   sub_goal_overlay_scale: 100,
   sub_goal_overlay_right: 34,
   sub_goal_overlay_bottom: 132,
+
+  // Limpiando: minijuego persistente, con overlay OBS independiente.
+  cleaning_enabled: true,
+  cleaning_floor_minutes: 20,
+  cleaning_bonus_per_100: 15,
+  cleaning_boost_multiplier: 5,
+  cleaning_boost_seconds: 60,
+  cleaning_celebration_seconds: 10,
+  cleaning_normal_fps: 25,
+  cleaning_boost_fps: 60,
+  cleaning_viewers_mode: "auto",
+  cleaning_manual_viewers: 0,
 
   tts_enabled: true,
   tts_max_chars: 140,
@@ -169,6 +183,11 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path === "/api/streambot/subgoal/state" && request.method === "GET") {
       return await subGoalOverlayState(request, env);
     }
+    if (path === "/api/streambot/cleaning/state" && request.method === "GET") {
+      const config = await getConfig(env);
+      if (!checkOverlayKey(request, config)) return json({ error: "Overlay key inválida." }, 401);
+      return json(await getCleaningSnapshot(env, config));
+    }
     if (path === "/api/streambot/realtime/ws" && request.method === "GET") {
       return await handleRealtimeWebSocket(request, env);
     }
@@ -249,6 +268,21 @@ export async function handleStreamBotRequest(request, env, ctx) {
     if (path.startsWith("/api/streambot/mods/") && request.method === "DELETE") {
       return await adminDeleteMod(request, env);
     }
+    if (path === "/api/streambot/cleaning/admin" && request.method === "GET") {
+      return json(await getCleaningSnapshot(env, await getConfig(env)));
+    }
+    if (path === "/api/streambot/cleaning/control" && request.method === "POST") {
+      const cfg = await getConfig(env);
+      const result = await changeCleaningState(env, cfg, await readJson(request));
+      await realtimeBroadcast(env, { type: "cleaning.refresh" }, "overlay");
+      return json(result);
+    }
+    if (path === "/api/streambot/cleaning/refresh-viewers" && request.method === "POST") {
+      const cfg = await getConfig(env);
+      const result = await refreshCleaningViewers(env, cfg);
+      await realtimeBroadcast(env, { type: "cleaning.refresh" }, "overlay");
+      return json({ ...await getCleaningSnapshot(env, cfg), viewerUpdate: result });
+    }
     if (path === "/api/streambot/crown/admin" && request.method === "GET") {
       return await crownAdminState(env);
     }
@@ -317,6 +351,11 @@ async function getConfig(env) {
 async function updateConfig(request, env) {
   const incoming = await readJson(request);
   const current = await getConfig(env);
+  // Consolidar avance antes de cambiar velocidades para no aplicar la configuración
+  // nueva retrospectivamente a todo el tiempo transcurrido.
+  if (Object.keys(incoming).some(key => key.startsWith("cleaning_"))) {
+    await mutateCleaning(env, current);
+  }
   const nextTitleCommand = normalizeCommand(
     "title_command_name" in incoming ? incoming.title_command_name : current.title_command_name
   ) || "titulo";
@@ -351,7 +390,9 @@ async function updateConfig(request, env) {
     "tts_reward_cost", "tts_voice_2_cost", "tts_voice_3_cost", "tts_voice_4_cost",
     "tts_max_chars", "tts_daily_chars",
     "crown_min_minutes", "crown_max_minutes", "crown_open_seconds", "crown_alert_seconds", "crown_top_seconds",
-    "crown_overlay_scale", "sub_goal_target", "sub_goal_overlay_scale"
+    "crown_overlay_scale", "sub_goal_target", "sub_goal_overlay_scale",
+    "cleaning_floor_minutes", "cleaning_boost_seconds", "cleaning_celebration_seconds",
+    "cleaning_normal_fps", "cleaning_boost_fps"
   ]);
   for (const key of allowed) {
     if (!(key in incoming)) continue;
@@ -367,6 +408,15 @@ async function updateConfig(request, env) {
     }
     if (key === "sub_goal_current") value = Math.min(999999, Math.max(0, Math.round(Number(value) || 0)));
     if (key === "sub_goal_target") value = Math.min(999999, Math.max(1, Math.round(Number(value) || 1)));
+    if (key === "cleaning_floor_minutes") value = Math.min(240, value);
+    if (key === "cleaning_boost_seconds") value = Math.min(600, Math.max(5, value));
+    if (key === "cleaning_celebration_seconds") value = Math.min(60, value);
+    if (key === "cleaning_normal_fps") value = Math.min(50, Math.max(3, value));
+    if (key === "cleaning_boost_fps") value = Math.min(100, Math.max(5, value));
+    if (key === "cleaning_bonus_per_100") value = Math.min(300, Math.max(0, Number(value) || 0));
+    if (key === "cleaning_boost_multiplier") value = Math.min(20, Math.max(1, Number(value) || 1));
+    if (key === "cleaning_manual_viewers") value = Math.min(1000000, Math.max(0, Math.round(Number(value) || 0)));
+    if (key === "cleaning_viewers_mode") value = value === "manual" ? "manual" : "auto";
     if (typeof DEFAULT_CONFIG[key] === "boolean") value = Boolean(value);
     await setSetting(env, key, typeof value === "string" ? value.trim() : JSON.stringify(value));
   }
@@ -380,6 +430,7 @@ async function updateConfig(request, env) {
   }
   await realtimeBroadcast(env, { type: "crown.refresh" }, "overlay");
   await realtimeBroadcast(env, { type: "subgoal.refresh" }, "overlay");
+  await realtimeBroadcast(env, { type: "cleaning.refresh" }, "overlay");
   return json({ ok: true, config: await getConfig(env) });
 }
 
@@ -512,6 +563,15 @@ export async function handleStreamBotScheduled(env) {
   await ensureTimedMessagesTable(env);
 
   const config = await getConfig(env);
+  // Corre cada minuto incluso si el dashboard/OBS están cerrados.
+  if (config.cleaning_enabled) {
+    try {
+      await mutateCleaning(env, config);
+      await refreshCleaningViewers(env, config);
+    } catch (err) {
+      console.warn('Limpieza - cron:', err?.message || String(err));
+    }
+  }
   if (!config.bot_enabled) return;
 
   const now = Date.now();
@@ -828,9 +888,13 @@ async function handleWebhook(request, env, ctx) {
 
 async function processKickEvent(env, eventType, payload) {
   const config = await getConfig(env);
-  if (!config.bot_enabled) return;
-
   try {
+    // El boost se activa por follow real aunque se desactive el mensaje de saludo.
+    if (eventType === "channel.followed" && config.cleaning_enabled) {
+      await applyCleaningFollow(env, config);
+      await realtimeBroadcast(env, { type: "cleaning.refresh" }, "overlay");
+    }
+    if (!config.bot_enabled) return;
     if (eventType === "chat.message.sent") {
       const content = String(payload.content || "").trim();
       if (!content.startsWith("!")) return;
@@ -1261,6 +1325,36 @@ async function subGoalOverlayState(request, env) {
       bottom: Math.min(1200, Math.max(0, Number(config.sub_goal_overlay_bottom ?? 132))),
     },
   });
+}
+
+// -----------------------------------------------------------------------------
+// Limpiando · cantidad de viewers oficiales de Kick con token del broadcaster.
+// Cron una vez por minuto; el overlay NUNCA consulta Kick directamente.
+// Si Kick falla mantenemos el último valor conocido y mostramos aviso de antigüedad.
+// -----------------------------------------------------------------------------
+async function refreshCleaningViewers(env, config) {
+  if (config.cleaning_viewers_mode === 'manual') return { status: 'manual' };
+  const broadcaster = Number(config.kick_user_id) || 0;
+  if (!broadcaster) return { status: 'no-channel' };
+  try {
+    const token = await getKickAccessToken(env);
+    const resp = await kickFetchRaw(`/livestreams?broadcaster_user_id=${broadcaster}`, token);
+    if (!resp.ok) throw new Error(`Kick livestreams HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (!Array.isArray(data?.data)) throw new Error('Formato de respuesta Kick desconocido');
+    const record = data.data.find(v => Number(v.broadcaster_user_id) === broadcaster);
+    const viewers = record ? Number(record.viewer_count) : 0; // Sin directo = 0.
+    if (!Number.isFinite(viewers) || viewers < 0) throw new Error('Viewers inválidos de Kick');
+    const now = Date.now();
+    await mutateCleaning(env, config, s => {
+      s.viewers = Math.max(0, Math.round(viewers));
+      s.viewers_updated_ms = now;
+      return s;
+    }, now);
+    return { status: record ? 'live' : 'offline', viewers: Math.round(viewers) };
+  } catch (err) {
+    return { status: 'error', message: err?.message || String(err) };
+  }
 }
 
 // -----------------------------------------------------------------------------
