@@ -49,3 +49,29 @@
 .overlay-nudge button:nth-child(1){grid-column:2}.overlay-nudge button:nth-child(2){grid-column:1;grid-row:2}.overlay-nudge button:nth-child(3){grid-column:2;grid-row:2}.overlay-nudge button:nth-child(4){grid-column:3;grid-row:2}
 .overlay-presets{display:flex;flex-wrap:wrap;gap:8px}.overlay-presets .ghost-button{flex:1 1 calc(50% - 4px)}
 @media(max-width:980px){.overlay-editor-layout{grid-template-columns:1fr}.overlay-preview-stage{min-height:280px}}
+
+/* Estado compacto de Limpieza */
+.cleaning-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.cleaning-stats>div{background:#0b0e12;border:1px solid #2b323d;border-radius:10px;padding:14px}
+.cleaning-stats span,.cleaning-stats strong{display:block}
+.cleaning-stats span{font-size:11px;color:#a3a9b5;margin-bottom:7px}
+.cleaning-stats strong{font-weight:850;font-size:20px;color:white;font-variant-numeric:tabular-nums}
+.cleaning-manual-controls{margin:15px 0}
+@media(max-width:640px){.cleaning-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* MinerBot v19: editor visual de alertas con simulación local */
+.alerts-editor-preview{margin:12px 0 8px}
+.alerts-preview-frame{display:flex;align-items:center;justify-content:center;width:100%;min-height:235px;overflow:hidden;background-color:#24252b;background-image:linear-gradient(45deg,#2e3036 25%,transparent 25%),linear-gradient(-45deg,#2e3036 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2e3036 75%),linear-gradient(-45deg,transparent 75%,#2e3036 75%);background-size:22px 22px;background-position:0 0,0 11px,11px -11px, -11px 0;border-radius:12px;border:1px solid #30333d}
+.alerts-preview-frame iframe{display:block;width:100%;height:235px;border:0;background:transparent;pointer-events:none}
+.alerts-preview-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.alerts-preview-audio{display:inline-flex;align-items:center;gap:6px;color:#bec0cb;font-size:12px;white-space:nowrap;padding:5px 0}
+.alerts-preview-audio input{accent-color:#9677f3}
+.alerts-style-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px;margin-top:17px}
+.alerts-style-control{display:flex;flex-direction:column;gap:9px;min-width:0}
+.alerts-style-control>span:first-child{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#c5c6d1;font-weight:600}
+.alerts-style-control output{font-size:12px;color:#a8a0e9;font-variant-numeric:tabular-nums;font-weight:750}
+.alerts-style-control input[type=range]{width:100%;cursor:pointer;accent-color:#8e6bff}
+.alerts-color-control{flex-direction:row;align-items:center;justify-content:space-between}
+.alerts-color-control input[type=color]{width:62px;height:32px;background:#16181e;border:1px solid #474856;border-radius:7px;padding:3px;cursor:pointer}
+.alerts-color-hex{font-size:12px;color:#bbbccb;font-family:monospace}
+@media(max-width:760px){.alerts-style-grid{grid-template-columns:1fr}.alerts-preview-frame{min-height:200px}.alerts-preview-frame iframe{height:200px}}
