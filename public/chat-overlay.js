@@ -111,6 +111,9 @@
     }
     return globalBadgeFiles[type]?badgeAssetBase+globalBadgeFiles[type]:null;
   }
+  function isDefaultBadgeUrl(url){
+    return url.startsWith(badgeAssetBase) || url.startsWith('/assets/kick-badges/');
+  }
   function badgeFallbackIcon(b){
     const t=badgeType(b);
     const base=(t==='mod'?'moderator':t==='owner'?'broadcaster':t==='subgifter'?'sub_gifter':t);
@@ -139,12 +142,13 @@
         const src=badgeImageUrl(b);
         if(src){
           tag.classList.add('badge-image');
+          if(isDefaultBadgeUrl(src))tag.classList.add('badge-default');
           const img=document.createElement('img');img.alt=description;img.title=description;
           img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';img.src=src;
           img.onerror=()=>{
             const fallback=badgeFallbackIcon(b);
             if(fallback && !img.dataset.fallback){
-              img.dataset.fallback='1';img.src=fallback;
+              img.dataset.fallback='1';tag.classList.add('badge-default');img.src=fallback;
             }else{tag.classList.remove('badge-image');tag.textContent=badgeText(b);}
           };
           tag.append(img);
