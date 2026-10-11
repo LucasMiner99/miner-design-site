@@ -126,11 +126,9 @@
     const el = document.createElement('div');
     el.className = 'message'+(animate?' enter':'');
     el.dataset.id = String(m.id || '');
-    const meta = document.createElement('div');meta.className='meta';
     const name = document.createElement('span');name.className='username';
     name.textContent=String(m.username || 'Viewer');
     name.style.color=/^#[0-9A-Fa-f]{6}$/.test(m.color) ? m.color : '#c9b4ff';
-    meta.append(name);
     if (config.chat_badges_enabled !== false && Array.isArray(m.badges) && m.badges.length) {
       const holder = document.createElement('span');holder.className='badges';
       for(const b of m.badges){
@@ -153,11 +151,13 @@
         } else tag.textContent=badgeText(b);
         holder.append(tag);
       }
-      meta.append(holder);
+      el.append(holder);
     }
-    const body=document.createElement('div');body.className='body';
+    const separator=document.createElement('span');separator.className='separator';separator.textContent=': ';
+    const body=document.createElement('span');body.className='body';
     drawContent(body,m.content);
-    el.append(meta,body);
+    // Badges + username + texto comparten la misma línea; el texto se ajusta al ancho del overlay.
+    el.append(name,separator,body);
     return el;
   }
   function deleteEntry(id) {
