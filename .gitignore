@@ -1,0 +1,8 @@
+
+# Local credentials and generated development files
+.dev.vars*
+.env*
+.wrangler/
+node_modules/
+*.log
+.test-build/

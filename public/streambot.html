@@ -17,10 +17,11 @@
       </div>
       <nav>
         <button class="nav-link active" data-section="general">General</button>
+        <button class="nav-link" data-section="hub">miner hub</button>
         <button class="nav-link" data-section="tts">TTS</button>
-        <button class="nav-link" data-section="crown">Corona</button>
+        <button class="nav-link" hidden data-section="crown">Corona</button>
         <button class="nav-link" data-section="subgoal">Meta subs</button>
-        <button class="nav-link" data-section="cleaning">🐧 Limpiando</button>
+        <button class="nav-link" hidden data-section="cleaning">🐧 Limpiando</button>
         <button class="nav-link" data-section="chat">💬 Chat OBS</button>
         <button class="nav-link" data-section="alerts">🔔 Alertas OBS</button>
         <button class="nav-link" data-section="commands">Comandos</button>
@@ -43,6 +44,16 @@
       </header>
 
       <div id="notice" class="notice hidden"></div>
+
+      <section id="section-hub" class="panel-section">
+        <div class="card"><div class="card-head"><div><h2>Cajas de miner hub</h2><p>Los precios se actualizan directamente en las recompensas de tu canal.</p></div></div>
+        <div class="two-cols">
+        <label class="field"><span>Caja de objetos · puntos</span><input id="hubCostObject" type="number" value="2000" min="1" max="1000000" step="1"></label>
+        <label class="field"><span>Caja de personaje · puntos</span><input id="hubCostCharacter" type="number" value="2000" min="1" max="1000000" step="1"></label>
+        <label class="field"><span>Caja de ambiente · puntos</span><input id="hubCostEnvironment" type="number" value="2000" min="1" max="1000000" step="1"></label></div>
+        <div class="button-row"><button id="hubSyncRewards" class="primary-button">Guardar precios y sincronizar con Kick</button><button id="hubReloadRewards" class="secondary-button">Actualizar</button><a class="secondary-button" href="/hub/" target="_blank" rel="noopener">Abrir miner hub</a></div>
+        <p id="hubRewardsStatus" class="hint" role="status">Las tres cajas arrancan en 2.000 puntos. Podés cambiar cada precio cuando quieras.</p></div>
+      </section>
 
       <section id="section-general" class="panel-section active">
         <div class="status-grid">
@@ -170,7 +181,7 @@
         </div>
       </section>
 
-      <section id="section-crown" class="panel-section">
+      <section id="section-crown" class="panel-section" hidden>
         <div class="card">
           <div class="card-head"><div><h2>The Crown</h2><p>Un rey, una corona. Cuando se abre la ventana, el primero que escribe el comando se la roba.</p></div></div>
           <label class="toggle-row"><span><b>Corona activa</b><small>Activa la mecánica y el overlay separado de la Corona.</small></span><input id="crown_enabled" type="checkbox"><i></i></label>
@@ -221,7 +232,7 @@
         </div>
       </section>
 
-      <section id="section-cleaning" class="panel-section">
+      <section id="section-cleaning" class="panel-section" hidden>
         <div class="card">
           <div class="card-head"><div><h2>🐧 Limpiando el piso</h2><p>El pingüino limpia todo el tiempo. Cada follow aumenta la velocidad por un minuto; al completar un piso, baila y aparece “¡PISO LIMPIO!”.</p></div></div>
           <label class="toggle-row"><span><b>Minijuego activo</b><small>Controla si el overlay aparece y si el progreso avanza.</small></span><input id="cleaning_enabled" type="checkbox"><i></i></label>

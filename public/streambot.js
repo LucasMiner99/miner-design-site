@@ -597,6 +597,7 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b === button));
   document.querySelectorAll(".panel-section").forEach(s => s.classList.remove("active"));
   $(`section-${button.dataset.section}`).classList.add("active");
+  if (button.dataset.section === "hub") loadHubRewards();
   if (button.dataset.section === "logs") loadLogs();
   if (button.dataset.section === "mods") loadMods();
   if (button.dataset.section === "crown") loadCrown();
@@ -630,3 +631,17 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
 
   $("lockScreen").classList.remove("hidden");
 })();
+
+async function loadHubRewards(){
+  try{const data=await api('/hub/rewards');for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']])$('hubCost'+id).value=data.costs[kind];$('hubRewardsStatus').textContent=data.enabled?'Al guardar se crean las cajas que falten y se actualizan sus precios en Kick.':'La beta todavía está deshabilitada. Precios iniciales: 2.000 puntos.';}
+  catch(e){$('hubRewardsStatus').textContent=e.message;}
+}
+$('hubReloadRewards').addEventListener('click',loadHubRewards);
+$('hubSyncRewards').addEventListener('click',async()=>{
+  const button=$('hubSyncRewards');if(button.disabled)return;
+  const costs={};for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const input=$('hubCost'+id);if(!input.reportValidity())return;costs[kind]=Number(input.value);}
+  button.disabled=true;$('hubRewardsStatus').textContent='Sincronizando con Kick…';
+  try{await api('/hub/rewards',{method:'POST',body:JSON.stringify({costs})});$('hubRewardsStatus').textContent='Precios guardados. Las tres cajas ya están vinculadas al juego.';}
+  catch(e){$('hubRewardsStatus').textContent=e.message+' Si hubo una interrupción, volvé a sincronizar para completar las tres cajas.';}
+  finally{button.disabled=false;}
+});

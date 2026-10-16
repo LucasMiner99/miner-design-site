@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4eb">
+  <title>miner hub · Tu espacio</title>
+  <meta name="description" content="Un pequeño lugar para quedarte. Caminá, decorá tu habitación y expresate en miner hub.">
+  <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="online.css">
+</head>
+<body>
+<div id="hubLogin" class="hub-login" hidden><div><h1>miner hub</h1><p id="hubLoginStatus"></p><a id="hubLoginLink" class="primary-button" href="/api/hub/login">Entrar con Kick</a></div></div>
+<div class="hub-bar"><span id="hubStatus" role="status">Conectando…</span><button id="hubHome" type="button" disabled>Mi sala</button><button id="hubRooms" type="button">Salas</button><button id="hubAdmin" type="button" hidden>Administrar</button><button id="hubLogout" type="button">Salir</button></div>
+<dialog id="hubRoomsDialog"><h2>Salas</h2><div id="hubRoomsList"></div><button data-hub-close="hubRoomsDialog">Cerrar</button></dialog>
+<dialog id="hubAdminDialog"><h2>Administrar</h2><p>Vinculá las tres recompensas creadas en tu canal de Kick.</p><form id="hubRewardForm"><label>Objetos <select id="hubReward-object" required></select></label><label>Personaje <select id="hubReward-character" required></select></label><label>Ambiente <select id="hubReward-environment" required></select></label><button>Guardar recompensas</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
+
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></symbol>
+  <symbol id="i-chair" viewBox="0 0 24 24"><path d="M6 13V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8M4 11v7h16v-7M6 18v3m12-3v3M4 14h16"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="m9 22 3-8 3 4v4M7 13l2-5h5l3 5h3M12 8v6l-6 4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4zM8 8h8M8 12h5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 3 18 9-18 9 4-9-4-9Zm4 9h14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3M12 17v.1"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zM16 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-muted" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3zM17 9l5 6m0-6-5 6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="m8 3-5 5 5 5M3 8h10a7 7 0 0 1 0 14"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M3 18V8l6 10H3Zm18 0V8l-6 10h6Z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4v13H3V7Zm0 0h18M9 11h6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 20c0-10 8-12 15-16 0 13-5 16-12 13M5 20l9-10"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 3v7h7"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 16 12-12 4 4L8 20H4zM13 7l4 4"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></symbol>
+</defs></svg>
+
+<div class="app">
+  <header class="topbar">
+    <a href="#" class="brand" aria-label="miner hub, inicio"><span class="brand-mark"><svg><use href="#i-home"/></svg></span><span>miner hub</span></a>
+    
+    <div class="top-actions"><button id="themeBtn" class="secondary-button" aria-pressed="true">☀ Modo claro</button><span class="version"><b>beta online</b></span><button id="profileBtn" class="profile" title="Cambiar mi look"><canvas id="avatarThumb" width="36" height="40"></canvas><span id="profileName">Lucas</span><svg><use href="#i-edit"/></svg></button></div>
+  </header>
+
+  <main class="workspace">
+    <section class="room-section" aria-label="Tu habitación">
+      <div class="room-heading"><h1 class="sr-only">Tu habitación</h1><div class="room-tools"><button id="revealWalls" class="secondary-button" aria-pressed="false" hidden>Ver detrás</button><button id="quickGenerate" hidden class="secondary-button" title="Abrir el generador de salas">Nueva sala</button><button id="soundBtn" class="icon-button" title="Activar sonidos" aria-label="Activar sonidos" aria-pressed="false"><svg><use href="#i-muted"/></svg></button><button id="helpBtn" class="icon-button" title="Cómo jugar" aria-label="Cómo jugar"><svg><use href="#i-help"/></svg></button></div></div>
+      <div id="stage" class="stage">
+        <canvas id="game" width="900" height="640" tabindex="0" aria-label="Habitación isométrica. Hacé clic en el piso para caminar. También podés usar las flechas del teclado."></canvas>
+        <div id="bubbleLayer" class="bubble-layer" aria-live="polite" aria-atomic="false"></div>
+        <div id="loading" class="loading"><span class="loading-home"><svg><use href="#i-home"/></svg></span><b>Preparando tu rincón</b><span>Abriendo las ventanas...</span></div>
+        <div id="contextBar" class="context-bar" hidden><span id="selectedName">Mueble</span><button id="moveBtn" class="move-button" title="Mover (M)">Mover</button><button id="flipBtn" title="Girar (R)" aria-label="Girar el mueble"><svg><use href="#i-flip"/></svg></button><button id="wallUpBtn" hidden title="Subir en la pared" aria-label="Subir decoración">↑</button><button id="wallDownBtn" hidden title="Bajar en la pared" aria-label="Bajar decoración">↓</button><button id="interactBtn" class="interact-button" hidden>Usar</button><span id="finishPicker" hidden class="finish-picker"><button id="finishPrev" aria-label="Acabado anterior">‹</button><span id="finishName" aria-live="polite">Original</span><button id="finishNext" aria-label="Acabado siguiente">›</button></span><button id="storeBtn" title="Guardar en el inventario (Supr)" aria-label="Guardar el mueble en el inventario"><svg><use href="#i-box"/></svg></button><button id="deselectBtn" title="Deseleccionar (Escape)" aria-label="Deseleccionar"><svg><use href="#i-close"/></svg></button></div>
+        <div id="toast" class="toast" role="status" hidden></div>
+        <div class="stage-bottom"><span class="room-label"><span class="online-dot"></span> <span id="roomOwner">El rincón de Lucas</span></span><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div>
+      </div>
+      <div class="play-toolbar"><div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="decorateBtn" aria-pressed="false"><svg><use href="#i-chair"/></svg>Decorar</button></div><p id="modeHint">Clic: caminar, sentarte, encender luces o abrir cortinas.</p><button id="undoBtn" class="icon-button" title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer el último cambio" disabled><svg><use href="#i-undo"/></svg></button></div>
+      <form id="chatForm" class="chat-form" autocomplete="off"><span class="chat-avatar"><canvas id="chatThumb" width="28" height="32"></canvas></span><label class="sr-only" for="chatInput">Tu mensaje</label><input id="chatInput" maxlength="120" placeholder="Escribí un mensaje…" aria-describedby="chatHelp"><span id="charCount" class="char-count">0/120</span><button id="sendBtn" type="submit" aria-label="Enviar mensaje" disabled><svg><use href="#i-send"/></svg></button></form>
+      <div class="chat-footer"><span id="chatHelp"><kbd>Enter</kbd> para hablar <span>·</span> Las burbujas duran unos segundos</span><span id="saveStatus" class="save-status"><svg><use href="#i-save"/></svg>Guardado en tu cuenta</span></div>
+    </section>
+
+    <aside class="sidebar" aria-label="Decoración e inventario">
+      <div class="panel-tabs collection-tabs" role="tablist" aria-label="Mi colección">
+        <button id="inventoryTab" role="tab" aria-selected="true" aria-controls="inventoryPanel" class="active">Inventario</button>
+        <button id="rewardsTab" role="tab" aria-selected="false" aria-controls="rewardsPanel">Cajas <span id="pendingTotal">0</span></button>
+      </div>
+      <section id="inventoryPanel" role="tabpanel" aria-labelledby="inventoryTab">
+        <div class="inventory-toolbar"><label class="sr-only" for="inventoryFilter">Filtrar inventario</label><select id="inventoryFilter"><option value="all">Todo</option><option value="object">Objetos</option><option value="character">Personaje</option><option value="environment">Ambiente</option></select><span id="rewardInventoryCount">0 objetos</span></div>
+        <div class="inventory-search"><label class="sr-only" for="inventorySearch">Buscar en inventario</label><input id="inventorySearch" type="search" placeholder="Buscar…" maxlength="60" autocomplete="off"></div>
+        <p id="rewardEmpty" class="reward-note">Abrí una caja para empezar tu colección.</p>
+        <div id="rewardInventory" class="reward-inventory"></div>
+      </section>
+      <section id="rewardsPanel" role="tabpanel" aria-labelledby="rewardsTab" hidden>
+        <div class="reward-boxes">
+          <section class="reward-box"><span class="reward-box-symbol" aria-hidden="true">◇</span><div><h3>Objetos</h3><b id="pendingObject">0 disponibles</b></div><button id="openObjectBox" class="primary-button" disabled>Abrir</button></section>
+          <section class="reward-box"><span class="reward-box-symbol" aria-hidden="true">✧</span><div><h3>Personaje</h3><b id="pendingCharacter">0 disponibles</b></div><button id="openCharacterBox" class="primary-button" disabled>Abrir</button></section>
+          <section class="reward-box"><span class="reward-box-symbol" aria-hidden="true">▧</span><div><h3>Ambiente</h3><b id="pendingEnvironment">0 disponibles</b></div><button id="openEnvironmentBox" class="primary-button" disabled>Abrir</button></section>
+        </div>
+        <div id="rewardAnimation" class="reward-animation" hidden><canvas id="rewardReel" width="600" height="260" role="img" aria-label="Ruleta de apertura de caja" aria-busy="false"></canvas><button id="skipReward" class="secondary-button">Saltar</button></div>
+        <div id="rewardResult" class="reward-result" hidden><canvas id="rewardResultArt" width="240" height="240" aria-hidden="true"></canvas><div><small id="rewardResultType"></small><h3 id="rewardResultName"></h3><button id="useReward" class="primary-button">Equipar</button></div></div>
+        <details class="reward-test"><summary>Recompensas de Kick</summary><div class="reward-owner"><label for="rewardOwner">Jugador</label><select id="rewardOwner"></select></div><div class="reward-test-buttons"><button id="testObjectClaim" class="secondary-button">+ Caja de objetos</button><button id="testCharacterClaim" class="secondary-button">+ Caja de personaje</button><button id="testEnvironmentClaim" class="secondary-button">+ Caja de ambiente</button></div></details>
+      </section>
+      <p id="rewardStatus" class="reward-status" role="status" aria-live="polite"></p>
+      <button id="wardrobeBtn" class="wardrobe-button" type="button">Cambiar mi look</button><div id="roomTools" class="panel-tabs tools-tabs" role="tablist" aria-label="Mi habitación"><button id="furnitureTab" hidden role="tab" aria-selected="false" aria-controls="furniturePanel">Catálogo</button><button id="roomTab" role="tab" aria-selected="false" aria-controls="roomPanel">Ambiente</button><button id="peopleTab" hidden role="tab" aria-selected="false" aria-controls="peoplePanel">Visitantes</button></div>
+      <section id="furniturePanel" role="tabpanel" aria-labelledby="furnitureTab" hidden><div class="filters" role="group" aria-label="Filtrar muebles"><button class="active" data-filter="all">Todo</button><button data-filter="seats">Asientos</button><button data-filter="deco">Deco</button><button data-filter="wall">Pared</button></div><div class="catalog-search"><label class="sr-only" for="catalogSearch">Buscar un mueble</label><input id="catalogSearch" type="search" maxlength="60" placeholder="Buscar un mueble…" autocomplete="off" aria-controls="catalog"><span id="catalogCount" role="status" aria-live="polite"></span></div><div id="catalog" class="catalog"></div><p id="catalogEmpty" class="catalog-empty" hidden>No encontramos esa pieza en esta categoría.</p><p class="catalog-note"><svg><use href="#i-plus"/></svg> Elegí una pieza. Pared: colocá cuadros, ventanas y estantes a la altura que quieras.</p></section>
+      <section id="roomPanel" role="tabpanel" aria-labelledby="roomTab" hidden>
+        <p id="roomStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+        <div class="environment-group"><div class="room-picker" role="group" aria-labelledby="roomLayoutLabel"><span class="room-picker-label" id="roomLayoutLabel">Forma y tamaño</span><div class="room-picker-controls"><button type="button" id="roomLayoutPrev" class="look-arrow" aria-label="Forma y tamaño: anterior">‹</button><span class="room-picker-choice"><b id="roomLayout"></b><small id="roomLayoutCount"></small></span><button type="button" id="roomLayoutNext" class="look-arrow" aria-label="Forma y tamaño: siguiente">›</button></div></div><select hidden aria-hidden="true" tabindex="-1" id="roomShape"></select><p>Los muebles se reacomodan al cambiar de forma. Si falta espacio, el excedente queda en reserva. Podés deshacer.</p></div>
+        <div class="environment-group"><h3>Paredes</h3><div class="room-picker" role="group" aria-labelledby="roomWallLabel"><span class="room-picker-label" id="roomWallLabel">Color de pared</span><div class="room-picker-controls"><button type="button" id="roomWallPrev" class="look-arrow" aria-label="Color de pared: anterior">‹</button><span class="room-picker-choice"><i id="roomWallChip" aria-hidden="true"></i><b id="roomWall"></b><small id="roomWallCount"></small></span><button type="button" id="roomWallNext" class="look-arrow" aria-label="Color de pared: siguiente">›</button></div></div><div class="room-picker" role="group" aria-labelledby="roomWallPatternLabel"><span class="room-picker-label" id="roomWallPatternLabel">Diseño de pared</span><div class="room-picker-controls"><button type="button" id="roomWallPatternPrev" class="look-arrow" aria-label="Diseño de pared: anterior">‹</button><span class="room-picker-choice"><b id="roomWallPattern"></b><small id="roomWallPatternCount"></small></span><button type="button" id="roomWallPatternNext" class="look-arrow" aria-label="Diseño de pared: siguiente">›</button></div></div><div id="wallSwatches" hidden></div><select hidden aria-hidden="true" tabindex="-1" id="wallPattern"><option value="0">Paneles de madera</option><option value="1">Liso</option><option value="2">Papel a rayas</option><option value="3">Ladrillos</option><option value="4">Rombos</option><option value="5">Dos tonos</option></select></div>
+        <div class="environment-group"><h3>Piso</h3><div class="room-picker" role="group" aria-labelledby="roomFloorLabel"><span class="room-picker-label" id="roomFloorLabel">Color de piso</span><div class="room-picker-controls"><button type="button" id="roomFloorPrev" class="look-arrow" aria-label="Color de piso: anterior">‹</button><span class="room-picker-choice"><i id="roomFloorChip" aria-hidden="true"></i><b id="roomFloor"></b><small id="roomFloorCount"></small></span><button type="button" id="roomFloorNext" class="look-arrow" aria-label="Color de piso: siguiente">›</button></div></div><div class="room-picker" role="group" aria-labelledby="roomFloorPatternLabel"><span class="room-picker-label" id="roomFloorPatternLabel">Diseño de piso</span><div class="room-picker-controls"><button type="button" id="roomFloorPatternPrev" class="look-arrow" aria-label="Diseño de piso: anterior">‹</button><span class="room-picker-choice"><b id="roomFloorPattern"></b><small id="roomFloorPatternCount"></small></span><button type="button" id="roomFloorPatternNext" class="look-arrow" aria-label="Diseño de piso: siguiente">›</button></div></div><div id="floorSwatches" hidden></div><select hidden aria-hidden="true" tabindex="-1" id="floorPattern"><option value="0">Parquet fino</option><option value="1">Tablones anchos</option><option value="2">Damero</option><option value="3">Baldosas</option><option value="4">Parquet entrelazado</option><option value="5">Mosaico</option><option value="6">Terrazo</option></select></div>
+        <div class="environment-group" hidden><div class="room-picker" role="group" aria-labelledby="roomMotionLabel"><span class="room-picker-label" id="roomMotionLabel">Animaciones</span><div class="room-picker-controls"><button type="button" id="roomMotionPrev" class="look-arrow" aria-label="Animaciones: anterior">‹</button><span class="room-picker-choice"><b id="roomMotion"></b><small id="roomMotionCount"></small></span><button type="button" id="roomMotionNext" class="look-arrow" aria-label="Animaciones: siguiente">›</button></div></div><button id="motionBtn" hidden aria-pressed="true">Animaciones del ambiente: sí</button></div>
+        <div class="environment-group generator-group" hidden><h3>Sala automática</h3><button id="generateRoom" class="primary-button">Generar sala completa</button><p>Forma, tamaño, colores y muebles al azar. Reemplaza la sala actual; podés volver con Deshacer.</p></div>
+        <button id="resetBtn" hidden class="reset-button"><svg><use href="#i-reset"/></svg>Volver al rincón inicial</button>
+      </section>
+      <section id="peoplePanel" role="tabpanel" aria-labelledby="peopleTab" hidden>
+        <div class="people-intro"><div class="eyebrow">EL BARRIO COBRA VIDA</div><h3>Siempre entra alguien más.</h3><p>Invitá personajes de prueba. Caminan solos y cada uno tiene su propio look.</p><div class="people-actions"><button id="spawnOne" class="primary-button">+ Un visitante</button><button id="spawnThree" class="secondary-button">Invitar 3</button></div><button id="pausePeople" class="secondary-button" aria-pressed="false">Pausar paseos</button><p id="peopleCount" role="status">0 / 12 visitantes</p></div>
+        <div id="peopleList" class="people-list"></div>
+        <div class="people-intro"><button id="editMe" class="secondary-button">Cambiar mi look</button><p>Hacé clic en un personaje para visitar su sala.</p></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<dialog id="helpDialog" class="modal"><button class="modal-close icon-button" data-close="helpDialog" aria-label="Cerrar ayuda"><svg><use href="#i-close"/></svg></button><div class="eyebrow">BIENVENIDO A CASA</div><h2>Tu rincón, tus reglas.</h2><div class="help-row"><span><svg><use href="#i-walk"/></svg></span><div><h3>Un clic y ya estás en camino</h3><p>En modo Caminar, hacé clic en una lámpara o farol para prenderlo y apagarlo, o en una ventana para abrir y cerrar sus cortinas. El reloj marca la hora de tu dispositivo y los peces nadan solos. Hacé clic en el piso. Tu personaje busca un camino entre los muebles. También podés usar las flechas. Los asientos se pueden decorar; sentarse estará disponible en una próxima actualización online.</p></div></div><div class="help-row"><span><svg><use href="#i-chair"/></svg></span><div><h3>Mové las cosas de lugar</h3><p>En Decorar, seleccioná un mueble, apretá Mover y elegí su lugar. Esc cancela. Seleccionar o arrastrar por sí solo no mueve nada. Los objetos pequeños pueden apoyarse en las mesas. En Pared tenés ventanas, cuadros, reloj, estante y espejo: hacé clic sobre la pared a la altura deseada. R cambia de pared; las flechas del menú ajustan la altura.</p></div></div><div class="help-row"><span><svg><use href="#i-chat"/></svg></span><div><h3>Decí lo que tengas ganas</h3><p>Escribí y apretá Enter. El mensaje aparece sobre tu personaje y se desvanece después de unos segundos.</p></div></div><div class="shortcuts"><span><kbd>Esc</kbd> cancelar</span><span><kbd>M</kbd> mover</span><span><kbd>R</kbd> girar</span><span><kbd>Supr</kbd> guardar mueble</span><span><kbd>Ctrl Z</kbd> deshacer</span></div><p class="modal-note">Beta online: tu sala y tu colección se guardan en tu cuenta de Kick. Elegí Salas para visitar a otra persona o escribí !entrar en el chat de minerarg para ir a su sala actual.</p><button class="primary-button" data-close="helpDialog">Me quedo un rato <svg><use href="#i-home"/></svg></button></dialog>
+<dialog id="profileDialog" class="modal small"><button class="modal-close icon-button" data-close="profileDialog" aria-label="Cerrar"><svg><use href="#i-close"/></svg></button><div class="eyebrow">ASÍ TE CONOCEN</div><h2>¿Cómo te llamás?</h2><form id="profileForm"><label for="nameInput">Nombre de tu personaje</label><input id="nameInput" maxlength="18" required placeholder="Tu nombre" autocomplete="nickname"><button class="primary-button" type="submit">Guardar nombre</button></form></dialog>
+<dialog id="resetDialog" class="modal small"><div class="eyebrow">EMPEZAR DE NUEVO</div><h2>¿Volvemos al principio?</h2><p>Se restablecen los muebles y colores de la habitación. Podés deshacer este cambio después.</p><div class="dialog-actions"><button class="secondary-button" data-close="resetDialog">Mejor no</button><button id="confirmReset" class="primary-button">Restablecer</button></div></dialog>
+
+<dialog id="lookDialog" class="modal look-modal" aria-labelledby="lookTitle">
+  <button class="modal-close icon-button" data-close="lookDialog" aria-label="Cerrar editor">×</button>
+  <div class="eyebrow">UN LOOK MUY TUYO</div><h2 id="lookTitle">Vestir personaje</h2>
+  <form id="lookForm">
+    <div class="look-name-field"><label for="lookName">Nombre</label><input id="lookName" maxlength="18" required autocomplete="off"></div>
+    <div class="look-portrait look-dresser">
+      <canvas id="lookPreview" width="432" height="576" role="img" aria-label="Vista previa del personaje"></canvas>
+<div class="look-picker picker-hair" role="group" aria-labelledby="lookHairLabel" style="--picker-y:50px">
+      <div class="picker-side picker-left"><span id="lookHairLabel" class="picker-label">Pelo / gorro</span><button id="lookHairPrev" class="look-arrow" type="button" aria-label="Pelo / gorro: opción anterior" aria-controls="lookPreview lookHair"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookHairNext" class="look-arrow" type="button" aria-label="Pelo / gorro: opción siguiente" aria-controls="lookPreview lookHair"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookHair"></b><small id="lookHairCount"></small></span></div>
+    </div>
+<div class="look-picker picker-face" role="group" aria-labelledby="lookFaceLabel" style="--picker-y:110px">
+      <div class="picker-side picker-left"><span id="lookFaceLabel" class="picker-label">Cara</span><button id="lookFacePrev" class="look-arrow" type="button" aria-label="Cara: opción anterior" aria-controls="lookPreview lookFace"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookFaceNext" class="look-arrow" type="button" aria-label="Cara: opción siguiente" aria-controls="lookPreview lookFace"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookFace"></b><small id="lookFaceCount"></small></span></div>
+    </div>
+<div class="look-picker picker-top" role="group" aria-labelledby="lookTopLabel" style="--picker-y:175px">
+      <div class="picker-side picker-left"><span id="lookTopLabel" class="picker-label">Torso</span><button id="lookTopPrev" class="look-arrow" type="button" aria-label="Torso: opción anterior" aria-controls="lookPreview lookTop"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookTopNext" class="look-arrow" type="button" aria-label="Torso: opción siguiente" aria-controls="lookPreview lookTop"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookTop"></b><small id="lookTopCount"></small></span></div>
+    </div>
+<div class="look-picker picker-bottom" role="group" aria-labelledby="lookBottomLabel" style="--picker-y:245px">
+      <div class="picker-side picker-left"><span id="lookBottomLabel" class="picker-label">Pantalón</span><button id="lookBottomPrev" class="look-arrow" type="button" aria-label="Pantalón: opción anterior" aria-controls="lookPreview lookBottom"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookBottomNext" class="look-arrow" type="button" aria-label="Pantalón: opción siguiente" aria-controls="lookPreview lookBottom"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookBottom"></b><small id="lookBottomCount"></small></span></div>
+    </div>
+<div class="look-picker picker-shoes" role="group" aria-labelledby="lookShoesLabel" style="--picker-y:290px">
+      <div class="picker-side picker-left"><span id="lookShoesLabel" class="picker-label">Calzado</span><button id="lookShoesPrev" class="look-arrow" type="button" aria-label="Calzado: opción anterior" aria-controls="lookPreview lookShoes"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookShoesNext" class="look-arrow" type="button" aria-label="Calzado: opción siguiente" aria-controls="lookPreview lookShoes"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookShoes"></b><small id="lookShoesCount"></small></span></div>
+    </div>
+<div class="look-picker picker-accessory" role="group" aria-labelledby="lookAccessoryLabel" style="--picker-y:145px">
+      <div class="picker-side picker-left"><span id="lookAccessoryLabel" class="picker-label">Cadena</span><button id="lookAccessoryPrev" class="look-arrow" type="button" aria-label="Cadena: opción anterior" aria-controls="lookPreview lookAccessory"><span aria-hidden="true">‹</span></button></div>
+      <div class="picker-side picker-right"><button id="lookAccessoryNext" class="look-arrow" type="button" aria-label="Cadena: opción siguiente" aria-controls="lookPreview lookAccessory"><span aria-hidden="true">›</span></button><span class="picker-choice"><b id="lookAccessory"></b><small id="lookAccessoryCount"></small></span></div>
+    </div>
+<div class="look-picker picker-back" role="group" aria-labelledby="lookBackLabel"><div class="picker-side picker-left"><span id="lookBackLabel" class="picker-label">Espalda</span><button id="lookBackPrev" class="look-arrow" type="button" aria-label="Espalda: anterior">‹</button></div><div class="picker-side picker-right"><button id="lookBackNext" class="look-arrow" type="button" aria-label="Espalda: siguiente">›</button><span class="picker-choice"><b id="lookBack"></b><small id="lookBackCount"></small></span></div></div><div class="look-picker picker-pet" role="group" aria-labelledby="lookPetLabel"><div class="picker-side picker-left"><span id="lookPetLabel" class="picker-label">Mascota</span><button id="lookPetPrev" class="look-arrow" type="button" aria-label="Mascota: anterior">‹</button></div><div class="picker-side picker-right"><button id="lookPetNext" class="look-arrow" type="button" aria-label="Mascota: siguiente">›</button><span class="picker-choice"><b id="lookPet"></b><small id="lookPetCount"></small></span></div></div>
+      <button id="lookRotate" class="secondary-button" type="button">Girar vista ↻</button>
+    </div>
+
+    <p id="lookStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="look-save-actions"><button id="randomLook" type="button" class="secondary-button">Al azar</button><button id="cancelLook" type="button" class="secondary-button">Cancelar</button><button id="saveLook" class="primary-button" type="submit">Guardar look</button></div>
+  </form>
+  <form id="visitorChatForm" class="visitor-chat"><label for="visitorMessage">Probar mensaje de este visitante</label><div class="people-actions"><input id="visitorMessage" maxlength="120" placeholder="¡Hola, barrio!" required><button class="secondary-button" type="submit">Decir</button></div></form>
+  <div class="people-actions"><button id="removePerson" class="secondary-button">Despedir visitante</button><button id="originalLook" class="secondary-button">Look inicial</button></div>
+  
+</dialog>
+
+
+
+<script src="core.js"></script>
+<script src="generator.js"></script>
+<script src="people.js"></script>
+<script src="wardrobe.js"></script>
+<script src="pets.js"></script>
+<script src="scenery.js"></script>
+<script src="wardrobe-cache-v32.js"></script>
+<script src="rewards.js"></script>
+<script src="rewards-ui.js"></script>
+<script src="online.js"></script>
+</body>
+</html>

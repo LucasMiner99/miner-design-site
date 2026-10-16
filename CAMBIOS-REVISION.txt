@@ -1,0 +1,10 @@
+Candidata miner hub online · 16 octubre 2026
+No publicada. HUB_ENABLED=false hasta completar activación y prueba real.
+Incluye login Kick, inventario del servidor, salas, chat, cajas y dashboard de
+precios (2.000 puntos cada caja inicialmente). Corona y Limpiando desactivados.
+El callback OAuth y panel actuales del bot se conservan. Hay un callback nuevo
+exclusivo para jugadores. Se agrega HUB_WORLD y una migración aditiva de D1.
+No se ejecutaron migraciones ni se modificó ninguna cuenta de producción.
+Base comparada con GitHub dec36a9: coincide con el ZIP revisado, salvo los cambios
+intencionales de esta candidata y las diferencias de fin de línea.
+Consultar MINER-HUB-ACTIVACION.txt para alcance, pruebas, límites y publicación.

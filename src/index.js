@@ -1,4 +1,6 @@
-import { handleStreamBotRequest, handleStreamBotScheduled } from "./streambot.js";
+import { handleHub } from './hub-gateway.js';
+export { HubWorld } from './hub-world.mjs';
+import { handleStreamBotRequest, handleStreamBotScheduled, listHubKickRewards } from "./streambot.js";
 export { OverlayRoom } from "./realtime.js";
 
 const CHANNEL_ID = "UC7ICe-QlKsiyClI3uA8WU3g";
@@ -33,6 +35,8 @@ const PRODUCT_OVERRIDES = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname.startsWith("/api/hub/")) return handleHub(request, env, {listRewards:()=>listHubKickRewards(env)});
 
     if (url.pathname.startsWith("/api/streambot/")) {
       return await handleStreamBotRequest(request, env, ctx);

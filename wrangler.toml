@@ -33,3 +33,16 @@ class_name = "OverlayRoom"
 [exports.OverlayRoom]
 type = "durable-object"
 storage = "sqlite"
+
+# Enable only after applying hub-schema.sql and registering the Kick callback.
+[vars]
+HUB_ENABLED = "false"
+HUB_ORIGIN = "https://minerdesign.xyz"
+
+[[durable_objects.bindings]]
+name = "HUB_WORLD"
+class_name = "HubWorld"
+
+[exports.HubWorld]
+type = "durable-object"
+storage = "sqlite"
