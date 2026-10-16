@@ -141,7 +141,7 @@ export class HubWorld {
    if(b.type==='walk'){
     const room=await this.ctx.storage.get('room:'+a.roomId);if(!Number.isFinite(b.x)||!Number.isFinite(b.y))reject('Destino inválido.');C.setLayout(room.scene.layout);
     const from=currentPosition(a.position).point,target={x:Math.floor(b.x)+.5,y:Math.floor(b.y)+.5};if(!C.inside(target.x,target.y)||C.blocked(room.scene.items,Math.floor(target.x),Math.floor(target.y)))return;
-    const path=C.route(room.scene.items,from,target);if(!path)return;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path});
+    const path=C.route(room.scene.items,from,target);if(!path)return;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
    }
   }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.'});}});
  }

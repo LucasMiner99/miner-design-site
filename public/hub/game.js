@@ -241,7 +241,18 @@
   function raiseWall(delta){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].wall||movingId!==null)return;tryPlace({...item,wallZ:item.wallZ+delta},false);}
   function toWorld(event){const b=canvas.getBoundingClientRect();return {x:(event.clientX-b.left-view.x)/view.s,y:(event.clientY-b.top-view.y)/view.s};}
   function hitAt(p){for(let j=drawBounds.length-1;j>=0;j--){const b=drawBounds[j];if(p.x<b.x||p.y<b.y||p.x>=b.x+b.w||p.y>=b.y+b.h)continue;const sx=Math.floor((p.x-b.x)/b.w*b.sprite.width),sy=Math.floor((p.y-b.y)/b.h*b.sprite.height),px=b.flip?b.sprite.width-1-sx:sx;if(b.sprite.alpha[(sy*b.sprite.width+px)]>48)return b.item;}return null;}
-  function movePlayer(tile){if(!online.send('walk',{x:tile.x,y:tile.y}))return;const path=C.route(state.items,player,tile);if(path===null){toast('No hay paso por ahí. Elegí un lugar libre.');return;}standUp();player.path=path;arrivalMarker={x:Math.floor(tile.x),y:Math.floor(tile.y),at:performance.now()};}
+  let walkSequence=0,pendingWalk=0;
+  function movePlayer(tile){const path=C.route(state.items,player,tile);if(path===null){toast('No hay paso por ahí. Elegí un lugar libre.');return;}const seq=++walkSequence;if(!online.send('walk',{x:tile.x,y:tile.y,seq}))return;pendingWalk=seq;standUp();player.path=path;arrivalMarker={x:Math.floor(tile.x),y:Math.floor(tile.y),at:performance.now()};}
+  // Keep progress already predicted along an approved route instead of rewinding on its echo.
+  function confirmedRemainder(from,path,point){
+    let previous=from,best=Math.hypot(point.x-from.x,point.y-from.y),next=0;
+    for(let i=0;i<path.length;i++){const target=path[i],dx=target.x-previous.x,dy=target.y-previous.y,length=dx*dx+dy*dy;
+      const t=length?Math.max(0,Math.min(1,((point.x-previous.x)*dx+(point.y-previous.y)*dy)/length)):1;
+      const distance=Math.hypot(point.x-previous.x-dx*t,point.y-previous.y-dy*t);
+      if(distance<=best+1e-8){best=distance;next=t>=.999999?i+1:i;}previous=target;
+    }
+    return best<=.08?path.slice(next):null;
+  }
   function sitOn(item,world){toast("En esta beta online todavía no se puede sentar.");return;
     const b=itemPosition(item),u=world?(world.x-b.x)/b.w:.5,v=world?(world.y-b.y)/b.h:.5;
     const slot=C.nearestSeat(item,b.flip?1-u:u,v);
@@ -849,13 +860,19 @@
 myAppearance=ownedLook('self',myAppearance);for(const actor of people.actors.values())actor.appearance=ownedLook(actor.id,actor.appearance);refreshMe();renderPeople();savePeople();updateRoomPickers();showPanel('inventory');$('loading').hidden=true;updateInput();if(restoreNotice)toast(restoreNotice);if(!storageAvailable){$('saveStatus').className='save-status warning';$('saveStatus').lastChild.textContent=' Sin guardado · solo esta sesión';}else save();online.ready(networkGame);}).catch(error=>{ready=false;console.error(error);$('loading').querySelector('b').textContent='No pudimos abrir miner hub';$('loading').querySelector('span:last-child').textContent=error?.message==='No se pudo cargar una imagen del juego.'?'No se pudo cargar una imagen. Abrí VEREDA-jugar.html o conservá la carpeta assets junto al proyecto.':'Error al iniciar: '+(error?.message||'Error desconocido.');});
 
   const networkGame={
-   room(raw,position){const next=C.restore(raw);if(!next)return;state=next;C.setLayout(state.layout);standUp();cancelSelection();history=[];$('undoBtn').disabled=true;player={...player,...(position||C.findFree(state.items,player)),path:[],moving:false};for(const b of bubbles)b.el.remove();bubbles=[];people.actors.clear();pets.actors.clear();mode='walk';updateName();buildRoom();updateSwatches();updateRoomPickers();resetView();resize();rewardsUI?.refreshInventory();},
+   room(raw,position){pendingWalk=0;const next=C.restore(raw);if(!next)return;state=next;C.setLayout(state.layout);standUp();cancelSelection();history=[];$('undoBtn').disabled=true;player={...player,...(position||C.findFree(state.items,player)),path:[],moving:false};for(const b of bubbles)b.el.remove();bubbles=[];people.actors.clear();pets.actors.clear();mode='walk';updateName();buildRoom();updateSwatches();updateRoomPickers();resetView();resize();rewardsUI?.refreshInventory();},
    scene(raw){const next=C.restore(raw);if(!next)return;const changed=state.layout!==next.layout;state=next;C.setLayout(state.layout);buildRoom();if(changed){resetView();resize();}updateName();},
    players(rows){const present=new Set();for(const row of rows){if(row.id===online.user.id)continue;present.add(row.id);let a=people.actors.get(row.id)||people.join(row);if(a)Object.assign(a,{name:row.name,appearance:P.look(row.appearance),x:row.x,y:row.y,path:row.path||[],moving:false});}for(const id of people.actors.keys())if(!present.has(id))people.remove(id);},
-   walk(id,from,path){const a=id===online.user.id?player:people.actors.get(id);if(a){if(a===player){standUp();if(mode!=='walk')setMode('walk');}Object.assign(a,from,{path:path.slice()});}},
+   walk(id,from,path,seq){const a=id===online.user.id?player:people.actors.get(id);if(!a)return;
+    if(a===player){if(Number.isSafeInteger(seq)&&seq!==pendingWalk)return;pendingWalk=0;standUp();if(mode!=='walk')setMode('walk');
+      const remainder=Number.isSafeInteger(seq)?confirmedRemainder(from,path,player):null;
+      if(remainder!==null){player.path=remainder;return;}
+    }
+    Object.assign(a,from,{path:path.slice()});
+   },
    chat:messageFor,
    account(look){myAppearance=P.look(look);refreshMe();updateRoomPickers();rewardsUI?.showPanel(document.getElementById('rewardsPanel').hidden?'inventory':'rewards');},
-   stop(){player.path=[];player.moving=false;for(const a of people.actors.values()){a.path=[];a.moving=false;}},
+   stop(){pendingWalk=0;player.path=[];player.moving=false;for(const a of people.actors.values()){a.path=[];a.moving=false;}},
   };
   requestAnimationFrame(tick);
   // Local adapter boundary. A future network connector can call this without coupling identity to rendering.
