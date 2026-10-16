@@ -36,7 +36,7 @@ storage = "sqlite"
 
 # Enable only after applying hub-schema.sql and confirming the existing bot Kick callback.
 [vars]
-HUB_ENABLED = "false"
+HUB_ENABLED = "true"
 HUB_ORIGIN = "https://minerdesign.xyz"
 
 [[durable_objects.bindings]]
