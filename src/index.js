@@ -1,4 +1,5 @@
 import { handleHub } from './hub-gateway.js';
+import { isHubCallback } from './hub-auth.js';
 export { HubWorld } from './hub-world.mjs';
 import { handleStreamBotRequest, handleStreamBotScheduled, listHubKickRewards } from "./streambot.js";
 export { OverlayRoom } from "./realtime.js";
@@ -36,7 +37,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    if (url.pathname.startsWith("/api/hub/")) return handleHub(request, env, {listRewards:()=>listHubKickRewards(env)});
+    if (url.pathname.startsWith("/api/hub/") || isHubCallback(url)) return handleHub(request, env, {listRewards:()=>listHubKickRewards(env)});
 
     if (url.pathname.startsWith("/api/streambot/")) {
       return await handleStreamBotRequest(request, env, ctx);

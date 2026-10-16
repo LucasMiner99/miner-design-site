@@ -34,7 +34,7 @@ class_name = "OverlayRoom"
 type = "durable-object"
 storage = "sqlite"
 
-# Enable only after applying hub-schema.sql and registering the Kick callback.
+# Enable only after applying hub-schema.sql and confirming the existing bot Kick callback.
 [vars]
 HUB_ENABLED = "false"
 HUB_ORIGIN = "https://minerdesign.xyz"

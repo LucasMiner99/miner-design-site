@@ -2,10 +2,13 @@ const ORIGIN='https://minerdesign.xyz',API='https://api.kick.com/public/v1',ISSU
 export const hubJSON=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 export const enabled=env=>env.HUB_ENABLED==='true'&&!!env.HUB_WORLD;
 export function hubOrigin(env){return env.HUB_ORIGIN||ORIGIN;}
+export const KICK_CALLBACK_PATH='/api/streambot/oauth/callback';
+// The prefix selects the flow only; the browser-bound, one-use nonce authenticates it.
+export function isHubCallback(url){return url.pathname===KICK_CALLBACK_PATH&&(url.searchParams.get('state')||'').startsWith('hub.');}
 export async function hash(value){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(bytes)].map(n=>n.toString(16).padStart(2,'0')).join('');}
 function random(){const bytes=crypto.getRandomValues(new Uint8Array(32));return btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');}
 function cookie(req,key){return req.headers.get('Cookie')?.split(';').map(s=>s.trim()).find(s=>s.startsWith(key+'='))?.slice(key.length+1)||'';}
-function setCookie(name,value,seconds){return `${name}=${value}; Path=/api/hub; HttpOnly; Secure; SameSite=Lax; Max-Age=${seconds}`;}
+function setCookie(name,value,seconds){return `${name}=${value}; Path=${name==='hub_login'?'/api/':'/api/hub'}; HttpOnly; Secure; SameSite=Lax; Max-Age=${seconds}`;}
 export async function broadcaster(env){
  const rows=await env.STREAMBOT_DB.prepare("SELECT key,value FROM streambot_settings WHERE key IN ('kick_user_id','kick_username')").all();
  const values=Object.fromEntries((rows.results||[]).map(r=>[r.key,r.value]));
@@ -24,7 +27,7 @@ export async function hubAuth(request,env){
  if(path==='/api/hub/login'&&request.method==='GET'){
   if(!env.KICK_CLIENT_ID||!env.KICK_CLIENT_SECRET)return hubJSON({error:'Falta configurar Kick en Cloudflare.'},503);
   await broadcaster(env);
-  const state=random(),browser=random(),verifier=random(),now=Date.now();
+  const state='hub.'+random(),browser=random(),verifier=random(),now=Date.now();
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));
   const challenge=btoa(String.fromCharCode(...new Uint8Array(digest))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
   await env.STREAMBOT_DB.batch([
@@ -32,16 +35,16 @@ export async function hubAuth(request,env){
    env.STREAMBOT_DB.prepare('DELETE FROM hub_sessions WHERE expires_at<?').bind(now),
    env.STREAMBOT_DB.prepare('INSERT INTO hub_oauth_states(state_hash,browser_hash,verifier,expires_at) VALUES(?,?,?,?)').bind(await hash(state),await hash(browser),verifier,now+600000)
   ]);
-  const target=new URL(ISSUER+'/oauth/authorize');target.search=new URLSearchParams({client_id:env.KICK_CLIENT_ID,response_type:'code',redirect_uri:hubOrigin(env)+'/api/hub/callback',scope:'user:read',state,code_challenge:challenge,code_challenge_method:'S256'});
+  const target=new URL(ISSUER+'/oauth/authorize');target.search=new URLSearchParams({client_id:env.KICK_CLIENT_ID,response_type:'code',redirect_uri:hubOrigin(env)+KICK_CALLBACK_PATH,scope:'user:read',state,code_challenge:challenge,code_challenge_method:'S256'});
   return new Response(null,{status:302,headers:{Location:target.href,'Set-Cookie':setCookie('hub_login',browser,600),'Cache-Control':'no-store'}});
  }
- if(path==='/api/hub/callback'&&request.method==='GET'){
+ if(isHubCallback(url)&&request.method==='GET'){
   const state=url.searchParams.get('state'),code=url.searchParams.get('code'),browser=cookie(request,'hub_login');
   if(!state||!code||!browser)return hubJSON({error:'Login incompleto. Volvé a /hub/ e intentá otra vez.'},400);
   // DELETE RETURNING consumes a browser-bound nonce exactly once, including concurrent callbacks.
   const row=await env.STREAMBOT_DB.prepare('DELETE FROM hub_oauth_states WHERE state_hash=? AND browser_hash=? AND expires_at>? RETURNING verifier').bind(await hash(state),await hash(browser),Date.now()).first();
   if(!row)return hubJSON({error:'Login vencido o utilizado. Volvé a entrar.'},400);
-  const tokenResponse=await fetch(ISSUER+'/oauth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.KICK_CLIENT_ID,client_secret:env.KICK_CLIENT_SECRET,grant_type:'authorization_code',code,code_verifier:row.verifier,redirect_uri:hubOrigin(env)+'/api/hub/callback'})});
+  const tokenResponse=await fetch(ISSUER+'/oauth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.KICK_CLIENT_ID,client_secret:env.KICK_CLIENT_SECRET,grant_type:'authorization_code',code,code_verifier:row.verifier,redirect_uri:hubOrigin(env)+KICK_CALLBACK_PATH})});
   if(!tokenResponse.ok)return hubJSON({error:'Kick no pudo completar el login. Intentá otra vez.'},502);
   const token=await tokenResponse.json();
   const response=await fetch(API+'/users',{headers:{Authorization:'Bearer '+token.access_token}});

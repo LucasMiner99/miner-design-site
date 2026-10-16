@@ -34,9 +34,11 @@ QUÉ INCLUYE
   conservadas. No se borraron las tablas ni el contenido anterior.
 
 ACTIVACIÓN (REQUIERE ACCESO A GITHUB, CLOUDFLARE Y LA APP DE KICK)
-1. Registrar una URL de retorno adicional en la MISMA aplicación de Kick:
-     https://minerdesign.xyz/api/hub/callback
-   Conservar la URL actual del bot /api/streambot/oauth/callback.
+1. Conservar la URL de retorno que ya usa la aplicación de Kick del bot:
+     https://minerdesign.xyz/api/streambot/oauth/callback
+   El juego comparte esta URL. Su state lleva un prefijo de enrutamiento y un
+   nonce aleatorio vinculado al navegador; los flujos del bot y mods se conservan.
+   No registrar /api/hub/callback ni reemplazar el webhook existente.
    Los visitantes autorizan sólo user:read. El bot conserva sus permisos actuales,
    incluidos channel:rewards:read/write y events:subscribe.
 2. Aplicar la migración ADITIVA en la base miner-streambot:
