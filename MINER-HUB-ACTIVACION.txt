@@ -1,0 +1,124 @@
+MINER HUB · BETA ONLINE · 16 OCTUBRE 2026
+
+Estado: candidata local comprobada. No publicada ni conectada a cuentas reales.
+Dominio: https://minerdesign.xyz
+Juego previsto: https://minerdesign.xyz/hub/
+Canal: minerarg
+Repositorio: LucasMiner99/miner-design-site
+
+QUÉ INCLUYE
+- Login Kick separado del dashboard del bot: OAuth, PKCE, nonce vinculado al
+  navegador, sesión HttpOnly/Secure, sin tokens de Kick en el navegador.
+- El nombre viene de Kick. El administrador se reconoce por el ID del canal
+  conectado al bot, verificando que sea minerarg. Escribir ese nombre no da permisos.
+- Inventario, cajas y sala personal persistentes en un Durable Object SQLite.
+  D1 guarda sesiones, estados de login, cola durable de eventos y configuración.
+- Inventario limitado por unidades; validación de ropa, ambientes y muebles en
+  el servidor. Dos aperturas simultáneas de la misma caja entregan un solo objeto.
+- Protección contra repetidos: 95% de probabilidad de elegir un artículo aún
+  no obtenido mientras queden novedades, 5% del grupo ya obtenido. Dentro de cada
+  grupo todos tienen la misma probabilidad. También cuentan las cajas pendientes.
+- Sala propia vacía, look sencillo inicial y los dos peinados iniciales.
+  El administrador dispone de todos los artículos para decorar y probar.
+- Salas visitables, 20 personas por sala y 60 conexiones en total para esta beta.
+  Click en otro personaje: visitar su sala. Una conexión activa por usuario.
+- Chat web compartido y mensajes de Kick de personajes presentes. !entrar lleva
+  al jugador conectado a la última sala donde estuvo el administrador.
+- Mascotas, apariencia y caminata compartidas; reconexión y guardado con revisión
+  para no sobrescribir una sala que cambió desde otra pestaña.
+- Moderación del juego: silenciar una hora, suspender y restaurar acceso.
+- Dashboard del bot > miner hub: tres precios iniciales de 2.000 puntos.
+  Guardar precios y sincronizar con Kick crea y vincula las cajas faltantes,
+  o cambia el precio de las existentes sin recrearlas.
+- Corona y Limpiando ocultos y desactivados; TTS, chat, alertas y demás secciones
+  conservadas. No se borraron las tablas ni el contenido anterior.
+
+ACTIVACIÓN (REQUIERE ACCESO A GITHUB, CLOUDFLARE Y LA APP DE KICK)
+1. Conservar la URL de retorno que ya usa la aplicación de Kick del bot:
+     https://minerdesign.xyz/api/streambot/oauth/callback
+   El juego comparte esta URL. Su state lleva un prefijo de enrutamiento y un
+   nonce aleatorio vinculado al navegador; los flujos del bot y mods se conservan.
+   No registrar /api/hub/callback ni reemplazar el webhook existente.
+   Los visitantes autorizan sólo user:read. El bot conserva sus permisos actuales,
+   incluidos channel:rewards:read/write y events:subscribe.
+2. Aplicar la migración ADITIVA en la base miner-streambot:
+     npx wrangler d1 execute miner-streambot --remote --file=hub-schema.sql
+   Crear tablas nuevas no migra ni importa el inventario de la demo local.
+3. Publicar primero con HUB_ENABLED="false" (como viene en esta candidata).
+   wrangler.toml agrega HUB_WORLD/HubWorld y conserva OVERLAY_ROOM, D1 y R2.
+   La definición usa exports con storage SQLite, como la configuración actual.
+   Mantener todos los secretos existentes. No pegar claves ni tokens en GitHub.
+4. Verificar que Kick esté conectado como minerarg en el dashboard del bot y
+   sincronizar las suscripciones existentes: chat.message.sent y
+   channel.reward.redemption.updated, hacia /api/streambot/webhook.
+5. Cambiar HUB_ENABLED a "true" en wrangler.toml y publicar. HUB_ORIGIN debe
+   seguir siendo https://minerdesign.xyz. No utilizar www u otro origen para jugar.
+6. Entrar a /hub/ con minerarg. En el dashboard del bot abrir miner hub y pulsar
+   Guardar precios y sincronizar con Kick. Se crean tres recompensas, cada una
+   inicialmente a 2.000 puntos. Se puede editar cada precio desde esa sección.
+   Si ya existen recompensas propias con otros nombres, vincular sus IDs desde
+   Administrar en el juego antes de sincronizar, para reutilizarlas.
+7. Probar con DOS cuentas reales: login, entrar a la misma sala, chat en web/Kick,
+   !entrar, un canje, abrir caja, colocar el objeto, salir y volver a entrar.
+   Revisar errores de webhooks, cola de canjes, métricas y consumo de Cloudflare.
+   Esta prueba real sigue pendiente: las pruebas locales usan identidades y
+   respuestas de Kick simuladas. No se gastaron puntos ni se crearon canjes reales.
+
+PUBLICACIÓN CONTINUA
+El usuario confirmó que GitHub ya despliega en Cloudflare. Cuando el acceso de
+escritura esté autenticado, se pueden subir las siguientes versiones desde aquí.
+La rama de producción publica automáticamente: revisar configuración y pruebas
+antes de fusionar. Esta entrega no hizo push ni modificó la web pública.
+Los archivos de juego van separados en public/hub/assets. Ninguno supera el límite
+de 25 MiB por archivo de Workers Assets. No subir VEREDA-jugar.html como asset:
+la versión autónoma incrusta todas las imágenes y excede ese límite.
+
+PRUEBAS REPETIBLES
+Node 22 o superior:
+  npm ci
+  npm test
+  npm run check:deploy
+Las pruebas usan el motor real Workerd con D1 y Durable Objects locales; incluyen
+identidad/admin, origen, prendas bloqueadas, cantidades, revisiones, canjes
+repetidos, aperturas simultáneas, cola con reintentos, OAuth con proveedor simulado,
+WebSockets, chat, movimiento, !entrar, moderación y el límite de 20 conexiones por
+sala. Prueban precios 2.000, cambios independientes y reintento sin crear duplicados.
+También se verificó el arranque del cliente y su dibujo con los sprites reales en
+Canvas nativo. Esto no sustituye una prueba visual en navegador con cuentas reales.
+
+LÍMITES DE ESTA BETA
+- Sentarse online aún está deshabilitado; requiere compartir ocupación y pose del
+  asiento. La demo local conserva esa función. No se deshabilitaron las animaciones.
+- Un único Durable Object coordina el mundo pequeño. Para crecer a muchas salas
+  habrá que dividirlo por sala, paginar el directorio (ahora hasta 100 salas) y
+  ampliar pruebas de carga. Se muestran hasta 100 cajas pendientes por tanda.
+- El primer arranque descarga muchos gráficos; conviene medirlo en conexiones
+  reales y optimizar carga por demanda antes de abrir a mucha gente.
+- Falta verificar respaldo/recuperación en la cuenta, métricas y alertas de coste.
+  También conviene añadir bloqueo/reportes entre usuarios y una política de uso
+  antes de una apertura pública amplia.
+- No se leyó ni verificó la facturación de la cuenta de Cloudflare.
+- La API pública de Kick consultada permite login, recompensas y canjes; no expone
+  el saldo personal de puntos del canal para mostrarlo como monedas del juego.
+  Kick cobra el canje; el juego entrega la caja, sin inventar un saldo equivalente.
+
+BASE DE COSTE Y FUENTES
+Workers Paid parte de USD 5/mes. Para unos 20 jugadores es una base razonable para
+probar, no una garantía de precio fijo: el bot y el juego comparten los cupos y
+el uso adicional se factura. El diseño envía destinos/rutas y no frames constantes;
+los WebSockets usan hibernación. Verificar duración de sesiones y carga reales.
+https://developers.cloudflare.com/workers/platform/pricing/
+https://developers.cloudflare.com/durable-objects/platform/pricing/
+https://developers.cloudflare.com/d1/platform/pricing/
+https://developers.cloudflare.com/workers/platform/limits/
+https://docs.kick.com/getting-started/generating-tokens-oauth2-flow
+https://github.com/KickEngineering/KickDevDocs/blob/main/apis/channel-rewards.md
+https://api.kick.com/swagger/doc.json
+https://github.com/KickEngineering/KickDevDocs/issues/356
+
+REVERTIR SIN BORRAR DATOS
+Poner HUB_ENABLED="false" bloquea el juego y su procesamiento nuevo. Desactivar
+también las tres recompensas en Kick para evitar nuevos canjes mientras está
+fuera de servicio. Conservar D1 y HUB_WORLD para no perder usuarios ni inventarios.
+Para retirar la interfaz nueva, revertir el commit de integración; no eliminar
+recursos de almacenamiento ni migraciones destructivamente.

@@ -1,3 +1,5 @@
+import { hubRewardAdmin } from './hub-reward-admin.js';
+import { enqueueHubEvent, drainHubInbox } from './hub-gateway.js';
 import { alertFromKick, manualAlert, publicAlertConfig, allowedAlert, publishAlert, readAlertState } from "./alerts.js";
 import { normalizeKickChat, storeChatMessage, recentChatMessages, sevenTvMap } from "./chat.js";
 import { ensureCleaningTable, getCleaningSnapshot, applyCleaningFollow, changeCleaningState, mutateCleaning, cleaningSnapshot } from "./cleaning.js";
@@ -35,7 +37,7 @@ const DEFAULT_CONFIG = {
   stream_command_confirm: true,
 
   // The Crown · minijuego persistente del chat.
-  crown_enabled: true,
+  crown_enabled: false,
   crown_steal_command: "robar",
   crown_info_commands: "corona,rey",
   crown_min_minutes: 10,
@@ -96,7 +98,7 @@ const DEFAULT_CONFIG = {
   alerts_message_size: 14,
 
   // Limpiando: minijuego persistente, con overlay OBS independiente.
-  cleaning_enabled: true,
+  cleaning_enabled: false,
   cleaning_floor_minutes: 20,
   cleaning_bonus_per_100: 15,
   cleaning_boost_multiplier: 5,
@@ -256,6 +258,13 @@ export async function handleStreamBotRequest(request, env, ctx) {
 
     const adminError = requireAdmin(request, env);
     if (adminError) return adminError;
+    if (path === '/api/streambot/hub/rewards') {
+      return await hubRewardAdmin(request, env, async (route, method='GET', payload) => {
+        const access=await getKickAccessToken(env);
+        return parseApiResponse(await kickFetchRaw(route, access, {method,body:payload?JSON.stringify(payload):undefined,signal:AbortSignal.timeout(10000)}), 'Recompensas miner hub');
+      });
+    }
+
 
     if (path === "/api/streambot/bootstrap" && request.method === "GET") {
       return await getBootstrap(request, env);
@@ -412,6 +421,9 @@ function parseConfigRows(rows = []) {
     else if (typeof fallback === "number") config[key] = value == null ? fallback : Number(value);
     else config[key] = value ?? fallback;
   }
+  // Retired games stay off even when old database settings were enabled.
+  config.crown_enabled = false;
+  config.cleaning_enabled = false;
   return config;
 }
 
@@ -662,6 +674,7 @@ async function sendTimedMessageNow(request, env) {
 export async function handleStreamBotScheduled(env) {
   if (!env.STREAMBOT_DB) return;
   await ensureTimedMessagesTable(env);
+  try { await drainHubInbox(env, id => acceptHubRedemption(env, id)); } catch { console.warn("Hub inbox retry pending"); }
 
   const config = await getConfig(env);
   // Corre cada minuto incluso si el dashboard/OBS están cerrados.
@@ -974,14 +987,16 @@ async function handleWebhook(request, env, ctx) {
 
   const messageId = request.headers.get("Kick-Event-Message-Id") || "";
   const eventType = request.headers.get("Kick-Event-Type") || "";
+  let payload;
+  try { payload = JSON.parse(new TextDecoder().decode(rawBytes)); }
+  catch { return new Response("bad json", { status: 400 }); }
+  // Durable enqueue must precede legacy deduplication so a failed first delivery can retry.
+  await enqueueHubEvent(env, messageId, eventType, payload);
+  ctx.waitUntil(drainHubInbox(env, id => acceptHubRedemption(env, id)));
   const insert = await env.STREAMBOT_DB.prepare(
     "INSERT OR IGNORE INTO streambot_webhook_events (message_id, event_type) VALUES (?, ?)"
   ).bind(messageId, eventType).run();
   if (!insert.meta?.changes) return new Response("duplicate", { status: 200 });
-
-  let payload;
-  try { payload = JSON.parse(new TextDecoder().decode(rawBytes)); }
-  catch { return new Response("bad json", { status: 400 }); }
 
   ctx.waitUntil(processKickEvent(env, eventType, payload));
   return new Response("ok", { status: 200 });
@@ -2688,4 +2703,26 @@ function htmlMessage(message, status = 200, backHref = "/streambot.html") {
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
+}
+
+// Never infer success from HTTP 200 alone: Kick returns per-redemption failures.
+export async function listHubKickRewards(env) {
+  const access=await getKickAccessToken(env);
+  const data=await parseApiResponse(await kickFetchRaw('/channels/rewards',access),'Listar recompensas');
+  return (data.data||[]).map(r=>({id:r.id,title:r.title,cost:r.cost}));
+}
+async function acceptHubRedemption(env, id) {
+  const access = await getKickAccessToken(env);
+  const read = async () => {
+    const data = await parseApiResponse(await kickFetchRaw('/channels/rewards/redemptions?id='+encodeURIComponent(id), access), 'Consultar canje');
+    return (data.data || []).flatMap(group => group.redemptions || []).find(r => r.id === id)?.status;
+  };
+  let status = await read();
+  if (status === 'rejected') return false;
+  if (status !== 'accepted') {
+    await parseApiResponse(await kickFetchRaw('/channels/rewards/redemptions/accept', access, {method:'POST',body:JSON.stringify({ids:[id]})}), 'Aceptar caja');
+    status = await read();
+  }
+  if (status !== 'accepted') throw new Error('Canje aún no confirmado');
+  return true;
 }

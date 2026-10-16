@@ -75,3 +75,6 @@
 .alerts-color-control input[type=color]{width:62px;height:32px;background:#16181e;border:1px solid #474856;border-radius:7px;padding:3px;cursor:pointer}
 .alerts-color-hex{font-size:12px;color:#bbbccb;font-family:monospace}
 @media(max-width:760px){.alerts-style-grid{grid-template-columns:1fr}.alerts-preview-frame{min-height:200px}.alerts-preview-frame iframe{height:200px}}
+
+/* Retired minigames: keep saved settings and DOM hooks for compatibility. */
+[hidden]{display:none!important}

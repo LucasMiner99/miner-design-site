@@ -1,0 +1,15 @@
+{
+  "name": "miner-design-site",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "test": "node tests/hub-server.test.cjs && node tests/retired-games.test.cjs",
+    "check:deploy": "wrangler deploy --dry-run --outdir .test-build/deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.1",
+    "miniflare": "5.20261012.1-beta",
+    "esbuild": "0.28.2"
+  }
+}
