@@ -35,7 +35,7 @@
    else if(m.type==='chat')game.chat(m.id===account.user.id?'self':m.id,m.text);
    else if(m.type==='account')updateAccount(m);
    else if(m.type==='scene'&&m.room.id===room?.id&&room.ownerId!==account.user.id){room=m.room;game.scene(room.scene);game.players(m.players);}
-   else if(m.type==='error'){status(m.error);window.HubTrade?.error(m.error);window.HubMedia?.error(m.error);}
+   else if(m.type==='error'){status(m.error);window.HubTrade?.error(m.error);window.HubMedia?.error(m.error,m);}
   };
   socket.onclose=e=>{connected=false;window.HubTrade?.disconnected();window.HubMedia?.disconnected();game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
  }

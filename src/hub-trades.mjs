@@ -1,7 +1,9 @@
 import {C,CATALOG} from './hub-rules.mjs';
 const catalog=new Map(CATALOG.map(i=>[i.id,i]));
 const fail=message=>{throw Object.assign(Error(message),{status:400});};
-export function tradeInventory(user,room){
+export function tradeInventory(user,room,admin=false){
+ // Admin catalog units are grants, not the player's earned inventory.
+ if(admin)return CATALOG.filter(i=>!i.starter).map(i=>({...i,count:i.kind==='object'?96:1}));
  const used=new Map(),take=id=>used.set(id,(used.get(id)||0)+1);
  for(const i of [...room.scene.items,...(room.scene.unplacedItems||[])])take('object:'+i.type);
  for(const [slot,index] of Object.entries(user.appearance))take(`look:${slot}:${index}`);
@@ -9,7 +11,8 @@ export function tradeInventory(user,room){
  take('environment:layout:'+C.LAYOUTS.findIndex(l=>l.id===room.scene.layout));
  return Object.entries(user.inventory).flatMap(([id,count])=>{const item=catalog.get(id),available=Math.max(0,count-(used.get(id)||0));return item&&!item.starter&&available?[{...item,count:available}]:[];});
 }
-async function available(world,id){const user=await world.user(id);return tradeInventory(user,await world.room(id,user.name));}
+function adminAccess(world,id){return world.ownSockets(id).some(ws=>{const u=ws.deserializeAttachment()?.user;return u?.id===id&&u.admin===true;});}
+async function available(world,id){const user=await world.user(id);return tradeInventory(user,await world.room(id,user.name),adminAccess(world,id));}
 function view(t){return {...t,offers:t.offers.map(offer=>Object.entries(offer).map(([id,count])=>({...catalog.get(id),count})))};}
 async function publish(world,t){for(const id of t.users)for(const ws of world.ownSockets(id))world.send(ws,{type:'trade',trade:view(t),available:await available(world,id)});}
 async function close(world,t,status,message){t.status=status;t.message=message;await world.ctx.storage.put('trade:'+t.id,t);await world.ctx.storage.delete(t.users.map(id=>'active-trade:'+id));await publish(world,t);}
@@ -44,7 +47,8 @@ export async function handleTrade(world,ws,b){
    // Recheck ownership inside the same serialized world operation, then commit both inventories atomically.
    const users=await Promise.all(t.users.map(id=>world.user(id)));
    for(let n=0;n<2;n++){if(users[n].banned)fail('El jugador no está disponible.');const stock=new Map((await available(world,t.users[n])).map(i=>[i.id,i.count]));for(const [id,count] of Object.entries(t.offers[n]))if(count>(stock.get(id)||0)){t.accepted=[false,false];t.revision++;await storage.put('trade:'+t.id,t);await publish(world,t);fail('Un objeto ya no está disponible. Revisen las ofertas.');}}
-   for(let n=0;n<2;n++)for(const [id,count] of Object.entries(t.offers[n])){users[n].inventory[id]-=count;users[1-n].inventory[id]=(users[1-n].inventory[id]||0)+count;users[1-n].collected[id]=true;}
+   t.adminGrants=t.users.map(id=>adminAccess(world,id));
+   for(let n=0;n<2;n++)for(const [id,count] of Object.entries(t.offers[n])){if(!t.adminGrants[n])users[n].inventory[id]-=count;users[1-n].inventory[id]=(users[1-n].inventory[id]||0)+count;users[1-n].collected[id]=true;}
    t.status='completed';t.completedAt=Date.now();t.message='¡Intercambio completado!';
    await storage.transaction(async tx=>{await tx.put({['user:'+users[0].id]:users[0],['user:'+users[1].id]:users[1],['trade:'+t.id]:t});await tx.delete(t.users.map(id=>'active-trade:'+id));});
    for(const id of t.users)await world.notifyUser(id);await publish(world,t);return;

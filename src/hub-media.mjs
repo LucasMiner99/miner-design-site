@@ -8,7 +8,8 @@ export async function handleMedia(world,ws,b){
  const a=ws.deserializeAttachment(),room=await world.ctx.storage.get('room:'+a.roomId);if(!room)return;
  if(b.action==='sync'){world.send(ws,{type:'media',roomId:room.id,media:mediaSnapshot(room.media)});return;}
  if(a.user.id!==room.ownerId)fail('Solo el dueño de la sala puede cambiar la música.');
- if(Date.now()-(a.lastMedia||0)<500)fail('Esperá un momento.');
+ // Seeks are already coalesced by the client and covered by the socket rate limit.
+ if(b.action!=='seek'&&Date.now()-(a.lastMedia||0)<500)fail('Esperá un momento.');
  let media=mediaSnapshot(room.media);
  if(b.action==='load'){
   const item=room.scene.items.find(i=>i.id===b.itemId);if(!item||!MEDIA_TYPES.has(item.type))fail('Elegí una compu, radio, tocadiscos, tele, parlante o mesa DJ.');
@@ -18,9 +19,10 @@ export async function handleMedia(world,ws,b){
  else if(b.action==='seek'&&media){
   if(b.videoId!==media.videoId)fail('La música cambió. Probá de nuevo.');
   if(typeof b.position!=='number'||!Number.isFinite(b.position)||b.position<0||b.position>86400)fail('Elegí una posición válida.');
-  media.position=b.position;media.revision++;
+  if(b.seekToken!==undefined&&(typeof b.seekToken!=='string'||!/^[-\w]{1,80}$/.test(b.seekToken)))fail('Solicitud de audio inválida.');
+  media.position=b.position;media.seekToken=b.seekToken||null;media.revision++;
  }
  else if(['pause','resume'].includes(b.action)&&media){media.playing=b.action==='resume';media.revision++;}
  else fail('No hay un video para controlar.');
- a.lastMedia=Date.now();ws.serializeAttachment(a);room.media=media;await world.ctx.storage.put('room:'+room.id,room);world.broadcast(room.id,{type:'media',roomId:room.id,media});
+ if(b.action!=='seek'){a.lastMedia=Date.now();ws.serializeAttachment(a);}room.media=media;await world.ctx.storage.put('room:'+room.id,room);world.broadcast(room.id,{type:'media',roomId:room.id,media});
 }

@@ -149,7 +149,7 @@ export class HubWorld {
    if(Date.now()-a.rateAt>1000){a.rateAt=Date.now();a.rateCount=0;}if(++a.rateCount>8)reject('Esperá un momento.');ws.serializeAttachment(a);
    const user=await this.user(a.user.id);if(user.banned){ws.close(4003,'Acceso suspendido.');return;}const b=JSON.parse(message);
    if(b.type==='trade')return await handleTrade(this,ws,b);
-   if(b.type==='media')return await handleMedia(this,ws,b);
+   if(b.type==='media'){try{return await handleMedia(this,ws,b);}catch(e){e.mediaAction=b.action;e.mediaRequestId=b.seekToken;throw e;}}
    if(b.type==='join')return await this.join(ws,String(b.roomId));
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
    if(b.type==='interact'){
@@ -176,7 +176,7 @@ export class HubWorld {
     const from=currentPosition(a.position).point,target={x:Math.floor(b.x)+.5,y:Math.floor(b.y)+.5};if(!C.inside(target.x,target.y)||C.blocked(room.scene.items,Math.floor(target.x),Math.floor(target.y)))return;
     const path=C.route(room.scene.items,from,target,this.occupied(a.roomId,a.user.id));if(!path){const current=currentPosition(a.position);this.send(ws,{type:'walk',id:a.user.id,from:current.point,path:current.path,seat:a.seat||null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});reject('Hay alguien en el camino. Probá otra casilla.');}a.seat=null;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,seat:null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
    }
-  }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.'});}});
+  }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.',...(e.mediaAction?{scope:'media',action:e.mediaAction,requestId:e.mediaRequestId}:{} )});}});
  }
  async webSocketClose(ws,code,reason){return this.ctx.blockConcurrencyWhile(async()=>{const a=ws.deserializeAttachment(),room=a?.roomId;try{ws.close(code,reason);}catch{}if(a)await cancelTrade(this,a.user.id,'El intercambio se canceló porque un jugador se desconectó.');if(room)this.broadcast(room,{type:'presence',players:this.players(room)});});}
  webSocketError(ws){return this.webSocketClose(ws,1011,'Conexión interrumpida.');}
