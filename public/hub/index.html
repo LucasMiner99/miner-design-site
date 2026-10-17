@@ -222,11 +222,29 @@
 <p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
 </dialog>
 
+<dialog id="hubRouletteDialog" class="modal hub-roulette" aria-labelledby="hubRouletteTitle">
+  <button id="hubRouletteClose" type="button" class="modal-close icon-button" aria-label="Cerrar">×</button>
+  <header><h2 id="hubRouletteTitle">Ruleta</h2><p id="hubRouletteBalance"></p></header>
+  <div class="hub-roulette-wheel" aria-hidden="true"><span class="hub-roulette-pointer"></span><canvas id="hubRouletteWheel" width="400" height="400"></canvas></div>
+  <form id="hubRouletteForm">
+    <div class="hub-roulette-colors" role="group" aria-label="Color de la apuesta">
+      <button type="button" data-roulette-color="red" aria-pressed="true"><i></i>Rojo<strong>×2</strong><small>18 de 37</small></button>
+      <button type="button" data-roulette-color="black" aria-pressed="false"><i></i>Negro<strong>×2</strong><small>18 de 37</small></button>
+      <button type="button" data-roulette-color="green" aria-pressed="false"><i></i>Verde<strong>×36</strong><small>1 de 37</small></button>
+    </div>
+    <label class="hub-roulette-amount" for="hubRouletteAmount">Tu apuesta <span><input id="hubRouletteAmount" type="number" min="1" max="10000" step="1" value="100" required inputmode="numeric"> créditos</span></label>
+    <button id="hubRouletteBet" type="submit" class="primary-button">Apostar</button>
+  </form>
+  <p id="hubRouletteStatus" class="hub-roulette-status" role="status" aria-live="polite"></p>
+  <p class="hub-roulette-note">Los pagos incluyen lo apostado. Máximo 10.000 créditos por giro.</p>
+</dialog>
+
 <div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
 <script src="media.js"></script>
 <script src="emotes.js"></script>
 <script src="trade.js"></script>
 <script src="feedback.js"></script>
+<script src="roulette.js"></script>
 <script src="online.js"></script>
 </body>
 </html>

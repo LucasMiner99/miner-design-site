@@ -18,7 +18,7 @@ export async function handleHub(request,env,services={}){
   if(route==='/emotes'&&request.method==='GET')return hubJSON({emotes:await sevenTvMap(env,{chat_7tv_enabled:true,kick_user_id:await broadcaster(env)})});
   if(route==='/admin/kick-rewards'&&auth.admin&&request.method==='GET')return hubJSON({rewards:await services.listRewards()});
   if(route==='/admin/credit-rewards'&&auth.admin&&['GET','POST'].includes(request.method))return hubRewardAdmin(request,env,services.kick);
-  const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'box/buy':['POST'],'admin/credits':['GET','PUT'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
+  const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'box/buy':['POST'],'roulette/open':['POST'],'roulette/bet':['POST'],'admin/credits':['GET','PUT'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
   if(!allowed[route.slice(1)]?.includes(request.method))return hubJSON({error:'No disponible.'},404);
   if(route==='/ws'&&!sameOrigin(request,env))return hubJSON({error:'Origen no permitido.'},403);
   const headers=new Headers({'X-Hub-Identity':JSON.stringify(auth)});

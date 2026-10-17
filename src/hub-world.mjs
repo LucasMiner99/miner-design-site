@@ -1,3 +1,4 @@
+import {openRoulette,betRoulette} from './hub-roulette.mjs';
 import {C,P,R,CATALOG} from './hub-rules.mjs';
 import {handleTrade,cancelTrade} from './hub-trades.mjs';
 import {handleMedia,mediaSnapshot,MEDIA_TYPES} from './hub-media.mjs';
@@ -105,6 +106,11 @@ export class HubWorld {
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
   }
+  if((path==='/roulette/open'||path==='/roulette/bet')&&request.method==='POST'){
+   const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
+   const result=path==='/roulette/open'?await openRoulette(this,u,input):{receipt:await betRoulette(this,u,input)};
+   return reply({...result,account:await this.state(u,auth.admin)});
+  }
   if(path==='/box/buy'&&request.method==='POST'){
    const box=await buyBox(this,u,await body(request));return reply({box:{id:box.id,kind:box.kind,opened:box.opened},...(await this.state(u,auth.admin))});
   }
@@ -165,7 +171,7 @@ export class HubWorld {
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
    if(b.type==='interact'){
     const room=await this.ctx.storage.get('room:'+a.roomId),item=room?.scene.items.find(i=>i.id===b.itemId),kind=item&&C.TYPES[item.type].interaction;
-    if(!kind)reject('Ese objeto no se puede usar.');
+    if(!['light','curtain'].includes(kind))reject('Ese objeto no se puede usar con esta acción.');
     if(Date.now()-(a.lastInteraction||0)<350)reject('Esperá un momento.');a.lastInteraction=Date.now();ws.serializeAttachment(a);
     const changes=kind==='curtain'?{closed:!item.closed}:{on:item.on===false};Object.assign(item,changes);
     await this.ctx.storage.put('room:'+room.id,room);this.broadcast(room.id,{type:'interaction',roomId:room.id,itemId:item.id,changes});return;

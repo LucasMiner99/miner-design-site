@@ -132,7 +132,8 @@
     {name:'Estante Vinilos',w:1,h:1,width:88,mountH:54,category:'wall',sprite:75,wall:true},
     {name:'Cuadro Lunar',w:1,h:1,width:48,mountH:48,category:'wall',sprite:76,wall:true},
     {name:'Cafetera Crema',w:1,h:1,width:34,category:'deco',sprite:77,tabletop:true},
-    {name:'Globo Viajero',w:1,h:1,width:29,category:'deco',sprite:78,tabletop:true}
+    {name:'Globo Viajero',w:1,h:1,width:29,category:'deco',sprite:78,tabletop:true},
+    {name:'Ruleta',w:2,h:2,width:108,category:'deco',sprite:79,interaction:'roulette'}
   ];
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
