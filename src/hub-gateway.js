@@ -13,13 +13,13 @@ export async function handleHub(request,env,services={}){
   const auth=await hubSession(request,env);if(!auth)return hubJSON({error:'Iniciá sesión con Kick.'},401);
   const route=path.slice('/api/hub'.length);
   if(route==='/admin/kick-rewards'&&auth.admin&&request.method==='GET')return hubJSON({rewards:await services.listRewards()});
-  const allowed={state:['GET'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
+  const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
   if(!allowed[route.slice(1)]?.includes(request.method))return hubJSON({error:'No disponible.'},404);
   if(route==='/ws'&&!sameOrigin(request,env))return hubJSON({error:'Origen no permitido.'},403);
   const headers=new Headers({'X-Hub-Identity':JSON.stringify(auth)});
   if(request.headers.get('Upgrade')?.toLowerCase()==='websocket')headers.set('Upgrade','websocket');
   let data;if(!['GET','HEAD'].includes(request.method))data=JSON.stringify(await body(request));
-  return await world(env).fetch(new Request('https://hub'+route,{method:request.method,headers,body:data}));
+  return await world(env).fetch(new Request('https://hub'+route+new URL(request.url).search,{method:request.method,headers,body:data}));
  }catch(e){console.error('Hub gateway:',e.status?e.message:'request failed');return hubJSON({error:e.status?e.message:'No pudimos conectar el juego. Revisá la configuración de la beta.'},e.status||503);}
 }
 // Called only after the existing bot has verified the Kick signature.

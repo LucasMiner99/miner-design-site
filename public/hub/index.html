@@ -61,6 +61,7 @@
       <div class="play-toolbar"><div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="decorateBtn" aria-pressed="false"><svg><use href="#i-chair"/></svg>Decorar</button></div><p id="modeHint">Clic: caminar, sentarte, encender luces o abrir cortinas.</p><button id="undoBtn" class="icon-button" title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer el último cambio" disabled><svg><use href="#i-undo"/></svg></button></div>
       <form id="chatForm" class="chat-form" autocomplete="off"><span class="chat-avatar"><canvas id="chatThumb" width="28" height="32"></canvas></span><label class="sr-only" for="chatInput">Tu mensaje</label><input id="chatInput" maxlength="120" placeholder="Escribí un mensaje…" aria-describedby="chatHelp"><span id="charCount" class="char-count">0/120</span><button id="sendBtn" type="submit" aria-label="Enviar mensaje" disabled><svg><use href="#i-send"/></svg></button></form>
       <div class="chat-footer"><span id="chatHelp"><kbd>Enter</kbd> para hablar <span>·</span> Las burbujas duran unos segundos</span><span id="saveStatus" class="save-status"><svg><use href="#i-save"/></svg>Guardado en tu cuenta</span></div>
+      <div class="hub-feedback-footer"><button id="hubFeedbackOpen" type="button">Dejar comentario</button><button id="hubFeedbackInbox" type="button" hidden>Ver comentarios</button><span id="hubFeedbackNotice" role="status"></span></div>
     </section>
 
     <aside class="sidebar" aria-label="Decoración e inventario">
@@ -163,6 +164,18 @@
 <script src="wardrobe-cache-v32.js"></script>
 <script src="rewards.js"></script>
 <script src="rewards-ui.js"></script>
+<dialog id="hubFeedbackDialog" class="modal small hub-feedback-modal" aria-labelledby="hubFeedbackTitle">
+  <button type="button" class="modal-close icon-button" data-hub-close="hubFeedbackDialog" aria-label="Cerrar">×</button>
+  <h2 id="hubFeedbackTitle">Dejar comentario</h2><p class="modal-note">Un bug, una idea o lo que quieras contar. Solo Miner lo va a leer, junto a tu usuario de Kick.</p>
+  <form id="hubFeedbackForm"><label for="hubFeedbackKind">Tipo</label><select id="hubFeedbackKind"><option value="comment">Comentario</option><option value="bug">Reportar un bug</option><option value="idea">Idea</option></select>
+  <label for="hubFeedbackText">Tu mensaje</label><textarea id="hubFeedbackText" rows="5" maxlength="1500" required placeholder="Contame qué pasó o qué te gustaría mejorar…"></textarea>
+  <div class="hub-feedback-form-bottom"><span id="hubFeedbackCount">0/1500</span><button id="hubFeedbackSend" class="primary-button" type="submit">Enviar</button></div><p id="hubFeedbackError" role="status"></p></form>
+</dialog>
+<dialog id="hubFeedbackInboxDialog" class="modal hub-feedback-modal hub-feedback-inbox" aria-labelledby="hubFeedbackInboxTitle">
+  <button type="button" class="modal-close icon-button" data-hub-close="hubFeedbackInboxDialog" aria-label="Cerrar">×</button>
+  <h2 id="hubFeedbackInboxTitle">Comentarios</h2><button id="hubFeedbackRefresh" class="secondary-button" type="button">Actualizar</button><p id="hubFeedbackInboxStatus" role="status"></p><div id="hubFeedbackList"></div><button id="hubFeedbackMore" type="button" class="secondary-button" hidden>Ver anteriores</button>
+</dialog>
+<script src="feedback.js"></script>
 <script src="online.js"></script>
 </body>
 </html>

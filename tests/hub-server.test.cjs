@@ -23,6 +23,25 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   assert.equal((await(await req('2','state','GET',null,{'X-Hub-Identity':'{"admin":true}'})).json()).user.admin,false);
   assert.equal((await req('1','admin/rewards','PUT',{object:'obj',character:'char',environment:'env'})).status,200);
   const ns=await mf.getDurableObjectNamespace('HUB_WORLD'),stub=ns.get(ns.idFromName('minerarg-beta-v1'));
+  // Feedback is private, persistent, attributed to the session, paginated and rate limited.
+  const feedback={kind:'bug',text:'<img src=x onerror=alert(1)> Se trabó la puerta.',submissionId:crypto.randomUUID(),username:'Fake admin',userId:'1'};
+  assert.equal((await req(null,'feedback','POST',feedback)).status,401);
+  assert.equal((await req('2','feedback','POST',feedback,{Origin:'https://evil.example'})).status,403);
+  assert.equal((await req('2','feedback','POST',{...feedback,text:' '})).status,400);
+  assert.equal((await req('2','feedback','POST',{...feedback,text:'x'.repeat(1501)})).status,400);
+  const submitted=await req('2','feedback','POST',feedback);assert.equal(submitted.status,201);const receipt=await submitted.json();
+  assert.equal((await(await req('2','feedback','POST',feedback)).json()).id,receipt.id,'Retries do not duplicate feedback');
+  assert.equal((await req('2','feedback','POST',{...feedback,submissionId:crypto.randomUUID()})).status,429);
+  assert.equal((await req('3','admin/feedback')).status,403);
+  assert.equal((await req('2','admin/feedback','PUT',{id:receipt.id,read:true})).status,403);
+  let inbox=await(await req('1','admin/feedback')).json();assert.equal(inbox.entries.length,1);assert.equal(inbox.entries[0].username,'Visitante');assert.equal(inbox.entries[0].userId,'2');assert.equal(inbox.entries[0].text,feedback.text);
+  assert.equal((await req('1','admin/feedback','PUT',{id:receipt.id,read:true})).status,200);
+  inbox=await(await req('1','admin/feedback')).json();assert(inbox.entries[0].readAt);
+  assert.equal((await req('1','admin/feedback','PUT',{id:receipt.id,read:false})).status,200);
+  assert.equal((await(await req('1','admin/feedback')).json()).entries[0].readAt,null);
+  for(let i=0;i<51;i++){const r=await stub.fetch('https://hub/feedback',{method:'POST',headers:{'X-Hub-Identity':JSON.stringify({id:String(1000+i),name:'Feedback '+i,admin:false,expiresAt:Date.now()+3600000})},body:JSON.stringify({kind:'idea',text:'Idea '+i,submissionId:crypto.randomUUID()})});assert.equal(r.status,201);}
+  inbox=await(await req('1','admin/feedback')).json();assert.equal(inbox.entries.length,50);assert(inbox.nextCursor);
+  const older=await(await req('1','admin/feedback?before='+encodeURIComponent(inbox.nextCursor))).json();assert.equal(older.entries.length,2);assert.equal(older.nextCursor,null);assert.equal(new Set([...inbox.entries,...older.entries].map(e=>e.id)).size,52);assert.equal((await req('1','admin/feedback?before=invalid')).status,400);
   const event={id:'event1',type:'channel.reward.redemption.updated',payload:{id:'canje1',status:'accepted',reward:{id:'obj'},redeemer:{user_id:2,username:'Visitante'},broadcaster:{user_id:1}}};
   const kick=(e,channel='1')=>stub.fetch('https://hub/kick',{method:'POST',headers:{'X-Hub-Broadcaster':channel},body:JSON.stringify(e)});
   assert.equal((await(await kick(event,'99')).json()).ignored,true);

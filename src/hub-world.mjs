@@ -1,4 +1,5 @@
 import {C,P,R,CATALOG} from './hub-rules.mjs';
+import {handleFeedback} from './hub-feedback.mjs';
 const items=new Map(CATALOG.map(i=>[i.id,i])),KINDS=['object','character','environment'];
 const reply=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 function reject(message,status=400){throw Object.assign(Error(message),{status});}
@@ -66,6 +67,7 @@ export class HubWorld {
   const u=await this.user(auth.id,auth.name);if(u.banned)reject('Tu acceso al juego está suspendido.',403);
   if(path==='/disconnect'&&request.method==='POST'){for(const ws of this.ownSockets(u.id))ws.close(4001,'Sesión cerrada.');return reply({ok:true});}
   if(path==='/state'&&request.method==='GET')return reply(await this.state(u,auth.admin));
+  if(path==='/feedback'||path==='/admin/feedback')return await handleFeedback(request,this.ctx.storage,u,auth.admin,body)||reply({error:'No disponible.'},404);
   if(path==='/rooms'&&request.method==='GET'){
    const all=await this.ctx.storage.list({prefix:'room:',limit:100}),active=await this.ctx.storage.get('active-room');
    return reply({rooms:[...all.values()].filter(r=>r.public||r.ownerId===u.id||auth.admin).map(r=>({id:r.id,name:r.name,ownerId:r.ownerId,online:this.players(r.id).length,active:r.id===active,public:r.public}))});
