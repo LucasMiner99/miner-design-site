@@ -95,6 +95,52 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   await new Promise(r=>setTimeout(r,55));assert(c.messages.some(m=>m.type==='walk'&&m.id==='3'&&!m.seat&&!m.path.length),'Removing occupied furniture stands its occupant safely');
   await send(b,{type:'sit',itemId:2,slot:0});assert.match(b.messages.at(-1).error,/no está disponible/);
   await send(b,{type:'sit',itemId:999,slot:0});assert.match(b.messages.at(-1).error,/no está disponible/);
+  // Shared YouTube cursor is owned by the room, volume stays client-local.
+  await new Promise(r=>setTimeout(r,1100));
+  savedRoom=(await(await req('1','state')).json()).room;const musicRoom={...savedRoom.scene,items:[...savedRoom.scene.items,{id:4,type:24,x:8,y:4}]};
+  assert.equal((await req('1','room','PUT',{scene:musicRoom,revision:savedRoom.revision})).status,200);
+  await send(b,{type:'media',action:'load',itemId:4,url:'https://youtu.be/M7lc1UVf-VE'});assert.match(b.messages.at(-1).error,/dueño/);
+  await send(a,{type:'media',action:'load',itemId:2,url:'https://youtu.be/M7lc1UVf-VE'});assert.match(a.messages.at(-1).error,/Elegí/);
+  await send(a,{type:'media',action:'load',itemId:4,url:'https://evil.example/watch?v=M7lc1UVf-VE'});assert.match(a.messages.at(-1).error,/enlace válido/);
+  await send(a,{type:'media',action:'load',itemId:4,url:'https://youtu.be/M7lc1UVf-VE'});assert(a.messages.some(m=>m.type==='media'&&m.media?.videoId==='M7lc1UVf-VE'));assert(b.messages.some(m=>m.type==='media'&&m.media?.playing));
+  await new Promise(r=>setTimeout(r,600));await send(b,{type:'media',action:'sync'});assert(b.messages.filter(m=>m.type==='media').at(-1).media.position>.5);
+  await send(a,{type:'media',action:'pause'});const paused=b.messages.filter(m=>m.type==='media').at(-1).media;assert.equal(paused.playing,false);
+  await new Promise(r=>setTimeout(r,600));await send(b,{type:'media',action:'sync'});assert.equal(b.messages.filter(m=>m.type==='media').at(-1).media.position,paused.position);
+  await send(a,{type:'media',action:'resume'});await send(c,{type:'join',roomId:'2'});await send(c,{type:'join',roomId:'1'});assert.equal(c.messages.filter(m=>m.type==='room').at(-1).media.videoId,'M7lc1UVf-VE');
+  savedRoom=(await(await req('1','state')).json()).room;assert.equal((await req('1','room','PUT',{scene:{...savedRoom.scene,items:savedRoom.scene.items.filter(i=>i.id!==4)},revision:savedRoom.revision})).status,200);
+  await new Promise(r=>setTimeout(r,55));assert.equal(b.messages.filter(m=>m.type==='media').at(-1).media,null,'Removing the source stops shared audio');
+  // Kick's native emote token survives the signed-chat bridge intact.
+  await new Promise(r=>setTimeout(r,1100));
+  await kick({id:'emote-chat',type:'chat.message.sent',payload:{message_id:'emote-chat',sender:{user_id:2},broadcaster:{user_id:1},content:'Hola [emote:123:Kappa]'}});
+  await new Promise(r=>setTimeout(r,55));assert(a.messages.some(m=>m.type==='chat'&&m.text==='Hola [emote:123:Kappa]'));
+  // One real box prize can be gifted. Virtual admin catalog units cannot be traded.
+  await send(b,{type:'trade',action:'invite',target:'1'});
+  const tradeOf=client=>client.messages.filter(m=>m.type==='trade').at(-1).trade;
+  let trade=tradeOf(b);assert.equal(trade.status,'invited');
+  await send(c,{type:'trade',action:'accept',id:trade.id,revision:trade.revision});assert.match(c.messages.at(-1).error,/no disponible/);
+  await send(a,{type:'trade',action:'join',id:trade.id,revision:trade.revision});trade=tradeOf(b);assert.equal(trade.status,'open');
+  const action=(act,extra={})=>({type:'trade',action:act,id:trade.id,revision:trade.revision,...extra});
+  await send(a,action('offer',{items:[{id:prize,count:1}]}));assert.match(a.messages.at(-1).error,/unidades propias/);
+  await send(b,action('offer',{items:[{id:prize,count:2}]}));assert.match(b.messages.at(-1).error,/unidades propias/);
+  await send(b,action('offer',{items:[{id:prize,count:1}]}));trade=tradeOf(b);
+  await send(a,action('accept'));trade=tradeOf(b);assert.equal(trade.accepted[1],true);const stale=trade.revision;
+  await send(b,action('offer',{items:[]}));trade=tradeOf(b);assert.deepEqual(trade.accepted,[false,false]);
+  await new Promise(r=>setTimeout(r,1100));
+  await send(b,action('offer',{items:[{id:prize,count:1}]}));trade=tradeOf(b);
+  await send(a,{...action('accept'),revision:stale});assert.match(a.messages.at(-1).error,/oferta cambió/);
+  a.ws.send(JSON.stringify(action('accept')));b.ws.send(JSON.stringify(action('accept')));await new Promise(r=>setTimeout(r,100));trade=tradeOf(b);assert.equal(trade.status,'completed');
+  const actualInventory=async id=>(await(await stub.fetch('https://hub/state',{headers:{'X-Hub-Identity':JSON.stringify({id,name:id==='1'?'minerarg':'Visitante',admin:false,expiresAt:Date.now()+3600000})}})).json()).inventory;
+  assert.equal((await actualInventory('1')).find(i=>i.id===prize).count,1);assert(!(await actualInventory('2')).some(i=>i.id===prize));
+  await send(b,action('accept'));assert.equal((await actualInventory('1')).find(i=>i.id===prize).count,1,'Replay never duplicates a gift');
+  await send(a,{type:'trade',action:'invite',target:'2'});trade=tradeOf(a);
+  await send(b,{type:'trade',action:'join',id:trade.id,revision:trade.revision});trade=tradeOf(a);
+  await send(a,{type:'trade',action:'offer',id:trade.id,revision:trade.revision,items:[{id:prize,count:1}]});trade=tradeOf(a);
+  await send(b,{type:'join',roomId:'2'});assert.equal(tradeOf(a).status,'cancelled');assert.equal((await actualInventory('1')).find(i=>i.id===prize).count,1,'Leaving cancels without moving inventory');
+  await new Promise(r=>setTimeout(r,1100));await send(b,{type:'join',roomId:'1'});
+  // Destination and path reservations are authoritative, even for a forged client.
+  snapshot=b.messages.filter(m=>m.type==='room').at(-1);const occupied=snapshot.players.find(p=>p.id==='1');
+  await send(b,{type:'walk',x:occupied.x,y:occupied.y,seq:200});assert.match(b.messages.at(-1).error,/alguien/);
+  const corrected=b.messages.filter(m=>m.type==='walk'&&m.seq===200).at(-1);assert(corrected);assert.notDeepEqual(corrected.from,{x:occupied.x,y:occupied.y});
   c.ws.close();
   assert.equal((await req('1','admin/moderate','POST',{id:'2',banned:true})).status,200);assert.equal((await req('2','state')).status,403);
   a.ws.close();try{b.ws.close();}catch{}

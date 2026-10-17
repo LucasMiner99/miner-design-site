@@ -86,7 +86,7 @@
   function lookOptions(user,key){return P.choices[key].map((_,i)=>i).filter(i=>i===0||key==='hair'&&i===1||owns(user,'look:'+key+':'+i));}
   function ownedLook(user,look){const a=P.look(look);return Object.fromEntries(Object.keys(P.choices).map(key=>[key,lookOptions(user,key).includes(a[key])?a[key]:0]));}
   function roomOptions(picker){return picker.options.map((o,index)=>({...o,index})).filter(o=>o.index===0||owns('self','environment:'+picker.key+':'+o.index));}
-  function openLook(id){if(!ready)return;if(id!=='self'){const person=people.actors.get(id);if(!person)return;$('hubPlayerName').textContent=person.name;$('hubPlayerVisit').onclick=()=>{online.visit(id);$('hubPlayerDialog').close();};$('hubPlayerDialog').showModal();return;}const a=id==='self'?{name:online.user.name,appearance:myAppearance||P.look({})}:people.actors.get(id);if(!a)return;editingActor=id;draftLook=ownedLook(id,a.appearance);previewDir=0;$('lookStatus').textContent='';$('lookTitle').textContent=id==='self'?'Tu look':'El look de '+a.name;$('lookName').value=a.name;$('removePerson').hidden=id==='self';$('originalLook').hidden=id!=='self';$('visitorChatForm').hidden=id==='self';syncLook();$('lookDialog').showModal();}
+  function openLook(id){if(!ready)return;if(id!=='self'){const person=people.actors.get(id);if(!person)return;$('hubPlayerName').textContent=person.name;$('hubPlayerVisit').onclick=()=>{online.visit(id);$('hubPlayerDialog').close();};$('hubPlayerTrade').onclick=()=>{$('hubPlayerDialog').close();window.HubTrade?.invite(id);};$('hubPlayerDialog').showModal();return;}const a=id==='self'?{name:online.user.name,appearance:myAppearance||P.look({})}:people.actors.get(id);if(!a)return;editingActor=id;draftLook=ownedLook(id,a.appearance);previewDir=0;$('lookStatus').textContent='';$('lookTitle').textContent=id==='self'?'Tu look':'El look de '+a.name;$('lookName').value=a.name;$('removePerson').hidden=id==='self';$('originalLook').hidden=id!=='self';$('visitorChatForm').hidden=id==='self';syncLook();$('lookDialog').showModal();}
   function syncLook(){
     if(!draftLook)return;draftLook=ownedLook(editingActor,draftLook);
     for(const [key,labels] of Object.entries(P.choices)){const id='look'+key[0].toUpperCase()+key.slice(1);$(id).textContent=labels[draftLook[key]];$(id).title=labels[draftLook[key]];const available=lookOptions(editingActor,key);$(id+'Count').textContent=(available.indexOf(draftLook[key])+1)+' / '+available.length;$(id+'Prev').disabled=$(id+'Next').disabled=available.length<2;}
@@ -98,7 +98,7 @@
   }
   function drawLook(){if(!draftLook||!wardrobe)return;const cv=$('lookPreview'),k=cv.getContext('2d'),s=wardrobe.frame(draftLook,previewDir);k.clearRect(0,0,cv.width,cv.height);k.imageSmoothingEnabled=true;k.drawImage(s.canvas,0,0,cv.width,cv.height);if(draftLook.pet&&petSheets[draftLook.pet-1]){const pet=petSheets[draftLook.pet-1][previewDir],w=cv.width*.24,h=w*pet.height/pet.width;k.drawImage(pet.canvas,cv.width*.03,cv.height*.89-h,w,h);}}
   function refreshMe(){thumbnail('avatarThumb');thumbnail('chatThumb');}
-  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,120);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const content=document.createElement('span');content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);bubbles.push({el,actorId:id,at:now,until:now+6500+Math.min(2500,text.length*25)});while(bubbles.filter(b=>b.actorId===id).length>3){const n=bubbles.findIndex(b=>b.actorId===id);bubbles[n].el.remove();bubbles.splice(n,1);}while(bubbles.length>24)bubbles.shift().el.remove();return true;}
+  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,2000);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const content=document.createElement('span');if(window.HubEmotes)window.HubEmotes.render(content,text);else content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);bubbles.push({el,actorId:id,at:now,until:now+6500+Math.min(2500,text.length*25)});while(bubbles.filter(b=>b.actorId===id).length>3){const n=bubbles.findIndex(b=>b.actorId===id);bubbles[n].el.remove();bubbles.splice(n,1);}while(bubbles.length>24)bubbles.shift().el.remove();return true;}
   function forgetActor(id){if(!people.remove(id))return false;for(const b of bubbles.filter(b=>b.actorId===id))b.el.remove();bubbles=bubbles.filter(b=>b.actorId!==id);renderPeople();savePeople();return true;}
   $('spawnOne').addEventListener('click',()=>spawnVisitors(1));$('spawnThree').addEventListener('click',()=>spawnVisitors(3));
   $('pausePeople').addEventListener('click',()=>{people.pause(!people.isPaused());$('pausePeople').textContent=people.isPaused()?'Reanudar paseos':'Pausar paseos';$('pausePeople').setAttribute('aria-pressed',String(people.isPaused()));});
@@ -225,9 +225,10 @@
   function cycleFinish(){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].finishes||movingId!==null)return;checkpoint();if(item.finish===1)delete item.finish;else item.finish=1;selectItem(item.id);save();}
   $('finishPrev').addEventListener('click',cycleFinish);$('finishNext').addEventListener('click',cycleFinish);
   function beginMove(){if(selectedId===null)return;movingId=selectedId;ghost=null;canvas.classList.add('placing');$('moveBtn').disabled=true;$('interactBtn').disabled=true;modeHint();}
-  function interactionLabel(item){return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
-  function updateInteraction(item){$('interactBtn').disabled=false;$('interactBtn').hidden=!C.TYPES[item.type].interaction;$('interactBtn').textContent=interactionLabel(item);}
+  function interactionLabel(item){if(window.HubMedia?.supports(item.type))return 'Abrir música';return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
+  function updateInteraction(item){$('interactBtn').disabled=false;$('interactBtn').hidden=!C.TYPES[item.type].interaction&&!window.HubMedia?.supports(item.type);$('interactBtn').textContent=interactionLabel(item);}
   function interact(item){
+    if(item&&window.HubMedia?.supports(item.type)){window.HubMedia.open(item);return;}
     if(!item||!C.TYPES[item.type].interaction||movingId!==null||pendingType!==null)return;
     if(online.send('interact',{itemId:item.id}))sfx('click');
   }
@@ -247,7 +248,8 @@
   function toWorld(event){const b=canvas.getBoundingClientRect();return {x:(event.clientX-b.left-view.x)/view.s,y:(event.clientY-b.top-view.y)/view.s};}
   function hitAt(p){for(let j=drawBounds.length-1;j>=0;j--){const b=drawBounds[j];if(p.x<b.x||p.y<b.y||p.x>=b.x+b.w||p.y>=b.y+b.h)continue;const sx=Math.floor((p.x-b.x)/b.w*b.sprite.width),sy=Math.floor((p.y-b.y)/b.h*b.sprite.height),px=b.flip?b.sprite.width-1-sx:sx;if(b.sprite.alpha[(sy*b.sprite.width+px)]>48)return b.item;}return null;}
   let walkSequence=0,pendingWalk=0;
-  function movePlayer(tile){const path=C.route(state.items,player,tile);if(path===null){toast('No hay paso por ahí. Elegí un lugar libre.');return;}const seq=++walkSequence;if(!online.send('walk',{x:tile.x,y:tile.y,seq}))return;pendingWalk=seq;standUp();player.path=path;arrivalMarker={x:Math.floor(tile.x),y:Math.floor(tile.y),at:performance.now()};}
+  function occupiedPeople(){const cells=new Set();for(const a of people.actors.values())for(const p of [a,...a.path])cells.add(Math.floor(p.x)+','+Math.floor(p.y));return cells;}
+  function movePlayer(tile){const path=C.route(state.items,player,tile,occupiedPeople());if(path===null){toast('No hay paso por ahí. Elegí un lugar libre.');return;}const seq=++walkSequence;if(!online.send('walk',{x:tile.x,y:tile.y,seq}))return;pendingWalk=seq;standUp();player.path=path;arrivalMarker={x:Math.floor(tile.x),y:Math.floor(tile.y),at:performance.now()};}
   // Keep progress already predicted along an approved route instead of rewinding on its echo.
   function confirmedRemainder(from,path,point){
     let previous=from,best=Math.hypot(point.x-from.x,point.y-from.y),next=0;
@@ -282,7 +284,7 @@
   function tileInRoom(tile){return C.inside(tile.x,tile.y);}
   canvas.addEventListener('pointerdown',e=>{
     if(!ready||e.button!==0)return;e.preventDefault();canvas.focus({preventScroll:true});const world=toWorld(e),tile=unproject(world.x,world.y),hit=hitAt(world);
-    if(mode==='walk'){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){openLook(person);return;}if(hit&&C.TYPES[hit.type].interaction){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);return;}
+    if(mode==='walk'){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){openLook(person);return;}if(hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type))){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);return;}
     if(pendingType!==null){const id=Math.max(0,...state.items.map(i=>i.id),...(state.unplacedItems||[]).map(i=>i.id))+1;tryPlace(candidateAt(world,{id,type:pendingType,flip:false}),true);return;}
     if(movingId!==null){tryPlace(candidateAt(world,state.items.find(i=>i.id===movingId)),false);return;}
     if(hit)selectItem(hit.id);else cancelSelection();
@@ -290,7 +292,7 @@
   canvas.addEventListener('pointermove',e=>{
     if(!ready)return;const world=toWorld(e),tile=unproject(world.x,world.y);hoverTile=tileInRoom(tile)?{x:Math.floor(tile.x),y:Math.floor(tile.y)}:null;
     hoveredPartition=partitionAtPointer(world);
-    const hit=mode==='walk'?hitAt(world):null,door=mode==='walk'&&doorAtPointer(world),usable=door||hit&&C.TYPES[hit.type].interaction;canvas.title=door?'Pasar por la puerta':usable?interactionLabel(hit):hit&&C.TYPES[hit.type].seat?'Sentarse':'';canvas.style.cursor=usable||hit&&C.TYPES[hit.type].seat?'pointer':'';
+    const hit=mode==='walk'?hitAt(world):null,door=mode==='walk'&&doorAtPointer(world),usable=door||hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type));canvas.title=door?'Pasar por la puerta':usable?interactionLabel(hit):hit&&C.TYPES[hit.type].seat?'Sentarse':'';canvas.style.cursor=usable||hit&&C.TYPES[hit.type].seat?'pointer':'';
     if(mode!=='decorate')return;
     if(pendingType!==null)ghost=candidateAt(world,{id:-1,type:pendingType,flip:false});
     else if(movingId!==null)ghost=candidateAt(world,state.items.find(i=>i.id===movingId));
@@ -883,6 +885,7 @@ myAppearance=ownedLook('self',myAppearance);for(const actor of people.actors.val
     Object.assign(a,from,{path:path.slice()});if(a===player&&!player.path.length)finishSitting();
    },
    interaction(itemId,changes){const item=state.items.find(i=>i.id===itemId);if(!item)return;Object.assign(item,changes);if(selectedId===itemId)updateInteraction(item);},
+   preview(item,canvas){const s=item.kind==='environment'?environmentPreview(item):item.kind==='object'?furniture[item.type]:item.slot==='pet'?petSheets[item.index-1]?.[0]:wardrobe.rewardPreview(item.slot,item.index,myAppearance);if(!s)return;const k=canvas.getContext('2d'),scale=Math.min((canvas.width-8)/s.width,(canvas.height-8)/s.height);k.clearRect(0,0,canvas.width,canvas.height);k.drawImage(s.canvas,(canvas.width-s.width*scale)/2,(canvas.height-s.height*scale)/2,s.width*scale,s.height*scale);},
    chat:messageFor,
    account(look){myAppearance=P.look(look);refreshMe();updateRoomPickers();rewardsUI?.showPanel(document.getElementById('rewardsPanel').hidden?'inventory':'rewards');},
    stop(){pendingWalk=0;player.path=[];player.moving=false;for(const a of people.actors.values()){a.path=[];a.moving=false;}},

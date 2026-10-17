@@ -1,4 +1,6 @@
 import {C,P,R,CATALOG} from './hub-rules.mjs';
+import {handleTrade,cancelTrade} from './hub-trades.mjs';
+import {handleMedia,mediaSnapshot,MEDIA_TYPES} from './hub-media.mjs';
 import {handleFeedback} from './hub-feedback.mjs';
 const items=new Map(CATALOG.map(i=>[i.id,i])),KINDS=['object','character','environment'];
 const reply=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -34,6 +36,7 @@ export function currentPosition(p,now=Date.now()){
  for(const goal of p.path||[]){const d=Math.hypot(goal.x-point.x,goal.y-point.y);if(distance<d&&d>0)return {point:{x:point.x+(goal.x-point.x)*distance/d,y:point.y+(goal.y-point.y)*distance/d},path:p.path.slice(index)};distance-=d;point={...goal};index++;}
  return {point,path:[]};
 }
+export function clipChat(value){let result='',left=120;for(const token of String(value||'').trim().slice(0,2000).match(/\[emote:\d{1,20}:[^\]\r\n]{1,80}\]|[\s\S]/gu)||[]){if(!left--)break;result+=token;}return result;}
 export class HubWorld {
  constructor(ctx,env){this.ctx=ctx;this.env=env;if(typeof WebSocketRequestResponsePair!=='undefined')ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping','pong'));}
  async fetch(request){
@@ -48,13 +51,14 @@ export class HubWorld {
  async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,admin},inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
  players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
+ occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
+ free(room,except,preferred){C.setLayout(room.scene.layout);const occupied=this.occupied(room.id,except),valid=p=>p&&!C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y))&&!occupied.has(Math.floor(p.x)+','+Math.floor(p.y));if(valid(preferred))return preferred;for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++){const p={x:x+.5,y:y+.5};if(valid(p))return p;}return null;}
  async join(ws,id){
   const a=ws.deserializeAttachment(),room=await this.ctx.storage.get('room:'+id);if(!room||!room.public&&room.ownerId!==a.user.id&&!a.user.admin)reject('Esa sala no está disponible.',404);
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
-  const old=a.roomId;C.setLayout(room.scene.layout);const others=this.players(id);let p=C.findFree(room.scene.items);
-  outer:for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++)if(!C.blocked(room.scene.items,x,y)&&!others.some(o=>Math.hypot(o.x-x-.5,o.y-y-.5)<.8)){p={x:x+.5,y:y+.5};break outer;}
-  if(!p)reject('La sala no tiene espacio para entrar.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
-  this.send(ws,{type:'room',room,players:this.players(id),position:p});
+  const old=a.roomId;const p=this.free(room,a.user.id);
+  if(!p)reject('La sala no tiene espacio para entrar.');await cancelTrade(this,a.user.id,'El intercambio se canceló al cambiar de sala.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
+  this.send(ws,{type:'room',room,players:this.players(id),position:p,media:mediaSnapshot(room.media)});
   if(old&&old!==id)this.broadcast(old,{type:'presence',players:this.players(old)});
   this.broadcast(id,{type:'presence',players:this.players(id)},ws);
   if(a.user.admin)await this.ctx.storage.put('active-room',id);
@@ -91,10 +95,11 @@ export class HubWorld {
    for(const item of room.scene.items){const old=previous.items.find(i=>i.id===item.id&&i.type===item.type);if(!old)continue;for(const key of ['on','closed'])if(typeof old[key]==='boolean')item[key]=old[key];}
    room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
    C.setLayout(room.scene.layout);if(!C.findFree(room.scene.items))reject('Dejá un espacio libre para entrar.');
+   if(room.media&&!room.scene.items.some(i=>i.id===room.media.itemId&&MEDIA_TYPES.has(i.type))){room.media=null;this.broadcast(room.id,{type:'media',roomId:room.id,media:null});}
    await this.ctx.storage.put('room:'+u.id,room);
    for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
     const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip'].some(k=>oldSeat[k]!==newSeat[k]));
-    if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:C.findFree(room.scene.items,current.point),path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
+    if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
   }
   if(path==='/box/open'&&request.method==='POST'){
@@ -130,19 +135,21 @@ export class HubWorld {
    const id=String(p.sender?.user_id||''),ws=this.ownSockets(id)[0];if(!ws)return reply({ignored:true});const u=await this.user(id);if(u.banned||u.mutedUntil>Date.now())return reply({ignored:true});
    const eventKey='chat-event:'+String(p.message_id||event.id);if(await this.ctx.storage.get(eventKey))return reply({duplicate:true});
    await this.ctx.storage.put(eventKey,Date.now());if(!await this.ctx.storage.getAlarm())await this.ctx.storage.setAlarm(Date.now()+3600000);
-   const text=String(p.content||'').replace(/\[emote:\d+:([^\]]+)\]/g,'$1').trim();
+   const text=String(p.content||'').slice(0,2000).trim();
    if(text.toLowerCase()==='!entrar'){const active=await this.ctx.storage.get('active-room');if(active)await this.join(ws,active);return reply({ok:true});}
    if(!text.startsWith('!'))this.chat(ws,text);return reply({ok:true});
   }
   return reply({ignored:true});
  }
- chat(ws,text){const a=ws.deserializeAttachment();text=String(text||'').trim().slice(0,120);if(!text||Date.now()-a.lastChat<1000)return;a.lastChat=Date.now();ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'chat',id:a.user.id,text});}
+ chat(ws,text){const a=ws.deserializeAttachment();text=clipChat(text);if(!text||Date.now()-a.lastChat<1000)return;a.lastChat=Date.now();ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'chat',id:a.user.id,text});}
  async webSocketMessage(ws,message){
   return this.ctx.blockConcurrencyWhile(async()=>{try{
    if(message==='ping')return;if(typeof message!=='string'||message.length>1024)reject('Mensaje inválido.');const a=ws.deserializeAttachment();
    if(a.user.expiresAt<=Date.now()){ws.close(4001,'Sesión vencida.');return;}
    if(Date.now()-a.rateAt>1000){a.rateAt=Date.now();a.rateCount=0;}if(++a.rateCount>8)reject('Esperá un momento.');ws.serializeAttachment(a);
    const user=await this.user(a.user.id);if(user.banned){ws.close(4003,'Acceso suspendido.');return;}const b=JSON.parse(message);
+   if(b.type==='trade')return await handleTrade(this,ws,b);
+   if(b.type==='media')return await handleMedia(this,ws,b);
    if(b.type==='join')return await this.join(ws,String(b.roomId));
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
    if(b.type==='interact'){
@@ -159,7 +166,7 @@ export class HubWorld {
     const room=await this.ctx.storage.get('room:'+a.roomId),item=room?.scene.items.find(i=>i.id===b.itemId);
     if(!item||!Number.isInteger(b.slot)||!C.seatPlaces(item)[b.slot])reject('Ese asiento no está disponible.');
     if(this.sockets().some(other=>{const p=other.deserializeAttachment();return other!==ws&&p.roomId===a.roomId&&p.seat?.itemId===item.id&&p.seat.slot===b.slot;}))reject('Ese asiento está ocupado.');
-    C.setLayout(room.scene.layout);const from=currentPosition(a.position).point,approach=C.seatApproach(room.scene.items,from,item);
+    C.setLayout(room.scene.layout);const from=currentPosition(a.position).point,approach=C.seatApproach(room.scene.items,from,item,this.occupied(a.roomId,a.user.id));
     if(!approach)reject('No hay paso hasta ese asiento.');
     a.seat={itemId:item.id,slot:b.slot};a.position={from,path:approach.path,at:Date.now()};ws.serializeAttachment(a);
     this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path:approach.path,seat:a.seat,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});return;
@@ -167,11 +174,11 @@ export class HubWorld {
    if(b.type==='walk'){
     const room=await this.ctx.storage.get('room:'+a.roomId);if(!Number.isFinite(b.x)||!Number.isFinite(b.y))reject('Destino inválido.');C.setLayout(room.scene.layout);
     const from=currentPosition(a.position).point,target={x:Math.floor(b.x)+.5,y:Math.floor(b.y)+.5};if(!C.inside(target.x,target.y)||C.blocked(room.scene.items,Math.floor(target.x),Math.floor(target.y)))return;
-    const path=C.route(room.scene.items,from,target);if(!path)return;a.seat=null;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,seat:null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
+    const path=C.route(room.scene.items,from,target,this.occupied(a.roomId,a.user.id));if(!path){const current=currentPosition(a.position);this.send(ws,{type:'walk',id:a.user.id,from:current.point,path:current.path,seat:a.seat||null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});reject('Hay alguien en el camino. Probá otra casilla.');}a.seat=null;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,seat:null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
    }
   }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.'});}});
  }
- async webSocketClose(ws,code,reason){const room=ws.deserializeAttachment()?.roomId;try{ws.close(code,reason);}catch{}if(room)this.broadcast(room,{type:'presence',players:this.players(room)});}
+ async webSocketClose(ws,code,reason){return this.ctx.blockConcurrencyWhile(async()=>{const a=ws.deserializeAttachment(),room=a?.roomId;try{ws.close(code,reason);}catch{}if(a)await cancelTrade(this,a.user.id,'El intercambio se canceló porque un jugador se desconectó.');if(room)this.broadcast(room,{type:'presence',players:this.players(room)});});}
  webSocketError(ws){return this.webSocketClose(ws,1011,'Conexión interrumpida.');}
  async alarm(){await this.ctx.blockConcurrencyWhile(async()=>{const events=await this.ctx.storage.list({prefix:'chat-event:',limit:1000});const stale=[...events].filter(([,t])=>t<Date.now()-3600000).map(([key])=>key);if(stale.length)await this.ctx.storage.delete(stale);if(events.size>stale.length)await this.ctx.storage.setAlarm(Date.now()+3600000);});}
 }

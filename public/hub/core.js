@@ -233,34 +233,35 @@
   }
   function removeItem(items,id){return items.filter(i=>i.id!==id&&i.parentId!==id);}
   // Keep the current step; replan only after its endpoint, never backtrack to a tile centre.
-  function route(items,player,end){
+  function route(items,player,end,occupied=new Set()){
     const next=player.path?.[0],start=next||player;
-    const tail=pathfind(items,start,end);
+    if(next&&occupied.has(Math.floor(next.x)+','+Math.floor(next.y)))return null;
+    const tail=pathfind(items,start,end,occupied);
     if(tail===null)return null;
     return next?[{...next},...tail]:tail;
   }
   function seatPlaces(item){const t=TYPES[item.type];return t?.seats||(t?.seat?[t.seat]:[]);}
   function nearestSeat(item,u,v){const places=seatPlaces(item);let best=0,distance=Infinity;places.forEach((s,index)=>{const d=(u-s.u)**2+(v-s.v)**2;if(d<distance){best=index;distance=d;}});return best;}
-  function seatApproach(items,player,item){
+  function seatApproach(items,player,item,occupied=new Set()){
     const type=TYPES[item.type];if(!type?.seat||item.parentId)return null;const t=dimensions(item);
     let best=null;
     for(let y=item.y-1;y<=item.y+t.h;y++)for(let x=item.x-1;x<=item.x+t.w;x++){
       const beside=(x>=item.x&&x<item.x+t.w&&(y===item.y-1||y===item.y+t.h))||(y>=item.y&&y<item.y+t.h&&(x===item.x-1||x===item.x+t.w));
       if(!beside)continue;
       if(tileHeight(x,y)!==tileHeight(item.x,item.y)||stairAt(x,y))continue;
-      const path=route(items,player,{x,y});
+      const path=route(items,player,{x,y},occupied);
       if(path!==null&&(!best||path.length<best.path.length))best={path,exit:{x:x+.5,y:y+.5}};
     }
     return best;
   }
-  function pathfind(items,start,end){
+  function pathfind(items,start,end,occupied=new Set()){
     const sx=Math.floor(start.x),sy=Math.floor(start.y),ex=Math.floor(end.x),ey=Math.floor(end.y);
-    if(blocked(items,ex,ey))return null;
+    if(blocked(items,ex,ey)||occupied.has(ex+','+ey))return null;
     const queue=[[sx,sy]],seen=new Set([sx+','+sy]),prev=new Map();
     for(let k=0;k<queue.length;k++){
       const [x,y]=queue[k];
       if(x===ex&&y===ey){let out=[],key=ex+','+ey;while(key!==sx+','+sy){const [a,b]=key.split(',').map(Number);out.push({x:a+.5,y:b+.5});key=prev.get(key);}return out.reverse();}
-      for(const [dx,dy] of [[1,0],[0,1],[-1,0],[0,-1]]){const nx=x+dx,ny=y+dy,key=nx+','+ny;if(!seen.has(key)&&canStep(x,y,nx,ny)&&!blocked(items,nx,ny)){seen.add(key);prev.set(key,x+','+y);queue.push([nx,ny]);}}
+      for(const [dx,dy] of [[1,0],[0,1],[-1,0],[0,-1]]){const nx=x+dx,ny=y+dy,key=nx+','+ny;if(!seen.has(key)&&!occupied.has(key)&&canStep(x,y,nx,ny)&&!blocked(items,nx,ny)){seen.add(key);prev.set(key,x+','+y);queue.push([nx,ny]);}}
     }
     return null;
   }

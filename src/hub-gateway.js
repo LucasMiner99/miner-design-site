@@ -1,4 +1,5 @@
 import {enabled,broadcaster,hubJSON,hubAuth,hubSession,sameOrigin} from './hub-auth.js';
+import {sevenTvMap} from './chat.js';
 import {body} from './hub-world.mjs';
 export function world(env){return env.HUB_WORLD.get(env.HUB_WORLD.idFromName('minerarg-beta-v1'));}
 export async function handleHub(request,env,services={}){
@@ -12,6 +13,7 @@ export async function handleHub(request,env,services={}){
   const authResult=await hubAuth(request,env);if(authResult)return authResult;
   const auth=await hubSession(request,env);if(!auth)return hubJSON({error:'Iniciá sesión con Kick.'},401);
   const route=path.slice('/api/hub'.length);
+  if(route==='/emotes'&&request.method==='GET')return hubJSON({emotes:await sevenTvMap(env,{chat_7tv_enabled:true,kick_user_id:await broadcaster(env)})});
   if(route==='/admin/kick-rewards'&&auth.admin&&request.method==='GET')return hubJSON({rewards:await services.listRewards()});
   const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
   if(!allowed[route.slice(1)]?.includes(request.method))return hubJSON({error:'No disponible.'},404);

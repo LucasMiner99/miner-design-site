@@ -4,13 +4,13 @@
  const memory=new Map();
  function status(text){$('hubStatus').textContent=text;}
  async function api(path,method='GET',value){const response=await fetch('/api/hub/'+path,{method,credentials:'same-origin',headers:value?{'Content-Type':'application/json'}:{},body:value?JSON.stringify(value):undefined});const data=await response.json().catch(()=>({}));if(!response.ok)throw Object.assign(Error(data.error||'No pudimos conectar.'),{status:response.status});return data;}
- function seed(){memory.set('vereda.room.v1',JSON.stringify(account.room.scene));memory.set('vereda.people.v1',JSON.stringify({version:1,actors:[],me:account.user.appearance}));}
+ function seed(){window.HubEmotes?.load();memory.set('vereda.room.v1',JSON.stringify(account.room.scene));memory.set('vereda.people.v1',JSON.stringify({version:1,actors:[],me:account.user.appearance}));}
  function canEdit(){return connected&&room?.ownerId===account.user.id;}
  function affordances(){document.body.classList.toggle('hub-visiting',room?.ownerId!==account.user.id);$('hubHome').disabled=!connected||room?.ownerId===account.user.id;$('decorateBtn').disabled=!canEdit();$('roomTab').disabled=!canEdit();$('hubAdmin').hidden=!account.user.admin;$('hubFeedbackInbox').hidden=!account.user.admin;}
  function updateAccount(data){account={...account,...data};game?.account(account.user.appearance);affordances();}
  function schedule(task){saving++;let failed=false;status('Guardando…');queue=queue.then(task).catch(async e=>{failed=true;status(e.message);try{const fresh=await api('state');updateAccount(fresh);seed();if(room?.ownerId===account.user.id){room=fresh.room;game?.room(room.scene);}}catch{status('Sin conexión. Tus cambios no se guardaron.');}}).finally(()=>{saving--;if(!saving&&connected&&!failed)status('Conectado');});return queue;}
  const bridge=window.MINER_HUB_ONLINE={
-  get user(){return account.user;},canEdit,
+  get user(){return account.user;},get room(){return room;},canEdit,preview:(item,canvas)=>game?.preview(item,canvas),
   placedCount(type){return [...account.room.scene.items,...(account.room.scene.unplacedItems||[])].filter(i=>i.type===type).length;},
   storage:{getItem:key=>memory.has(key)?memory.get(key):key==='vereda.theme.v1'?window.localStorage.getItem(key):null,setItem(key,value){
    if(memory.get(key)===value)return;memory.set(key,value);if(!game)return;
@@ -26,16 +26,18 @@
  function connect(){if(stopped)return;status('Conectando…');socket=new WebSocket(location.origin.replace(/^http/,'ws')+'/api/hub/ws');
   socket.onopen=()=>{connected=true;reconnect=0;affordances();status('Conectado');};
   socket.onmessage=e=>{if(e.data==='pong')return;let m;try{m=JSON.parse(e.data);}catch{return;}
-   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);}
+   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);window.HubMedia?.room(room,m.media);}
+   else if(m.type==='trade')window.HubTrade?.receive(m);
+   else if(m.type==='media'&&m.roomId===room?.id)window.HubMedia?.receive(m.media);
    else if(m.type==='presence')game.players(m.players);
    else if(m.type==='walk')game.walk(m.id,m.from,m.path,m.seq,m.seat);
    else if(m.type==='interaction'&&m.roomId===room?.id){const item=room.scene.items.find(i=>i.id===m.itemId);if(item)Object.assign(item,m.changes);if(account.room.id===room.id){const own=account.room.scene.items.find(i=>i.id===m.itemId);if(own)Object.assign(own,m.changes);}game.interaction(m.itemId,m.changes);}
    else if(m.type==='chat')game.chat(m.id===account.user.id?'self':m.id,m.text);
    else if(m.type==='account')updateAccount(m);
    else if(m.type==='scene'&&m.room.id===room?.id&&room.ownerId!==account.user.id){room=m.room;game.scene(room.scene);game.players(m.players);}
-   else if(m.type==='error')status(m.error);
+   else if(m.type==='error'){status(m.error);window.HubTrade?.error(m.error);window.HubMedia?.error(m.error);}
   };
-  socket.onclose=e=>{connected=false;game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
+  socket.onclose=e=>{connected=false;window.HubTrade?.disconnected();window.HubMedia?.disconnected();game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
  }
  setInterval(()=>{if(connected)socket.send('ping');},25000);
  window.addEventListener('beforeunload',e=>{if(saving){e.preventDefault();e.returnValue='';}});

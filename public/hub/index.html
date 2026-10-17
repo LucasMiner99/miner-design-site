@@ -13,7 +13,7 @@
 </head>
 <body>
 <div id="hubLogin" class="hub-login" hidden><div><h1>miner hub</h1><p id="hubLoginStatus"></p><a id="hubLoginLink" class="primary-button" href="/api/hub/login">Entrar con Kick</a></div></div>
-<div class="hub-bar"><span id="hubStatus" role="status">Conectando…</span><button id="hubStreamMode" type="button" aria-pressed="false" aria-controls="stage" disabled>Modo stream</button><button id="hubHome" type="button" disabled>Mi sala</button><button id="hubRooms" type="button">Salas</button><button id="hubAdmin" type="button" hidden>Administrar</button><button id="hubLogout" type="button">Salir</button></div>
+<div class="hub-bar"><span id="hubStatus" role="status">Conectando…</span><button id="hubStreamMode" type="button" aria-pressed="false" aria-controls="stage" disabled>Modo stream</button><button id="hubMusic" type="button" hidden>Música</button><button id="hubHome" type="button" disabled>Mi sala</button><button id="hubRooms" type="button">Salas</button><button id="hubAdmin" type="button" hidden>Administrar</button><button id="hubLogout" type="button">Salir</button></div>
 <dialog id="hubRoomsDialog"><h2>Salas</h2><div id="hubRoomsList"></div><button data-hub-close="hubRoomsDialog">Cerrar</button></dialog>
 <dialog id="hubAdminDialog"><h2>Administrar</h2><p>Vinculá las tres recompensas creadas en tu canal de Kick.</p><form id="hubRewardForm"><label>Objetos <select id="hubReward-object" required></select></label><label>Personaje <select id="hubReward-character" required></select></label><label>Ambiente <select id="hubReward-environment" required></select></label><button>Guardar recompensas</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
 
@@ -178,8 +178,25 @@
 <dialog id="hubPlayerDialog" class="modal small" aria-labelledby="hubPlayerName">
   <button type="button" class="modal-close icon-button" data-hub-close="hubPlayerDialog" aria-label="Cerrar">×</button>
   <h2 id="hubPlayerName"></h2>
+  <button id="hubPlayerTrade" type="button" class="secondary-button">Intercambiar / regalar</button>
   <button id="hubPlayerVisit" type="button" class="primary-button">Visitar su casa</button>
 </dialog>
+<dialog id="hubTradeDialog" class="modal hub-trade" aria-labelledby="hubTradeTitle">
+<h2 id="hubTradeTitle">Intercambio</h2><p id="hubTradeNote" class="modal-note"></p><div id="hubTradeOffers" class="hub-trade-columns"></div>
+<form id="hubTradeAdd"><label for="hubTradeItem">Agregar a tu oferta</label><select id="hubTradeItem"></select><label for="hubTradeCount">Unidades</label><input id="hubTradeCount" type="number" min="1" max="99" value="1"><button type="submit" class="secondary-button">Agregar</button></form>
+<p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
+</dialog>
+<section id="hubMediaDock" class="hub-media-dock" aria-label="Música de la sala" hidden>
+<header><b id="hubMediaTitle">Música de la sala</b><button id="hubMediaClose" type="button" aria-label="Cerrar y dejar de escuchar">×</button></header>
+<div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
+<form id="hubMediaForm"><label for="hubMediaURL">Enlace de YouTube</label><input id="hubMediaURL" type="url" maxlength="400" placeholder="https://www.youtube.com/watch?v=…" required><button class="secondary-button" type="submit">Reproducir en la sala</button></form>
+<div id="hubMediaControls"><button id="hubMediaPause" type="button" class="secondary-button">Pausar sala</button><button id="hubMediaStop" type="button" class="secondary-button">Detener sala</button></div>
+<button id="hubMediaListen" class="secondary-button" type="button">Activar audio / sincronizar</button>
+<label class="hub-media-volume" for="hubMediaVolume">Tu volumen <input id="hubMediaVolume" type="range" min="0" max="100" value="40"></label><p id="hubMediaStatus" role="status"></p>
+</section>
+<script src="media.js"></script>
+<script src="emotes.js"></script>
+<script src="trade.js"></script>
 <script src="feedback.js"></script>
 <script src="online.js"></script>
 </body>
