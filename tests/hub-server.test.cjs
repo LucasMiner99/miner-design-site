@@ -106,9 +106,16 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   await new Promise(r=>setTimeout(r,600));await send(b,{type:'media',action:'sync'});assert(b.messages.filter(m=>m.type==='media').at(-1).media.position>.5);
   await send(a,{type:'media',action:'pause'});const paused=b.messages.filter(m=>m.type==='media').at(-1).media;assert.equal(paused.playing,false);
   await new Promise(r=>setTimeout(r,600));await send(b,{type:'media',action:'sync'});assert.equal(b.messages.filter(m=>m.type==='media').at(-1).media.position,paused.position);
+  await send(b,{type:'media',action:'seek',position:90,videoId:'M7lc1UVf-VE'});assert.match(b.messages.at(-1).error,/dueño/);
+  await send(a,{type:'media',action:'seek',position:-1,videoId:'M7lc1UVf-VE'});assert.match(a.messages.at(-1).error,/posición válida/);
+  await send(a,{type:'media',action:'seek',position:90000,videoId:'M7lc1UVf-VE'});assert.match(a.messages.at(-1).error,/posición válida/);
+  await send(a,{type:'media',action:'seek',position:90,videoId:'aaaaaaaaaaa'});assert.match(a.messages.at(-1).error,/cambió/);
+  await send(a,{type:'media',action:'seek',position:90,videoId:'M7lc1UVf-VE'});const seeked=b.messages.filter(m=>m.type==='media').at(-1).media;assert.equal(seeked.position,90);assert.equal(seeked.playing,false);assert(seeked.revision>paused.revision);
+  await new Promise(r=>setTimeout(r,600));await send(b,{type:'media',action:'sync'});assert.equal(b.messages.filter(m=>m.type==='media').at(-1).media.position,90);
   await send(a,{type:'media',action:'resume'});await send(c,{type:'join',roomId:'2'});await send(c,{type:'join',roomId:'1'});assert.equal(c.messages.filter(m=>m.type==='room').at(-1).media.videoId,'M7lc1UVf-VE');
   savedRoom=(await(await req('1','state')).json()).room;assert.equal((await req('1','room','PUT',{scene:{...savedRoom.scene,items:savedRoom.scene.items.filter(i=>i.id!==4)},revision:savedRoom.revision})).status,200);
   await new Promise(r=>setTimeout(r,55));assert.equal(b.messages.filter(m=>m.type==='media').at(-1).media,null,'Removing the source stops shared audio');
+  await send(a,{type:'join',roomId:'2'});await send(a,{type:'media',action:'load',itemId:4,url:'https://youtu.be/M7lc1UVf-VE'});assert.match(a.messages.at(-1).error,/dueño/,'Admin cannot control someone else’s music');await send(a,{type:'join',roomId:'1'});
   // Kick's native emote token survives the signed-chat bridge intact.
   await new Promise(r=>setTimeout(r,1100));
   await kick({id:'emote-chat',type:'chat.message.sent',payload:{message_id:'emote-chat',sender:{user_id:2},broadcaster:{user_id:1},content:'Hola [emote:123:Kappa]'}});

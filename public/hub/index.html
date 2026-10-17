@@ -182,18 +182,23 @@
   <button id="hubPlayerVisit" type="button" class="primary-button">Visitar su casa</button>
 </dialog>
 <dialog id="hubTradeDialog" class="modal hub-trade" aria-labelledby="hubTradeTitle">
-<h2 id="hubTradeTitle">Intercambio</h2><p id="hubTradeNote" class="modal-note"></p><div id="hubTradeOffers" class="hub-trade-columns"></div>
-<form id="hubTradeAdd"><label for="hubTradeItem">Agregar a tu oferta</label><select id="hubTradeItem"></select><label for="hubTradeCount">Unidades</label><input id="hubTradeCount" type="number" min="1" max="99" value="1"><button type="submit" class="secondary-button">Agregar</button></form>
+<h2 id="hubTradeTitle" tabindex="-1" autofocus>Intercambio</h2><p id="hubTradeNote" class="modal-note"></p><div id="hubTradeOffers" class="hub-trade-columns"></div>
+<section id="hubTradeInventory" class="hub-trade-inventory" aria-labelledby="hubTradeInventoryTitle" hidden>
+<header><h3 id="hubTradeInventoryTitle">Tu inventario</h3><input id="hubTradeSearch" type="search" placeholder="Buscar objeto…" aria-label="Buscar en tu inventario"></header>
+<p>Arrastrá a tu oferta o tocá para agregar. Tocá tu oferta para quitar una unidad.</p>
+<div id="hubTradeStock" class="hub-trade-stock"></div>
+</section>
 <p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
 </dialog>
 <section id="hubMediaDock" class="hub-media-dock" aria-label="Música de la sala" hidden>
-<header><b id="hubMediaTitle">Música de la sala</b><button id="hubMediaClose" type="button" aria-label="Cerrar y dejar de escuchar">×</button></header>
-<div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
-<form id="hubMediaForm"><label for="hubMediaURL">Enlace de YouTube</label><input id="hubMediaURL" type="url" maxlength="400" placeholder="https://www.youtube.com/watch?v=…" required><button class="secondary-button" type="submit">Reproducir en la sala</button></form>
-<div id="hubMediaControls"><button id="hubMediaPause" type="button" class="secondary-button">Pausar sala</button><button id="hubMediaStop" type="button" class="secondary-button">Detener sala</button></div>
-<button id="hubMediaListen" class="secondary-button" type="button">Activar audio / sincronizar</button>
+<header><b id="hubMediaTitle">Música de la sala</b><button id="hubMediaClose" type="button" aria-label="Ocultar controles; la música sigue sonando" title="Ocultar controles">×</button></header>
+<form id="hubMediaForm"><label class="sr-only" for="hubMediaURL">Enlace de YouTube</label><input id="hubMediaURL" type="url" maxlength="400" placeholder="Pegá un enlace de YouTube" required><button class="secondary-button" type="submit">Poner</button></form>
+<div id="hubMediaTimeline" class="hub-media-timeline" hidden><input id="hubMediaSeek" type="range" min="0" max="0" step="1" value="0" aria-label="Posición de la música" disabled><div class="hub-media-times"><span id="hubMediaElapsed">0:00</span><span id="hubMediaDuration">—</span></div></div>
+<div id="hubMediaControls"><button id="hubMediaPause" type="button" class="primary-button">Pausar</button><button id="hubMediaStop" type="button" class="secondary-button" title="Quitar la música de la sala">Quitar</button></div>
+<button id="hubMediaListen" class="secondary-button" type="button" hidden>Activar audio</button>
 <label class="hub-media-volume" for="hubMediaVolume">Tu volumen <input id="hubMediaVolume" type="range" min="0" max="100" value="40"></label><p id="hubMediaStatus" role="status"></p>
 </section>
+<div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
 <script src="media.js"></script>
 <script src="emotes.js"></script>
 <script src="trade.js"></script>
