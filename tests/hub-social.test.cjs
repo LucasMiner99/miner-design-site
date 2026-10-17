@@ -57,6 +57,8 @@ function load(name,context){vm.runInContext(fs.readFileSync(path.join(__dirname,
  md.get('hubMediaClose').onclick();assert(!yt.destroyed,'Closing controls keeps listening');assert(md.get('hubMediaDock').hidden);mc.HubMedia.receive({...media,videoId:'aaaaaaaaaaa',position:80,revision:5});assert.equal(yt.time,80);assert(md.get('hubMediaDock').hidden);
  mc.MINER_HUB_ONLINE.user.admin=true;mc.HubMedia.room({...scene,id:'2',ownerId:'2'},media);await new Promise(setImmediate);yt=players.at(-1);yt.options.events.onReady({target:yt});assert(md.get('hubMediaForm').hidden);assert(md.get('hubMediaControls').hidden);assert(md.get('hubMediaSeek').disabled,'Admin visiting cannot seek');
  const beforeVisitor=calls.length;md.get('hubMediaPause').onclick();md.get('hubMediaStop').onclick();md.get('hubMediaSeek').onchange();assert.equal(calls.length,beforeVisitor);mc.HubMedia.disconnected();assert(yt.destroyed);
+ mc.HubMedia.room(scene,null);assert(!md.get('hubMusic').hidden,'Music entry remains available before a track is loaded');assert(md.get('hubMediaDock').hidden,'Joining does not expand the music panel');md.get('hubMusic').onclick();assert(!md.get('hubMediaDock').hidden);md.get('hubMediaURL').value='https://youtu.be/M7lc1UVf-VE';md.get('hubMediaForm').onsubmit({preventDefault(){}});assert.equal(calls.at(-1).action,'load');assert.equal(calls.at(-1).itemId,4,'Footer music picks an available room player');md.get('hubMusic').onclick();assert(md.get('hubMediaDock').hidden,'Music button also collapses the panel');
+
 
  console.log('PASS: reservations, safe emotes, two-way atomic trade/in-use checks, trade UI consent and revisions, YouTube URL validation, cursor sync, local volume, errors and cleanup.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

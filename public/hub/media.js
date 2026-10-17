@@ -13,7 +13,7 @@
   $('hubMediaElapsed').textContent=time(at);$('hubMediaDuration').textContent=duration?time(duration):'—';
  }
  function controls(){
-  $('hubMusic').hidden=!state;$('hubMediaForm').hidden=!owner();$('hubMediaControls').hidden=!owner()||!state;$('hubMediaTimeline').hidden=!state;
+  $('hubMusic').hidden=!room;$('hubMusic').setAttribute('aria-expanded',String(!$('hubMediaDock').hidden));$('hubMediaForm').hidden=!owner();$('hubMediaControls').hidden=!owner()||!state;$('hubMediaTimeline').hidden=!state;
   $('hubMediaListen').hidden=!state||!blocked;$('hubMediaPause').textContent=state?.playing?'Pausar':'Reproducir';timeline();
  }
  function destroy(){generation++;clearSeek();if(player)try{player.destroy();}catch{}player=null;ready=false;loaded=null;duration=0;scrubbing=false;blocked=false;$('hubYouTubeMount').replaceChildren();}
@@ -38,10 +38,10 @@
   state=next;sampled=performance.now();if(newVideo){duration=0;failed=null;blocked=false;scrubbing=false;}
   if(!state){destroy();controls();status(owner()?'Pegá un enlace para poner música.':'El dueño de la sala elige la música.');return;}
   source=room?.scene.items.find(i=>i.id===state.itemId)||source;controls();
-  if(changed&&!failed)status(state.playing?'Sonando en la sala.':'En pausa.');if(!minimized)$('hubMediaDock').hidden=false;ensure();apply(changed);
+  if(changed&&!failed)status(state.playing?'Sonando en la sala.':'En pausa.');if(!minimized)$('hubMediaDock').hidden=false;$('hubMusic').setAttribute('aria-expanded',String(!$('hubMediaDock').hidden));ensure();apply(changed);
  }
- function open(item){if(item)source=item;minimized=false;$('hubMediaDock').hidden=false;$('hubMediaTitle').textContent='Música de la sala';controls();if(state){ensure();}else status(owner()?'Pegá un enlace para poner música.':'El dueño de la sala elige la música.');}
- $('hubMediaClose').onclick=()=>{minimized=true;$('hubMediaDock').hidden=true;};$('hubMusic').onclick=()=>open();
+ function open(item){if(item)source=item;else if(!source)source=room?.scene.items.find(i=>types.has(i.type));minimized=false;$('hubMediaDock').hidden=false;$('hubMediaTitle').textContent='Música de la sala';controls();if(state){ensure();}else status(owner()?'Pegá un enlace para poner música.':'El dueño de la sala elige la música.');}
+ function close(){minimized=true;$('hubMediaDock').hidden=true;controls();} $('hubMediaClose').onclick=close;$('hubMusic').onclick=()=>{$('hubMediaDock').hidden?open():close();};
  $('hubMediaForm').onsubmit=e=>{e.preventDefault();if(!owner())return;if(!source){status('Tocá una compu, radio o tocadiscos de la sala.');return;}bridge().send('media',{action:'load',itemId:source.id,url:$('hubMediaURL').value.trim()});};
  $('hubMediaPause').onclick=()=>{if(owner()&&state)bridge().send('media',{action:state.playing?'pause':'resume'});};$('hubMediaStop').onclick=()=>{if(owner())bridge().send('media',{action:'stop'});};
  $('hubMediaSeek').oninput=()=>{if(!owner()||!state)return;scrubbing=true;timeline();};
@@ -62,5 +62,5 @@
  $('hubMediaListen').onclick=()=>{if(!state)return;blocked=false;controls();ensure();if(ready){player.unMute();apply(true);}};
  setInterval(()=>{if(state&&ready)bridge().send('media',{action:'sync'});},15000);
  setInterval(()=>{if(state&&!minimized)timeline();},500);
- window.HubMedia={supports:type=>types.has(type),open,receive,room(next,media){destroy();room=next;source=null;minimized=false;state=null;failed=null;$('hubMediaDock').hidden=true;receive(media);},error(text,event){if(event?.scope==='media'&&event.action==='seek'&&pendingSeek?.token===event.requestId){clearSeek();scrubbing=false;apply(true);}if(!$('hubMediaDock').hidden)status(text);},disconnected(){destroy();state=null;controls();status('Audio detenido: se perdió la conexión.');}};
+ window.HubMedia={supports:type=>types.has(type),open,receive,room(next,media){destroy();room=next;source=null;minimized=true;state=null;failed=null;$('hubMediaDock').hidden=true;receive(media);},error(text,event){if(event?.scope==='media'&&event.action==='seek'&&pendingSeek?.token===event.requestId){clearSeek();scrubbing=false;apply(true);}if(!$('hubMediaDock').hidden)status(text);},disconnected(){destroy();state=null;controls();status('Audio detenido: se perdió la conexión.');}};
 })();
