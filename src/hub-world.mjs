@@ -47,13 +47,13 @@ export class HubWorld {
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
  async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,admin},inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
- players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,x:p.point.x,y:p.point.y,path:p.path};});}
+ players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
  async join(ws,id){
   const a=ws.deserializeAttachment(),room=await this.ctx.storage.get('room:'+id);if(!room||!room.public&&room.ownerId!==a.user.id&&!a.user.admin)reject('Esa sala no está disponible.',404);
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
   const old=a.roomId;C.setLayout(room.scene.layout);const others=this.players(id);let p=C.findFree(room.scene.items);
   outer:for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++)if(!C.blocked(room.scene.items,x,y)&&!others.some(o=>Math.hypot(o.x-x-.5,o.y-y-.5)<.8)){p={x:x+.5,y:y+.5};break outer;}
-  if(!p)reject('La sala no tiene espacio para entrar.');a.roomId=id;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
+  if(!p)reject('La sala no tiene espacio para entrar.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
   this.send(ws,{type:'room',room,players:this.players(id),position:p});
   if(old&&old!==id)this.broadcast(old,{type:'presence',players:this.players(old)});
   this.broadcast(id,{type:'presence',players:this.players(id)},ws);
@@ -86,10 +86,15 @@ export class HubWorld {
   }
   if(path==='/room'&&request.method==='PUT'){
    const b=await body(request),room=await this.room(u.id,u.name);if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
-   room.scene=validateScene(b.scene,u,auth.admin);room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
+   const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);
+   // Decoration saves must not overwrite a visitor's more recent switch state.
+   for(const item of room.scene.items){const old=previous.items.find(i=>i.id===item.id&&i.type===item.type);if(!old)continue;for(const key of ['on','closed'])if(typeof old[key]==='boolean')item[key]=old[key];}
+   room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
    C.setLayout(room.scene.layout);if(!C.findFree(room.scene.items))reject('Dejá un espacio libre para entrar.');
    await this.ctx.storage.put('room:'+u.id,room);
-   for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position);if(C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.position={from:C.findFree(room.scene.items,current.point),path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
+   for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
+    const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip'].some(k=>oldSeat[k]!==newSeat[k]));
+    if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:C.findFree(room.scene.items,current.point),path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
   }
   if(path==='/box/open'&&request.method==='POST'){
@@ -140,10 +145,29 @@ export class HubWorld {
    const user=await this.user(a.user.id);if(user.banned){ws.close(4003,'Acceso suspendido.');return;}const b=JSON.parse(message);
    if(b.type==='join')return await this.join(ws,String(b.roomId));
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
+   if(b.type==='interact'){
+    const room=await this.ctx.storage.get('room:'+a.roomId),item=room?.scene.items.find(i=>i.id===b.itemId),kind=item&&C.TYPES[item.type].interaction;
+    if(!kind)reject('Ese objeto no se puede usar.');
+    if(Date.now()-(a.lastInteraction||0)<350)reject('Esperá un momento.');a.lastInteraction=Date.now();ws.serializeAttachment(a);
+    const changes=kind==='curtain'?{closed:!item.closed}:{on:item.on===false};Object.assign(item,changes);
+    await this.ctx.storage.put('room:'+room.id,room);this.broadcast(room.id,{type:'interaction',roomId:room.id,itemId:item.id,changes});return;
+   }
+   if(b.type==='stand'){
+    a.seat=null;a.position={from:currentPosition(a.position).point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from:a.position.from,path:[],seat:null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});return;
+   }
+   if(b.type==='sit'){
+    const room=await this.ctx.storage.get('room:'+a.roomId),item=room?.scene.items.find(i=>i.id===b.itemId);
+    if(!item||!Number.isInteger(b.slot)||!C.seatPlaces(item)[b.slot])reject('Ese asiento no está disponible.');
+    if(this.sockets().some(other=>{const p=other.deserializeAttachment();return other!==ws&&p.roomId===a.roomId&&p.seat?.itemId===item.id&&p.seat.slot===b.slot;}))reject('Ese asiento está ocupado.');
+    C.setLayout(room.scene.layout);const from=currentPosition(a.position).point,approach=C.seatApproach(room.scene.items,from,item);
+    if(!approach)reject('No hay paso hasta ese asiento.');
+    a.seat={itemId:item.id,slot:b.slot};a.position={from,path:approach.path,at:Date.now()};ws.serializeAttachment(a);
+    this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path:approach.path,seat:a.seat,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});return;
+   }
    if(b.type==='walk'){
     const room=await this.ctx.storage.get('room:'+a.roomId);if(!Number.isFinite(b.x)||!Number.isFinite(b.y))reject('Destino inválido.');C.setLayout(room.scene.layout);
     const from=currentPosition(a.position).point,target={x:Math.floor(b.x)+.5,y:Math.floor(b.y)+.5};if(!C.inside(target.x,target.y)||C.blocked(room.scene.items,Math.floor(target.x),Math.floor(target.y)))return;
-    const path=C.route(room.scene.items,from,target);if(!path)return;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
+    const path=C.route(room.scene.items,from,target);if(!path)return;a.seat=null;a.position={from,path,at:Date.now()};ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'walk',id:a.user.id,from,path,seat:null,...(Number.isSafeInteger(b.seq)&&b.seq>0?{seq:b.seq}:{})});
    }
   }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.'});}});
  }

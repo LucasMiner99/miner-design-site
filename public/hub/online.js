@@ -28,7 +28,8 @@
   socket.onmessage=e=>{if(e.data==='pong')return;let m;try{m=JSON.parse(e.data);}catch{return;}
    if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);}
    else if(m.type==='presence')game.players(m.players);
-   else if(m.type==='walk')game.walk(m.id,m.from,m.path,m.seq);
+   else if(m.type==='walk')game.walk(m.id,m.from,m.path,m.seq,m.seat);
+   else if(m.type==='interaction'&&m.roomId===room?.id){const item=room.scene.items.find(i=>i.id===m.itemId);if(item)Object.assign(item,m.changes);if(account.room.id===room.id){const own=account.room.scene.items.find(i=>i.id===m.itemId);if(own)Object.assign(own,m.changes);}game.interaction(m.itemId,m.changes);}
    else if(m.type==='chat')game.chat(m.id===account.user.id?'self':m.id,m.text);
    else if(m.type==='account')updateAccount(m);
    else if(m.type==='scene'&&m.room.id===room?.id&&room.ownerId!==account.user.id){room=m.room;game.scene(room.scene);game.players(m.players);}

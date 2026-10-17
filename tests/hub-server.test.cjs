@@ -64,6 +64,38 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   b.ws.send(JSON.stringify({type:'walk',x:5,y:5,seq:17}));await new Promise(r=>setTimeout(r,45));assert(a.messages.some(m=>m.type==='walk'&&m.id==='2'&&m.seq===17));assert(b.messages.some(m=>m.type==='walk'&&m.id==='2'&&m.seq===17));
   b.ws.send(JSON.stringify({type:'chat',text:'<script>hola</script>'}));await new Promise(r=>setTimeout(r,45));assert(a.messages.some(m=>m.type==='chat'&&m.text==='<script>hola</script>'));
   b.ws.send(JSON.stringify({type:'join',roomId:'2'}));await new Promise(r=>setTimeout(r,35));await kick({id:'chat1',type:'chat.message.sent',payload:{message_id:'chat1',sender:{user_id:2},broadcaster:{user_id:1},content:'!entrar'}});await new Promise(r=>setTimeout(r,35));assert.equal(b.messages.filter(m=>m.type==='room').at(-1).room.id,'1');
+  // Visitors can use shared objects without gaining decoration permissions.
+  await new Promise(r=>setTimeout(r,1100));
+  const furnished={...scene,items:[{id:1,type:0,x:1,y:1},{id:2,type:5,x:6,y:1},{id:3,type:26,wallSide:'left',wallU:6,wallZ:100}]};
+  let saved=await req('1','room','PUT',{scene:furnished,revision:1});assert.equal(saved.status,200);let savedRoom=(await saved.json()).room;
+  const send=async(client,value)=>{client.ws.send(JSON.stringify(value));await new Promise(r=>setTimeout(r,55));};
+  await send(b,{type:'interact',itemId:2,on:true,roomId:'2'});
+  assert(a.messages.some(m=>m.type==='interaction'&&m.itemId===2&&m.changes.on===false));
+  assert(b.messages.some(m=>m.type==='interaction'&&m.itemId===2&&m.changes.on===false));
+  assert.equal((await(await req('1','state')).json()).room.scene.items.find(i=>i.id===2).on,false);
+  assert.equal((await req('2','room','PUT',{scene:furnished,revision:1})).status,403);
+  await new Promise(r=>setTimeout(r,360));await send(b,{type:'interact',itemId:3});
+  assert(a.messages.some(m=>m.type==='interaction'&&m.itemId===3&&m.changes.closed===true));
+  await send(b,{type:'interact',itemId:1});assert.match(b.messages.at(-1).error,/no se puede usar/);
+  await send(a,{type:'sit',itemId:1,slot:0,seq:31});
+  assert(a.messages.some(m=>m.type==='walk'&&m.seq===31&&m.seat?.slot===0));
+  await send(b,{type:'sit',itemId:1,slot:0,seq:32});assert.match(b.messages.at(-1).error,/ocupado/);
+  await send(b,{type:'sit',itemId:1,slot:1,seq:33});assert(a.messages.some(m=>m.type==='walk'&&m.id==='2'&&m.seat?.slot===1));
+  const c=await connect('3');await send(c,{type:'join',roomId:'1'});
+  let snapshot=c.messages.filter(m=>m.type==='room').at(-1);assert.equal(snapshot.players.filter(p=>p.seat?.itemId===1).length,2,'Late join sees seats and approach paths');
+  await new Promise(r=>setTimeout(r,1100));await send(b,{type:'walk',x:5,y:5,seq:34});assert.equal(b.messages.filter(m=>m.type==='walk'&&m.seq===34).at(-1).seat,null);
+  await send(c,{type:'sit',itemId:1,slot:1,seq:35});assert(c.messages.some(m=>m.type==='walk'&&m.seq===35&&m.seat?.slot===1));
+  await send(a,{type:'stand'});assert.equal(a.messages.filter(m=>m.type==='walk'&&m.id==='1').at(-1).seat,null);
+  // An owner's stale decor snapshot cannot undo a visitor's light/curtain change.
+  saved=await req('1','room','PUT',{scene:furnished,revision:savedRoom.revision});assert.equal(saved.status,200);savedRoom=(await saved.json()).room;
+  assert.equal(savedRoom.scene.items.find(i=>i.id===2).on,false);assert.equal(savedRoom.scene.items.find(i=>i.id===3).closed,true);
+  assert(c.messages.filter(m=>m.type==='scene').at(-1).players.some(p=>p.id==='3'&&p.seat?.slot===1));
+  const removed={...furnished,items:furnished.items.filter(i=>i.id!==1)};
+  saved=await req('1','room','PUT',{scene:removed,revision:savedRoom.revision});assert.equal(saved.status,200);
+  await new Promise(r=>setTimeout(r,55));assert(c.messages.some(m=>m.type==='walk'&&m.id==='3'&&!m.seat&&!m.path.length),'Removing occupied furniture stands its occupant safely');
+  await send(b,{type:'sit',itemId:2,slot:0});assert.match(b.messages.at(-1).error,/no está disponible/);
+  await send(b,{type:'sit',itemId:999,slot:0});assert.match(b.messages.at(-1).error,/no está disponible/);
+  c.ws.close();
   assert.equal((await req('1','admin/moderate','POST',{id:'2',banned:true})).status,200);assert.equal((await req('2','state')).status,403);
   a.ws.close();try{b.ws.close();}catch{}
   // OAuth state is browser-bound and consumed once; no real OAuth credentials used.
