@@ -1,4 +1,5 @@
 import {enabled,broadcaster,hubJSON,hubAuth,hubSession,sameOrigin} from './hub-auth.js';
+import {hubRewardAdmin} from './hub-reward-admin.js';
 import {sevenTvMap} from './chat.js';
 import {body} from './hub-world.mjs';
 export function world(env){return env.HUB_WORLD.get(env.HUB_WORLD.idFromName('minerarg-beta-v1'));}
@@ -7,6 +8,7 @@ export async function handleHub(request,env,services={}){
   if(!enabled(env))return hubJSON({error:'La beta todavía no está habilitada.'},503);
   if(request.method!=='GET'&&!sameOrigin(request,env))return hubJSON({error:'Origen no permitido.'},403);
   const path=new URL(request.url).pathname;
+  if(path==='/api/hub/shop'&&request.method==='GET')return world(env).fetch(new Request('https://hub/shop'));
   if(path==='/api/hub/logout'){
    const auth=await hubSession(request,env);if(auth)await world(env).fetch(new Request('https://hub/disconnect',{method:'POST',headers:{'X-Hub-Identity':JSON.stringify(auth)}}));
   }
@@ -15,7 +17,8 @@ export async function handleHub(request,env,services={}){
   const route=path.slice('/api/hub'.length);
   if(route==='/emotes'&&request.method==='GET')return hubJSON({emotes:await sevenTvMap(env,{chat_7tv_enabled:true,kick_user_id:await broadcaster(env)})});
   if(route==='/admin/kick-rewards'&&auth.admin&&request.method==='GET')return hubJSON({rewards:await services.listRewards()});
-  const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
+  if(route==='/admin/credit-rewards'&&auth.admin&&['GET','POST'].includes(request.method))return hubRewardAdmin(request,env,services.kick);
+  const allowed={state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'box/buy':['POST'],'admin/credits':['GET','PUT'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
   if(!allowed[route.slice(1)]?.includes(request.method))return hubJSON({error:'No disponible.'},404);
   if(route==='/ws'&&!sameOrigin(request,env))return hubJSON({error:'Origen no permitido.'},403);
   const headers=new Headers({'X-Hub-Identity':JSON.stringify(auth)});

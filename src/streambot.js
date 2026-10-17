@@ -1,4 +1,4 @@
-import { hubRewardAdmin } from './hub-reward-admin.js';
+import { hubRewardAdmin, ensureCreditRewards } from './hub-reward-admin.js';
 import { enqueueHubEvent, drainHubInbox } from './hub-gateway.js';
 import { alertFromKick, manualAlert, publicAlertConfig, allowedAlert, publishAlert, readAlertState } from "./alerts.js";
 import { normalizeKickChat, storeChatMessage, recentChatMessages, sevenTvMap } from "./chat.js";
@@ -674,6 +674,7 @@ async function sendTimedMessageNow(request, env) {
 export async function handleStreamBotScheduled(env) {
   if (!env.STREAMBOT_DB) return;
   await ensureTimedMessagesTable(env);
+  try { await ensureCreditRewards(env, (route,method,payload)=>hubKickApi(env,route,method,payload)); } catch { console.warn("Hub credit reward setup pending; retry or sync from dashboard"); }
   try { await drainHubInbox(env, id => acceptHubRedemption(env, id)); } catch { console.warn("Hub inbox retry pending"); }
 
   const config = await getConfig(env);
@@ -2725,4 +2726,9 @@ async function acceptHubRedemption(env, id) {
   }
   if (status !== 'accepted') throw new Error('Canje aún no confirmado');
   return true;
+}
+
+export async function hubKickApi(env,route,method='GET',payload){
+ const access=await getKickAccessToken(env);
+ return parseApiResponse(await kickFetchRaw(route,access,{method,body:payload?JSON.stringify(payload):undefined,signal:AbortSignal.timeout(10000)}),'Recompensas miner hub');
 }

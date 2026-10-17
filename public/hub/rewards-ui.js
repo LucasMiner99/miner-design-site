@@ -24,7 +24,7 @@
    $('rewardInventoryCount').textContent=inventory.reduce((sum,i)=>sum+i.count,0)+' obtenidos';
   }
   function refresh(){let total=0;
-   for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const count=ledger?.pending(owner,kind).length||0;total+=count;$('pending'+id).textContent=count+' disponibles';$('open'+id+'Box').disabled=!!opening||!count||!ledger;$('test'+id+'Claim').disabled=!!opening||!ledger;}
+   for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const count=ledger?.pending(owner,kind).length||0;total+=count;const price=ledger?.price?.(kind)||2000;$('pending'+id).textContent=count?count+' disponibles':price.toLocaleString('es-AR')+' créditos';$('open'+id+'Box').textContent=count?'Abrir':'Comprar';$('open'+id+'Box').disabled=!!opening||requesting||!ledger||!count&&(ledger.credits?.()||0)<price;$('test'+id+'Claim').disabled=!!opening||!ledger;}
    $('pendingTotal').textContent=String(total);$('pendingTotal').hidden=!total;$('rewardOwner').disabled=!!opening;refreshInventory();
   }
   function refreshOwners(){const options=$('rewardOwner'),rows=players();options.textContent='';if(!rows.some(p=>p.id===owner)&&!opening){owner='self';result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=true;}for(const p of rows){const o=doc.createElement('option');o.value=p.id;o.textContent=p.name;options.appendChild(o);}options.value=owner;}
@@ -40,8 +40,8 @@
    k.fillStyle='#171717';k.beginPath();k.moveTo(w/2-10,0);k.lineTo(w/2+10,0);k.lineTo(w/2,22);k.fill();k.fillRect(w/2-2,h-15,4,15);
   }
   let requesting=false;
-  async function open(kind){if(opening||requesting||!ledger)return;const pending=ledger.pending(owner,kind)[0];if(!pending)return;
-   requesting=true;try{const receipt=await ledger.open(pending.id,owner),item=ledger.item(receipt.itemId),pool=catalog.filter(i=>i.kind===kind&&!i.starter),entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]),winner=32;entries[winner]=item;opening={item,entries,winner,at:now()};result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=false;$('skipReward').hidden=false;$('rewardReel').setAttribute('aria-busy','true');status('Abriendo…');refresh();drawReel(0);if(reducedMotion())finish();}catch(e){status('No se pudo guardar. '+e.message);}finally{requesting=false;refresh();}
+  async function open(kind){if(opening||requesting||!ledger)return;let pending=ledger.pending(owner,kind)[0];
+   requesting=true;refresh();try{if(!pending){status('Comprando…');pending=await ledger.buy(kind);}const receipt=await ledger.open(pending.id,owner),item=ledger.item(receipt.itemId),pool=catalog.filter(i=>i.kind===kind&&!i.starter),entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]),winner=32;entries[winner]=item;opening={item,entries,winner,at:now()};result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=false;$('skipReward').hidden=false;$('rewardReel').setAttribute('aria-busy','true');status('Abriendo…');refresh();drawReel(0);if(reducedMotion())finish();}catch(e){status('No se pudo guardar. '+e.message);}finally{requesting=false;refresh();}
   }
   function claim(kind){if(opening||!ledger)return;try{const id='demo-'+Date.now()+'-'+(++serial)+'-'+Math.random().toString(36).slice(2);ledger.grant({id,userId:owner,kind,status:'accepted'});refresh();status('Caja de prueba lista.');}catch(e){status('No se pudo guardar. '+e.message);}}
   $('rewardOwner').addEventListener('change',()=>{if(opening)return;owner=$('rewardOwner').value;result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=true;refresh();status('Inventario de '+(players().find(p=>p.id===owner)?.name||'jugador')+'.');});

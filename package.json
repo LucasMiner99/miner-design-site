@@ -4,7 +4,7 @@
   "type": "module",
   "engines": {"node": ">=22"},
   "scripts": {
-    "test": "node tests/hub-server.test.cjs && node tests/retired-games.test.cjs && node tests/hub-feedback-ui.test.cjs && node tests/hub-social.test.cjs",
+    "test": "node tests/hub-server.test.cjs && node tests/retired-games.test.cjs && node tests/hub-feedback-ui.test.cjs && node tests/hub-social.test.cjs && node tests/hub-economy.test.cjs && node tests/hub-wallet-ui.test.cjs",
     "check:deploy": "wrangler deploy --dry-run --outdir .test-build/deploy"
   },
   "devDependencies": {

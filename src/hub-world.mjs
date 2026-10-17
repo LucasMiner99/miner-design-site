@@ -2,6 +2,7 @@ import {C,P,R,CATALOG} from './hub-rules.mjs';
 import {handleTrade,cancelTrade} from './hub-trades.mjs';
 import {handleMedia,mediaSnapshot,MEDIA_TYPES} from './hub-media.mjs';
 import {handleFeedback} from './hub-feedback.mjs';
+import {balance,economy,publicShop,saveEconomy,creditRedemption,buyBox} from './hub-economy.mjs';
 const items=new Map(CATALOG.map(i=>[i.id,i])),KINDS=['object','character','environment'];
 const reply=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 function reject(message,status=400){throw Object.assign(Error(message),{status});}
@@ -48,7 +49,7 @@ export class HubWorld {
  send(ws,value){try{ws.send(JSON.stringify(value));}catch{try{ws.close(1011,'Conexión cerrada');}catch{}}}
  broadcast(roomId,event,except){for(const ws of this.sockets())if(ws!==except&&ws.deserializeAttachment()?.roomId===roomId)this.send(ws,event);}
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
- async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,admin},inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind})),room:await this.room(user.id,user.name)};}
+ async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,admin},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
  players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
@@ -65,6 +66,7 @@ export class HubWorld {
  }
  async handle(request){
   const path=new URL(request.url).pathname;
+  if(path==='/shop'&&request.method==='GET')return reply(publicShop(await economy(this.ctx.storage)));
   if(path==='/kick')return this.kick(await body(request),request.headers.get('X-Hub-Broadcaster'));
   let auth;try{auth=JSON.parse(request.headers.get('X-Hub-Identity')||'null');}catch{}
   if(!auth||!/^\d+$/.test(auth.id)||auth.expiresAt<=Date.now())reject('Volvé a iniciar sesión.',401);
@@ -102,9 +104,16 @@ export class HubWorld {
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
   }
+  if(path==='/box/buy'&&request.method==='POST'){
+   const box=await buyBox(this,u,await body(request));return reply({box:{id:box.id,kind:box.kind,opened:box.opened},...(await this.state(u,auth.admin))});
+  }
+  if(path==='/admin/credits'&&auth.admin){
+   if(request.method==='GET')return reply(await economy(this.ctx.storage));
+   if(request.method==='PUT'){const config=await saveEconomy(this.ctx.storage,await body(request));for(const ws of this.sockets())this.send(ws,{type:'shop',shop:publicShop(config)});return reply(config);}
+  }
   if(path==='/box/open'&&request.method==='POST'){
    const b=await body(request),box=typeof b.id==='string'&&await this.ctx.storage.get('box:'+b.id);if(!box||box.userId!==u.id)reject('Esa caja no te pertenece.',403);
-   if(!box.opened){box.opened=true;u.inventory[box.itemId]=(u.inventory[box.itemId]||0)+1;
+   if(!box.opened){box.opened=true;u.walletVersion=(u.walletVersion||0)+1;u.inventory[box.itemId]=(u.inventory[box.itemId]||0)+1;
     await this.ctx.storage.transaction(async tx=>{await tx.put({['box:'+box.id]:box,['user:'+u.id]:u});await tx.delete('pending:'+u.id+':'+box.id);});
    }
    return reply({receipt:{id:box.id,itemId:box.itemId,kind:box.kind,opened:true,userId:'self'},...(await this.state(u,auth.admin))});
@@ -123,6 +132,7 @@ export class HubWorld {
  async kick(event,broadcasterId){
   const p=event.payload;if(!p||String(p.broadcaster?.user_id)!==broadcasterId)return reply({ignored:true});
   if(event.type==='channel.reward.redemption.updated'){
+   const credited=await creditRedemption(this,p);if(credited)return reply(credited);
    const map=await this.ctx.storage.get('reward-map')||{},kind=KINDS.find(k=>map[k]===String(p.reward?.id));if(!kind)return reply({ignored:true});
    const id=String(p.id||''),uid=String(p.redeemer?.user_id||'');if(!/^[\w-]{1,120}$/.test(id)||!/^\d+$/.test(uid))reject('Canje inválido.');
    const prior=await this.ctx.storage.get('box:'+id);if(prior){if(prior.userId!==uid||prior.kind!==kind)reject('Canje inconsistente.');return reply({duplicate:true});}
