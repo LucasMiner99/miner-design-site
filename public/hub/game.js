@@ -229,7 +229,7 @@
   }
   function placedCount(type){return [...state.items,...(state.unplacedItems||[])].filter(i=>i.type===type).length;}
   function availableCount(type){return Math.max(0,(rewardsUI?.count('self','object:'+type)||0)-placedCount(type));}
-  function startPlacement(type){if(!online.canEdit()){toast('Volvé a tu sala para colocar muebles.');return false;}if(!ready||availableCount(type)<1){toast('Ya colocaste todas tus unidades de este objeto.');return false;}if(state.items.length+(state.unplacedItems?.length||0)>=96){toast('Por ahora entran hasta 96 objetos. Guardá alguno para hacer lugar.');return;}if(mode!=='decorate')setMode('decorate');cancelSelection();pendingType=type;ghost=null;canvas.classList.add('placing');modeHint();document.querySelectorAll('.item-card').forEach(b=>b.classList.toggle('selected',+b.dataset.type===type));sfx('click');return true;}
+  function startPlacement(type){if(!online.canEdit()){toast('Volvé a tu sala para colocar muebles.');return false;}if(!ready||availableCount(type)<1){toast('Ya colocaste todas tus unidades de este objeto.');return false;}if(state.items.length+(state.unplacedItems?.length||0)>=96){toast('Por ahora entran hasta 96 objetos. Guardá alguno para hacer lugar.');return;}if(mode!=='decorate')setMode('decorate');cancelSelection();pendingType=type;ghost=null;canvas.classList.add('placing');modeHint();document.querySelectorAll('.item-card').forEach(b=>b.classList.toggle('selected',+b.dataset.type===type));sfx('click');window.HubPanels?.close(false);return true;}
   function placementCandidate(tile,base){const t=C.dimensions(base);return {...base,x:Math.floor(tile.x)-Math.floor((t.w-1)/2),y:Math.floor(tile.y)-Math.floor((t.h-1)/2)};}
   function tryPlace(item,isNew){if(isNew&&availableCount(item.type)<1){toast('No quedan unidades disponibles.');cancelSelection();return false;}if(!item.parentId&&!C.TYPES[item.type].flat&&[...people.actors.values()].some(a=>C.covers(item,Math.floor(a.x),Math.floor(a.y)))){toast('Hay un visitante ahí. Elegí otro lugar o esperá a que pase.');return false;}if(!C.canPlace(state.items,item,player)){toast(C.TYPES[item.type].wall?'Buscá un espacio libre dentro de la pared. Podés cambiar la altura.':item.parentId?'Ese lugar de la mesa está ocupado. Probá el otro lado.':'Ahí no entra. Probá un espacio libre del piso.');return false;}const old=state.items.find(i=>i.id===item.id);if(old&&old.x===item.x&&old.y===item.y&&old.parentId===item.parentId&&old.slot===item.slot&&old.wallSide===item.wallSide&&old.wallU===item.wallU&&old.wallZ===item.wallZ){selectItem(item.id);return true;}checkpoint();C.moveItem(state.items,item);pendingType=null;ghost=null;selectItem(item.id);save();sfx('place');toast(item.parentId?'Listo, quedó apoyado.':'Listo. El mueble quedó en su lugar.');return true;}
   function removeSelected(){const item=state.items.find(i=>i.id===selectedId);if(!item)return;const children=state.items.filter(i=>i.parentId===item.id).length;checkpoint();state.items=C.removeItem(state.items,selectedId);cancelSelection();save();sfx('place');toast(children?'Guardamos el mueble y sus objetos. Siguen disponibles en el catálogo.':'Mueble guardado. Podés colocarlo de nuevo desde el inventario.');}
@@ -600,7 +600,7 @@
   }
   function sendChat(e){e.preventDefault();const input=$('chatInput');if(input.value.trim()&&online.send('chat',{text:input.value})){input.value='';updateInput();sfx('chat');}}
   function updateInput(){$('charCount').textContent=$('chatInput').value.length+'/120';$('sendBtn').disabled=!$('chatInput').value.trim()||!ready;}
-  function showPanel(name){if(['furniture','people'].includes(name))return;for(const panel of ['inventory','rewards','furniture','room','people']){const active=panel===name;$(panel+'Panel').hidden=!active;$(panel+'Tab').classList.toggle('active',active);$(panel+'Tab').setAttribute('aria-selected',String(active));}rewardsUI?.showPanel(name);}
+  function showPanel(name){window.HubPanels?.select(name);if(['furniture','people'].includes(name))return;for(const panel of ['inventory','rewards','furniture','room','people']){const active=panel===name;$(panel+'Panel').hidden=!active;$(panel+'Tab').classList.toggle('active',active);$(panel+'Tab').setAttribute('aria-selected',String(active));}rewardsUI?.showPanel(name);}
   function buildCatalog(){if(!ready&&furniture.length!==C.TYPES.length)return;const catalog=$('catalog'),normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es'),query=normalize($('catalogSearch').value.trim());let matches=0;catalog.textContent='';C.TYPES.forEach((t,index)=>{if((filter!=='all'&&t.category!==filter)||!normalize(t.name).includes(query))return;matches++;const button=document.createElement('button');button.className='item-card';button.dataset.type=index;button.setAttribute('aria-label','Colocar '+t.name);button.title='Colocar '+t.name;const preview=document.createElement('canvas');preview.width=168;preview.height=132;const k=preview.getContext('2d'),s=furniture[t.sprite],ratio=Math.min(136/s.width,112/s.height);k.imageSmoothingEnabled=true;k.imageSmoothingQuality="high";spriteAt(s,k,(168-s.width*ratio)/2,66-s.height*ratio/2,s.width*ratio,!!t.artFlip);drawDetails(k,{item:{id:0,type:index},x:(168-s.width*ratio)/2,y:66-s.height*ratio/2,w:s.width*ratio,h:s.height*ratio,flip:!!t.artFlip});const label=document.createElement('span');label.className='item-name';label.textContent=t.name;const plus=document.createElement('span');plus.className='card-plus';plus.textContent='+';button.append(preview,label,plus);button.addEventListener('click',()=>startPlacement(index));catalog.appendChild(button);});$('catalogEmpty').hidden=matches!==0;$('catalogCount').textContent=matches+' / '+C.TYPES.length;}
   const roomPickers=[
     {id:'roomWall',key:'wall',options:wallThemes},
@@ -726,7 +726,7 @@
   $('themeBtn').addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';applyTheme();try{localStorage.setItem('vereda.theme.v1',theme);}catch(e){}});applyTheme();
   $('zoomOut').addEventListener('click',()=>changeZoom(-.1));$('zoomIn').addEventListener('click',()=>changeZoom(.1));
   document.addEventListener('keydown',e=>{
-    if(document.querySelector('dialog[open]'))return;const editing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if(document.querySelector('dialog[open]')||e.defaultPrevented)return;const editing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     if(editing){if(e.key==='Escape'){document.activeElement.blur();canvas.focus({preventScroll:true});}return;}
     if(e.key==='Enter'){e.preventDefault();$('chatInput').focus();return;}if(e.key==='Escape'){cancelSelection();return;}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();return;}
@@ -734,16 +734,6 @@
     const directions={ArrowDown:[1,0],ArrowLeft:[0,1],ArrowUp:[-1,0],ArrowRight:[0,-1]};
     if(mode==='walk'&&directions[e.key]&&ready){e.preventDefault();if(player.path.length>1)return;const [dx,dy]=directions[e.key],end={x:Math.floor(player.x)+dx,y:Math.floor(player.y)+dy};if(!C.blocked(state.items,end.x,end.y))movePlayer(end);}
   });
-  function setStreamMode(active){
-    if(active&&mode==='decorate')setMode('walk');
-    document.documentElement.classList.toggle('hub-stream',active);
-    $('hubStreamMode').setAttribute('aria-pressed',String(active));
-    $('hubStreamMode').textContent=active?'Salir del modo stream':'Modo stream';
-    try{window.localStorage.setItem('minerhub.stream-mode.v1',String(active));}catch{}
-  }
-  $('hubStreamMode').disabled=false;
-  $('hubStreamMode').onclick=()=>setStreamMode($('hubStreamMode').getAttribute('aria-pressed')!=='true');
-  try{setStreamMode(window.localStorage.getItem('minerhub.stream-mode.v1')==='true');}catch{}
   new ResizeObserver(()=>resize(false)).observe(stage);updateName();updateSwatches();resize();
   function crossSection(s,v){
     const y=Math.min(s.height-1,Math.floor(s.height*v));let left=s.width,right=0;
@@ -867,7 +857,7 @@
       equip:(id,item)=>{if(!owns(id,item.id))return false;if(id==='self'){myAppearance=P.look({...P.look(myAppearance),[item.slot]:item.index});refreshMe();}else{const actor=people.actors.get(id);if(!actor)return false;actor.appearance=P.look({...actor.appearance,[item.slot]:item.index});renderPeople();}savePeople();toast(item.name+' equipado.');return true;},
       place:type=>{if(!owns('self','object:'+type))return false;if(state.items.length+(state.unplacedItems?.length||0)>=96){toast('Tu sala está llena. El premio sigue en el inventario.');return false;}return startPlacement(type);}
     });
-myAppearance=ownedLook('self',myAppearance);for(const actor of people.actors.values())actor.appearance=ownedLook(actor.id,actor.appearance);refreshMe();renderPeople();savePeople();updateRoomPickers();showPanel('inventory');$('loading').hidden=true;updateInput();if(restoreNotice)toast(restoreNotice);if(!storageAvailable){$('saveStatus').className='save-status warning';$('saveStatus').lastChild.textContent=' Sin guardado · solo esta sesión';}else save();online.ready(networkGame);}).catch(error=>{ready=false;console.error(error);$('loading').querySelector('b').textContent='No pudimos abrir minerhub';$('loading').querySelector('span:last-child').textContent=error?.message==='No se pudo cargar una imagen del juego.'?'No se pudo cargar una imagen. Abrí VEREDA-jugar.html o conservá la carpeta assets junto al proyecto.':'Error al iniciar: '+(error?.message||'Error desconocido.');});
+myAppearance=ownedLook('self',myAppearance);for(const actor of people.actors.values())actor.appearance=ownedLook(actor.id,actor.appearance);refreshMe();renderPeople();savePeople();updateRoomPickers();showPanel('inventory');$('loading').hidden=true;updateInput();if(restoreNotice)toast(restoreNotice);if(!storageAvailable){$('saveStatus').className='save-status warning';$('saveStatus').lastChild.textContent=' Sin guardado · solo esta sesión';}else save();window.HubPanels?.ready();online.ready(networkGame);}).catch(error=>{ready=false;console.error(error);$('loading').querySelector('b').textContent='No pudimos abrir minerhub';$('loading').querySelector('span:last-child').textContent=error?.message==='No se pudo cargar una imagen del juego.'?'No se pudo cargar una imagen. Abrí VEREDA-jugar.html o conservá la carpeta assets junto al proyecto.':'Error al iniciar: '+(error?.message||'Error desconocido.');});
 
   const networkGame={
    portrait,

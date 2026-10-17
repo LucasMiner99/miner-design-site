@@ -5,5 +5,5 @@
    if(url){const img=document.createElement('img');img.className='hub-emote';img.alt=name;img.title=name;img.decoding='async';img.referrerPolicy='no-referrer';img.src=url;img.onerror=()=>img.replaceWith(document.createTextNode(name));container.append(img);}else container.append(document.createTextNode(token));
   }
  }
- window.HubEmotes={render,load(){if(loading)return loading;loading=fetch('/api/hub/emotes',{credentials:'same-origin'}).then(r=>r.ok?r.json():{}).then(data=>{for(const [name,url] of Object.entries(data.emotes||{}))if(/^https:\/\/cdn\.7tv\.app\/emote\/[\w-]{4,40}\/2x\.webp$/.test(url))emotes[name]=url;}).catch(()=>{});return loading;}};
+ window.HubEmotes={render,entries:()=>Object.entries(emotes).sort(([a],[b])=>a.localeCompare(b)),load(){if(loading)return loading;loading=fetch('/api/hub/emotes',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw Error('Emotes no disponibles');return r.json();}).then(data=>{for(const [name,url] of Object.entries(data.emotes||{}))if(/^https:\/\/cdn\.7tv\.app\/emote\/[\w-]{4,40}\/2x\.webp$/.test(url))emotes[name]=url;if(!Object.keys(emotes).length)loading=null;}).catch(()=>{loading=null;});return loading;}};
 })();

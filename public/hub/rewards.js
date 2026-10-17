@@ -10,11 +10,11 @@
  function randomIndex(length,random=Math.random){const r=random();if(!Number.isFinite(r)||r<0||r>=1)throw new Error('Sorteo inválido.');return Math.floor(r*length);}
  function secureRandom(){if(root.crypto?.getRandomValues){const n=new Uint32Array(1);root.crypto.getRandomValues(n);return n[0]/4294967296;}return Math.random();}
  // Pending prizes also count as collected, so saving boxes cannot reroll the
- // same first item. When both groups exist, a new item has a 95% chance.
+ // same first item. When both groups exist, a new item has a 98% chance.
  function draw(pool,collected,random=secureRandom){
   if(!pool.length)throw new Error('Caja desconocida.');
   const fresh=pool.filter(i=>!collected.has(i.id)),repeat=pool.filter(i=>collected.has(i.id));
-  const candidates=fresh.length&&repeat.length?(randomIndex(100,random)<95?fresh:repeat):fresh.length?fresh:repeat;
+  const candidates=fresh.length&&repeat.length?(randomIndex(100,random)<98?fresh:repeat):fresh.length?fresh:repeat;
   return candidates[randomIndex(candidates.length,random)];
  }
  function create({catalog,storage,random=secureRandom}){

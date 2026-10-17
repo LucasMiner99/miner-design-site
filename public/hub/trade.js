@@ -1,6 +1,6 @@
 (()=>{'use strict';
  const $=id=>document.getElementById(id),bridge=()=>window.MINER_HUB_ONLINE;
- let state=null,stock=[],busy=false,dragged=null;
+ let state=null,stock=[],busy=false,dragged=null,creditsAvailable=0;
  const live=()=>state&&['invited','open'].includes(state.status);
  const mine=()=>state?.users.indexOf(bridge().user.id);
  function send(action,extra={}){const sent=bridge().send('trade',{action,id:state?.id,revision:state?.revision,...extra});if(sent!==false){busy=true;render();}return sent;}
@@ -9,7 +9,7 @@
   const offer=state.offers[mine()],item=stock.find(i=>i.id===id),current=offer.find(i=>i.id===id)?.count||0,count=current+delta;
   if(delta>0&&(!item||count>Math.min(99,item.count)))return;
   if(delta>0&&!current&&offer.length>=6){$('hubTradeStatus').textContent='Podés ofrecer hasta 6 objetos distintos.';return;}
-  const items=offer.filter(i=>i.id!==id).map(i=>({id:i.id,count:i.count}));if(count>0)items.push({id,count});send('offer',{items});
+  const items=offer.filter(i=>i.id!==id).map(i=>({id:i.id,count:i.count}));if(count>0)items.push({id,count});send('offer',{items,credits:state.credits?.[mine()]||0});
  }
  function card(item,count,action){
   const el=document.createElement(action?'button':'div');if(action)el.type='button';el.className='hub-trade-card';
@@ -27,10 +27,10 @@
   if(!grid.children.length){const empty=document.createElement('p');empty.className='hub-trade-empty';empty.textContent=query?'No hay coincidencias.':'No quedan unidades disponibles. Los objetos en uso no se pueden intercambiar.';grid.append(empty);}grid.scrollTop=scroll;
  }
  function render(){if(!state)return;const me=mine(),them=1-me,open=state.status==='open';$('hubTradeTitle').textContent='Intercambio con '+state.names[them];
-  $('hubTradeNote').textContent=state.status==='invited'?(me===1?'Te invita a intercambiar o recibir un regalo.':'Esperando que acepte la invitación…'):live()?'Los dos aceptan para confirmar. Cambiar objetos reinicia la aceptación.':'';
+  $('hubTradeNote').textContent=state.status==='invited'?(me===1?'Te invita a intercambiar o recibir un regalo.':'Esperando que acepte la invitación…'):live()?'Los dos aceptan para confirmar. Cambiar objetos o créditos reinicia la aceptación.':'';
   const columns=$('hubTradeOffers');columns.replaceChildren();
   for(const index of [me,them]){const column=document.createElement('section'),header=document.createElement('header'),title=document.createElement('h3'),accepted=document.createElement('span'),grid=document.createElement('div');
-   title.textContent=index===me?'Tu oferta':state.names[index];accepted.textContent=state.accepted[index]?'✓ Aceptado':'';header.append(title,accepted);grid.className='hub-trade-slots';column.append(header,grid);
+   title.textContent=index===me?'Tu oferta':state.names[index];accepted.textContent=state.accepted[index]?'✓ Aceptado':'';header.append(title,accepted);grid.className='hub-trade-slots';const money=document.createElement('p');money.className='hub-trade-money';money.textContent=(state.credits?.[index]||0).toLocaleString('es-AR')+' créditos';column.append(header,money,grid);
    if(index===me){column.id='hubTradeOwnOffer';if(open){
     column.ondragover=e=>{if(dragged&&!busy){e.preventDefault();e.dataTransfer.dropEffect='copy';column.classList.add('is-over');}};
     column.ondragleave=e=>{if(!column.contains(e.relatedTarget))column.classList.remove('is-over');};
@@ -39,13 +39,16 @@
    for(const item of state.offers[index]){const el=card(item,item.count,index===me&&open?'Quitar':null);if(index===me&&open)el.onclick=()=>change(item.id,-1);grid.append(el);}
    for(let n=state.offers[index].length;n<6;n++){const empty=document.createElement('div');empty.className='hub-trade-slot';empty.setAttribute('aria-hidden','true');empty.textContent=n===0&&index===me&&open?'Arrastrá acá':'';grid.append(empty);}columns.append(column);
   }
+  $('hubTradeCreditForm').hidden=!open;$('hubTradeCredits').value=String(state.credits?.[me]||0);$('hubTradeCredits').max=String(creditsAvailable);$('hubTradeCredits').disabled=busy;$('hubTradeCreditsApply').disabled=busy;$('hubTradeCreditBalance').textContent=creditsAvailable.toLocaleString('es-AR')+' disponibles';
   $('hubTradeInventory').hidden=!open;if(open)inventory();
   $('hubTradeStatus').textContent=state.message||(open?'Dejá una oferta vacía para regalar.':'');
-  const accept=$('hubTradeAccept');accept.hidden=!live();accept.disabled=busy||(state.status==='invited'?me===0:state.accepted[me]||!state.offers.some(a=>a.length));accept.textContent=state.status==='invited'?'Aceptar invitación':state.accepted[me]?'Aceptado · esperando…':state.offers[me].length&&!state.offers[them].length?'Confirmar regalo':'Aceptar intercambio';$('hubTradeCancel').textContent=live()?'Cancelar':'Cerrar';
+  const accept=$('hubTradeAccept');accept.hidden=!live();accept.disabled=busy||(state.status==='invited'?me===0:state.accepted[me]||(!state.offers.some(a=>a.length)&&!state.credits?.some(Boolean)));accept.textContent=state.status==='invited'?'Aceptar invitación':state.accepted[me]?'Aceptado · esperando…':(state.offers[me].length||state.credits?.[me])&&!state.offers[them].length&&!state.credits?.[them]?'Confirmar regalo':'Aceptar intercambio';$('hubTradeCancel').textContent=live()?'Cancelar':'Cerrar';
  }
  function cancel(){if(live()){bridge().send('trade',{action:'cancel',id:state.id,revision:state.revision});}else $('hubTradeDialog').close();}
+ $('hubTradeCredits').oninput=()=>{if(live())$('hubTradeAccept').disabled=true;};
+ $('hubTradeCreditForm').onsubmit=e=>{e.preventDefault();if(busy||state?.status!=='open')return;const credits=Number($('hubTradeCredits').value);if(!Number.isSafeInteger(credits)||credits<0||credits>creditsAvailable){$('hubTradeStatus').textContent='Ingresá créditos disponibles en tu saldo.';return;}send('offer',{items:state.offers[mine()].map(i=>({id:i.id,count:i.count})),credits});};
  $('hubTradeSearch').oninput=()=>{if(state?.status==='open')inventory();};
  $('hubTradeCancel').onclick=cancel;$('hubTradeDialog').addEventListener('cancel',e=>{if(live()){e.preventDefault();cancel();}});
  $('hubTradeAccept').onclick=()=>{if(!live()||busy)return;send(state.status==='invited'?'join':'accept');};
- window.HubTrade={invite(target){bridge().send('trade',{action:'invite',target});},receive(m){if(live()&&state.id!==m.trade.id&&!['invited','open'].includes(m.trade.status))return;if(state?.id!==m.trade.id)$('hubTradeSearch').value='';state=m.trade;stock=m.available||[];busy=false;dragged=null;render();if(!$('hubTradeDialog').open)$('hubTradeDialog').showModal();},error(message){if($('hubTradeDialog').open){busy=false;render();$('hubTradeStatus').textContent=message;}},disconnected(){if(live()){busy=false;state.status='cancelled';state.message='Se cortó la conexión. No se confirma ningún intercambio pendiente.';render();}}};
+ window.HubTrade={invite(target){bridge().send('trade',{action:'invite',target});},receive(m){if(live()&&state.id!==m.trade.id&&!['invited','open'].includes(m.trade.status))return;if(state?.id!==m.trade.id)$('hubTradeSearch').value='';state=m.trade;stock=m.available||[];creditsAvailable=m.creditsAvailable||0;busy=false;dragged=null;render();if(!$('hubTradeDialog').open)$('hubTradeDialog').showModal();},error(message){if($('hubTradeDialog').open){busy=false;render();$('hubTradeStatus').textContent=message;}},disconnected(){if(live()){busy=false;state.status='cancelled';state.message='Se cortó la conexión. No se confirma ningún intercambio pendiente.';render();}}};
 })();

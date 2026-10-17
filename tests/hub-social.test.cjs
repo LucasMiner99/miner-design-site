@@ -35,8 +35,9 @@ function load(name,context){vm.runInContext(fs.readFileSync(path.join(__dirname,
  ui.get('hubTradeStock').children[0].onclick();assert.equal(sent.at(-1).items[0].count,2);
  tc.HubTrade.receive({trade:{...offer,status:'open',offers:[[],[item]],revision:6},available:[item]});
  assert.equal(ui.get('hubTradeStock').children[0].className,'hub-trade-empty');
- ui.get('hubTradeOffers').children[0].children[1].children[0].onclick();assert.equal(sent.at(-1).items[0].count,1,'Remove only one unit');
+ ui.get('hubTradeOffers').children[0].children[2].children[0].onclick();assert.equal(sent.at(-1).items[0].count,1,'Remove only one unit');
  tc.HubTrade.receive({trade:{...offer,status:'open',revision:7},available:[item]});ui.get('hubTradeSearch').value='missing';ui.get('hubTradeSearch').oninput();assert.equal(ui.get('hubTradeStock').children[0].textContent,'No hay coincidencias.');
+ tc.HubTrade.receive({trade:{...offer,status:'open',offers:[[],[]],credits:[0,200],revision:8},available:[],creditsAvailable:500});assert(!ui.get('hubTradeAccept').disabled,'Credit-only gift is acceptable');assert.equal(ui.get('hubTradeAccept').textContent,'Confirmar regalo');ui.get('hubTradeCredits').value='350';ui.get('hubTradeCredits').oninput();assert(ui.get('hubTradeAccept').disabled,'Unsubmitted credit draft cannot be accepted');ui.get('hubTradeCreditForm').onsubmit({preventDefault(){}});assert.equal(sent.at(-1).credits,350);assert.equal(sent.at(-1).items.length,0);
  tc.HubTrade.disconnected();assert.equal(ui.get('hubTradeCancel').textContent,'Cerrar');
 
  // Fake only the external YouTube player: real UI handles syncing, local volume, denied embeds and cleanup.

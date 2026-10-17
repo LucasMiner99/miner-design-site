@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="hub-expanded">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -71,10 +71,13 @@
           <button id="hubHome" type="button" disabled>Mi sala</button>
           <button id="hubMusic" type="button" aria-controls="hubMediaDock" aria-expanded="false" hidden><svg aria-hidden="true"><use href="#i-sound"/></svg>Música</button>
           <div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="decorateBtn" aria-pressed="false"><svg><use href="#i-chair"/></svg>Decorar</button><button id="hubLook" type="button"><svg aria-hidden="true"><use href="#i-edit"/></svg>Cambiar look</button></div>
+                <div class="hub-collection-actions" role="tablist" aria-label="Mi colección">
+        <button id="inventoryTab" role="tab" aria-selected="true" aria-controls="inventoryPanel" class="active" disabled>Inventario</button>
+        <button id="rewardsTab" role="tab" aria-selected="false" aria-controls="rewardsPanel" disabled>Cajas <span id="pendingTotal">0</span></button>
+      </div>
           <span class="hub-action-spacer" aria-hidden="true"></span>
           <div class="hub-session-actions">
           <button id="hubAdmin" type="button" hidden>Administrar</button>
-          <button id="hubStreamMode" type="button" aria-pressed="false" aria-controls="stage" disabled>Modo stream</button>
           <button id="hubLogout" type="button">Salir</button>
           </div>
         </nav>
@@ -89,18 +92,16 @@
       </footer>
       </div>
       <div class="play-toolbar"><p id="modeHint">Clic: caminar, sentarte, encender luces o abrir cortinas.</p><button id="undoBtn" class="icon-button" title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer el último cambio" disabled><svg><use href="#i-undo"/></svg></button></div>
-      <form id="chatForm" class="chat-form" autocomplete="off"><span class="chat-avatar"><canvas id="chatThumb" width="28" height="32"></canvas></span><label class="sr-only" for="chatInput">Tu mensaje</label><input id="chatInput" maxlength="120" placeholder="Escribí un mensaje…" aria-describedby="chatHelp"><span id="charCount" class="char-count">0/120</span><button id="sendBtn" type="submit" aria-label="Enviar mensaje" disabled><svg><use href="#i-send"/></svg></button></form>
+      <form id="chatForm" class="chat-form" autocomplete="off"><span class="chat-avatar"><canvas id="chatThumb" width="28" height="32"></canvas></span><label class="sr-only" for="chatInput">Tu mensaje</label><input id="chatInput" maxlength="120" placeholder="Escribí un mensaje…" aria-describedby="chatHelp"><button id="hubEmoteToggle" type="button" aria-label="Emotes de 7TV" aria-expanded="false" aria-controls="hubEmotePicker">7TV</button><span id="charCount" class="char-count">0/120</span><button id="sendBtn" type="submit" aria-label="Enviar mensaje" disabled><svg><use href="#i-send"/></svg></button></form>
+      <section id="hubEmotePicker" class="hub-emote-picker" aria-label="Emotes de 7TV" hidden><header><b>7TV</b><button id="hubEmoteClose" type="button" aria-label="Cerrar emotes">×</button></header><label class="sr-only" for="hubEmoteSearch">Buscar emote</label><input id="hubEmoteSearch" type="search" placeholder="Buscar emote…" maxlength="60"><div id="hubEmoteGrid" class="hub-emote-grid"></div><p id="hubEmoteStatus" role="status"></p></section>
       <div class="chat-footer"><span id="chatHelp"><kbd>Enter</kbd> para hablar <span>·</span> Las burbujas duran unos segundos</span><span id="saveStatus" class="save-status"><svg><use href="#i-save"/></svg>Guardado en tu cuenta</span></div>
       <div class="hub-feedback-footer"><button id="hubFeedbackOpen" type="button">Dejar comentario</button><button id="hubFeedbackInbox" type="button" hidden>Ver comentarios</button><span id="hubFeedbackNotice" role="status"></span></div>
     </section>
 
-    <aside class="sidebar" aria-label="Decoración e inventario">
-      <div class="panel-tabs collection-tabs" role="tablist" aria-label="Mi colección">
-        <button id="inventoryTab" role="tab" aria-selected="true" aria-controls="inventoryPanel" class="active">Inventario</button>
-        <button id="rewardsTab" role="tab" aria-selected="false" aria-controls="rewardsPanel">Cajas <span id="pendingTotal">0</span></button>
-      </div>
+    <aside id="hubCollection" class="sidebar hub-floating-panel" aria-label="Colección" hidden>
+<header class="hub-panel-header"><button id="hubPanelHandle" type="button" aria-label="Mover ventana: arrastrá o usá las flechas"><span id="hubPanelTitle">Inventario</span><span aria-hidden="true">⠿</span></button><button id="hubPanelClose" type="button" aria-label="Cerrar colección">×</button></header>
       <section id="inventoryPanel" role="tabpanel" aria-labelledby="inventoryTab">
-        <div class="inventory-filters" role="group" aria-label="Filtrar inventario"><button id="inventoryAll" type="button" aria-pressed="true">Todo</button><button id="inventoryEnvironment" type="button" aria-pressed="false">Ambiente</button><button id="inventoryCharacter" type="button" aria-pressed="false">Personaje</button><button id="inventoryObject" type="button" aria-pressed="false">Objetos</button></div>
+        <div class="inventory-filters" role="group" aria-label="Filtrar inventario"><button id="inventoryAll" type="button" aria-pressed="true">Todo</button><button id="inventoryEnvironment" type="button" aria-pressed="false">Ambiente</button><button id="inventoryLayout" type="button" aria-pressed="false">Tipo de sala</button><button id="inventoryCharacter" type="button" aria-pressed="false">Personaje</button><button id="inventoryObject" type="button" aria-pressed="false">Objetos</button></div>
         <div class="inventory-toolbar"><span id="rewardInventoryCount">0 objetos</span></div>
         <div class="inventory-search"><label class="sr-only" for="inventorySearch">Buscar en inventario</label><input id="inventorySearch" type="search" placeholder="Buscar…" maxlength="60" autocomplete="off"></div>
         <p id="rewardEmpty" class="reward-note">Abrí una caja para empezar tu colección.</p>
@@ -214,6 +215,7 @@
 </dialog>
 <dialog id="hubTradeDialog" class="modal hub-trade" aria-labelledby="hubTradeTitle">
 <h2 id="hubTradeTitle" tabindex="-1" autofocus>Intercambio</h2><p id="hubTradeNote" class="modal-note"></p><div id="hubTradeOffers" class="hub-trade-columns"></div>
+<form id="hubTradeCreditForm" class="hub-trade-credit-form" hidden><label for="hubTradeCredits">Tus créditos <small id="hubTradeCreditBalance"></small></label><input id="hubTradeCredits" type="number" min="0" max="0" step="1" value="0" inputmode="numeric" required><button id="hubTradeCreditsApply" type="submit" class="secondary-button">Actualizar oferta</button></form>
 <section id="hubTradeInventory" class="hub-trade-inventory" aria-labelledby="hubTradeInventoryTitle" hidden>
 <header><h3 id="hubTradeInventoryTitle">Tu inventario</h3><input id="hubTradeSearch" type="search" placeholder="Buscar objeto…" aria-label="Buscar en tu inventario"></header>
 <p>Arrastrá a tu oferta o tocá para agregar. Tocá tu oferta para quitar una unidad.</p>
@@ -245,6 +247,8 @@
 <script src="trade.js"></script>
 <script src="feedback.js"></script>
 <script src="roulette.js"></script>
+<script src="shell.js"></script>
+<script src="emote-picker.js"></script>
 <script src="online.js"></script>
 </body>
 </html>

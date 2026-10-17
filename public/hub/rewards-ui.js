@@ -5,7 +5,7 @@
   let ledger,owner='self',opening=null,result=null,serial=0,error='',panel='inventory',inventoryKey='',inventoryFilter='all';
   try{ledger=root.MINER_HUB_ONLINE.ledger;}catch(e){error=e.message;}
   const labels={hair:'Pelo y gorros',face:'Cara',top:'Torso',bottom:'Pantalón',shoes:'Calzado',accessory:'Cadena',back:'Espalda',pet:'Mascota'};
-  const title=i=>i.kind==='object'?'Objeto':i.kind==='environment'?'Ambiente':labels[i.slot];
+  const title=i=>i.kind==='object'?'Objeto':i.kind==='environment'?(i.slot==='layout'?'Tipo de sala':'Ambiente'):labels[i.slot];
   function status(text){$('rewardStatus').textContent=text;$('rewardStatus').hidden=!text||!['inventory','rewards'].includes(panel);}
   // Cache isolated artwork, also reused by the moving reel.
   const previews=new WeakMap();
@@ -19,7 +19,7 @@
   function refreshInventory(){
    const list=$('rewardInventory');const inventory=ledger?.inventory(owner)||[],filter=inventoryFilter,query=($('inventorySearch').value||'').trim().toLocaleLowerCase('es');
    const key=JSON.stringify([owner,filter,query,!!opening,appearance(owner).hair,inventory.map(i=>[i.id,i.count,i.kind==='object'?placed(owner,i.type):0])]);if(key===inventoryKey)return;inventoryKey=key;list.textContent='';
-   const shown=inventory.filter(i=>(filter==='all'||i.kind===filter)&&i.name.toLocaleLowerCase('es').includes(query));for(const i of shown)list.appendChild(card(i,i.count));
+   const shown=inventory.filter(i=>(filter==='all'||filter==='layout'&&i.kind==='environment'&&i.slot==='layout'||filter==='environment'&&i.kind==='environment'&&i.slot!=='layout'||filter!=='environment'&&filter!=='layout'&&i.kind===filter)&&i.name.toLocaleLowerCase('es').includes(query));for(const i of shown)list.appendChild(card(i,i.count));
    $('rewardEmpty').hidden=shown.length>0;$('rewardEmpty').textContent=inventory.length?'No hay coincidencias.':'Abrí una caja para empezar tu colección.';
    $('rewardInventoryCount').textContent=inventory.reduce((sum,i)=>sum+i.count,0)+' obtenidos';
   }
@@ -45,7 +45,7 @@
   }
   function claim(kind){if(opening||!ledger)return;try{const id='demo-'+Date.now()+'-'+(++serial)+'-'+Math.random().toString(36).slice(2);ledger.grant({id,userId:owner,kind,status:'accepted'});refresh();status('Caja de prueba lista.');}catch(e){status('No se pudo guardar. '+e.message);}}
   $('rewardOwner').addEventListener('change',()=>{if(opening)return;owner=$('rewardOwner').value;result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=true;refresh();status('Inventario de '+(players().find(p=>p.id===owner)?.name||'jugador')+'.');});
-  const filters=[['all','inventoryAll'],['environment','inventoryEnvironment'],['character','inventoryCharacter'],['object','inventoryObject']];
+  const filters=[['all','inventoryAll'],['layout','inventoryLayout'],['environment','inventoryEnvironment'],['character','inventoryCharacter'],['object','inventoryObject']];
   for(const [kind,id] of filters)$(id).addEventListener('click',()=>{inventoryFilter=kind;for(const [value,button] of filters)$(button).setAttribute('aria-pressed',String(value===kind));refreshInventory();});
  $('inventorySearch').addEventListener('input',refreshInventory);
   for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){$('test'+id+'Claim').addEventListener('click',()=>claim(kind));$('open'+id+'Box').addEventListener('click',()=>open(kind));}
