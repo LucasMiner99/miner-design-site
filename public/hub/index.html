@@ -67,13 +67,16 @@
         <div class="hub-room-heading"><span class="room-label"><span class="online-dot" aria-hidden="true"></span><span id="roomOwner">El rincón de Lucas</span></span><span id="hubStatus" role="status">Conectando…</span><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div>
         <nav class="hub-room-actions" aria-label="Accesos del juego">
           <span id="hubCredits" class="hub-balance" aria-live="polite">0 créditos</span>
-          <button id="hubRooms" class="hub-main-action" type="button"><svg aria-hidden="true"><use href="#i-home"/></svg>Salas</button>
-          <button id="hubMusic" type="button" aria-controls="hubMediaDock" aria-expanded="false" hidden><svg aria-hidden="true"><use href="#i-sound"/></svg>Música</button>
-          <span class="hub-action-spacer" aria-hidden="true"></span>
+          <button id="hubRooms" class="hub-main-action" type="button" disabled><svg aria-hidden="true"><use href="#i-home"/></svg>Salas</button>
           <button id="hubHome" type="button" disabled>Mi sala</button>
+          <button id="hubMusic" type="button" aria-controls="hubMediaDock" aria-expanded="false" hidden><svg aria-hidden="true"><use href="#i-sound"/></svg>Música</button>
+          <div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="decorateBtn" aria-pressed="false"><svg><use href="#i-chair"/></svg>Decorar</button><button id="hubLook" type="button"><svg aria-hidden="true"><use href="#i-edit"/></svg>Cambiar look</button></div>
+          <span class="hub-action-spacer" aria-hidden="true"></span>
+          <div class="hub-session-actions">
           <button id="hubAdmin" type="button" hidden>Administrar</button>
           <button id="hubStreamMode" type="button" aria-pressed="false" aria-controls="stage" disabled>Modo stream</button>
           <button id="hubLogout" type="button">Salir</button>
+          </div>
         </nav>
 <section id="hubMediaDock" class="hub-media-dock" aria-label="Música de la sala" hidden>
 <header><b id="hubMediaTitle">Música de la sala</b><button id="hubMediaClose" type="button" aria-label="Ocultar controles; la música sigue sonando" title="Ocultar controles">×</button></header>
@@ -85,7 +88,7 @@
 </section>
       </footer>
       </div>
-      <div class="play-toolbar"><div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="decorateBtn" aria-pressed="false"><svg><use href="#i-chair"/></svg>Decorar</button></div><p id="modeHint">Clic: caminar, sentarte, encender luces o abrir cortinas.</p><button id="undoBtn" class="icon-button" title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer el último cambio" disabled><svg><use href="#i-undo"/></svg></button></div>
+      <div class="play-toolbar"><p id="modeHint">Clic: caminar, sentarte, encender luces o abrir cortinas.</p><button id="undoBtn" class="icon-button" title="Deshacer el último cambio (Ctrl+Z)" aria-label="Deshacer el último cambio" disabled><svg><use href="#i-undo"/></svg></button></div>
       <form id="chatForm" class="chat-form" autocomplete="off"><span class="chat-avatar"><canvas id="chatThumb" width="28" height="32"></canvas></span><label class="sr-only" for="chatInput">Tu mensaje</label><input id="chatInput" maxlength="120" placeholder="Escribí un mensaje…" aria-describedby="chatHelp"><span id="charCount" class="char-count">0/120</span><button id="sendBtn" type="submit" aria-label="Enviar mensaje" disabled><svg><use href="#i-send"/></svg></button></form>
       <div class="chat-footer"><span id="chatHelp"><kbd>Enter</kbd> para hablar <span>·</span> Las burbujas duran unos segundos</span><span id="saveStatus" class="save-status"><svg><use href="#i-save"/></svg>Guardado en tu cuenta</span></div>
       <div class="hub-feedback-footer"><button id="hubFeedbackOpen" type="button">Dejar comentario</button><button id="hubFeedbackInbox" type="button" hidden>Ver comentarios</button><span id="hubFeedbackNotice" role="status"></span></div>
@@ -97,7 +100,8 @@
         <button id="rewardsTab" role="tab" aria-selected="false" aria-controls="rewardsPanel">Cajas <span id="pendingTotal">0</span></button>
       </div>
       <section id="inventoryPanel" role="tabpanel" aria-labelledby="inventoryTab">
-        <div class="inventory-toolbar"><label class="sr-only" for="inventoryFilter">Filtrar inventario</label><select id="inventoryFilter"><option value="all">Todo</option><option value="object">Objetos</option><option value="character">Personaje</option><option value="environment">Ambiente</option></select><span id="rewardInventoryCount">0 objetos</span></div>
+        <div class="inventory-filters" role="group" aria-label="Filtrar inventario"><button id="inventoryAll" type="button" aria-pressed="true">Todo</button><button id="inventoryEnvironment" type="button" aria-pressed="false">Ambiente</button><button id="inventoryCharacter" type="button" aria-pressed="false">Personaje</button><button id="inventoryObject" type="button" aria-pressed="false">Objetos</button></div>
+        <div class="inventory-toolbar"><span id="rewardInventoryCount">0 objetos</span></div>
         <div class="inventory-search"><label class="sr-only" for="inventorySearch">Buscar en inventario</label><input id="inventorySearch" type="search" placeholder="Buscar…" maxlength="60" autocomplete="off"></div>
         <p id="rewardEmpty" class="reward-note">Abrí una caja para empezar tu colección.</p>
         <div id="rewardInventory" class="reward-inventory"></div>
@@ -113,7 +117,7 @@
         <details class="reward-test"><summary>Recompensas de Kick</summary><div class="reward-owner"><label for="rewardOwner">Jugador</label><select id="rewardOwner"></select></div><div class="reward-test-buttons"><button id="testObjectClaim" class="secondary-button">+ Caja de objetos</button><button id="testCharacterClaim" class="secondary-button">+ Caja de personaje</button><button id="testEnvironmentClaim" class="secondary-button">+ Caja de ambiente</button></div></details>
       </section>
       <p id="rewardStatus" class="reward-status" role="status" aria-live="polite"></p>
-      <button id="wardrobeBtn" class="wardrobe-button" type="button">Cambiar mi look</button><div id="roomTools" class="panel-tabs tools-tabs" role="tablist" aria-label="Mi habitación"><button id="furnitureTab" hidden role="tab" aria-selected="false" aria-controls="furniturePanel">Catálogo</button><button id="roomTab" role="tab" aria-selected="false" aria-controls="roomPanel">Ambiente</button><button id="peopleTab" hidden role="tab" aria-selected="false" aria-controls="peoplePanel">Visitantes</button></div>
+      <div hidden id="roomTools" class="panel-tabs tools-tabs" role="tablist" aria-label="Mi habitación"><button id="furnitureTab" hidden role="tab" aria-selected="false" aria-controls="furniturePanel">Catálogo</button><button id="roomTab" role="tab" aria-selected="false" aria-controls="roomPanel">Ambiente</button><button id="peopleTab" hidden role="tab" aria-selected="false" aria-controls="peoplePanel">Visitantes</button></div>
       <section id="furniturePanel" role="tabpanel" aria-labelledby="furnitureTab" hidden><div class="filters" role="group" aria-label="Filtrar muebles"><button class="active" data-filter="all">Todo</button><button data-filter="seats">Asientos</button><button data-filter="deco">Deco</button><button data-filter="wall">Pared</button></div><div class="catalog-search"><label class="sr-only" for="catalogSearch">Buscar un mueble</label><input id="catalogSearch" type="search" maxlength="60" placeholder="Buscar un mueble…" autocomplete="off" aria-controls="catalog"><span id="catalogCount" role="status" aria-live="polite"></span></div><div id="catalog" class="catalog"></div><p id="catalogEmpty" class="catalog-empty" hidden>No encontramos esa pieza en esta categoría.</p><p class="catalog-note"><svg><use href="#i-plus"/></svg> Elegí una pieza. Pared: colocá cuadros, ventanas y estantes a la altura que quieras.</p></section>
       <section id="roomPanel" role="tabpanel" aria-labelledby="roomTab" hidden>
         <p id="roomStatus" class="visually-hidden" role="status" aria-live="polite"></p>

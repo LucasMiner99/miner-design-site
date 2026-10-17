@@ -17,6 +17,7 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   assert.equal(admin.user.admin,true);assert.equal(impostor.user.admin,false);assert.equal(visitor.room.scene.items.length,0);assert.equal(visitor.user.appearance.pet,0);assert.equal(visitor.user.appearance.back,0);
   assert(visitor.inventory.some(i=>i.id==='look:hair:1'));assert.equal((await req('2','look','PUT',{appearance:{top:12}})).status,403);
   assert.equal((await req('2','look','PUT',{appearance:{hair:1}})).status,200);
+  const listed=(await(await req('1','rooms')).json()).rooms.find(r=>r.ownerId==='2');assert.equal(listed.appearance.hair,1,'Room portraits use the saved owner look even while offline');assert.equal(listed.inventory,undefined);assert.equal(listed.credits,undefined);assert.deepEqual(Object.keys(listed).sort(),['active','appearance','id','name','online','ownerId','public']);
   assert.equal((await req('2','look','PUT',{appearance:{}},{Origin:'https://evil.example'})).status,403);
   assert.equal((await req('2','admin/rewards')).status,404);
   assert.equal((await req('2','state','GET',null,{'X-Hub-Identity':JSON.stringify({id:'1',admin:true})})).status,200);

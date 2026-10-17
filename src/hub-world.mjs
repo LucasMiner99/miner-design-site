@@ -76,7 +76,8 @@ export class HubWorld {
   if(path==='/feedback'||path==='/admin/feedback')return await handleFeedback(request,this.ctx.storage,u,auth.admin,body)||reply({error:'No disponible.'},404);
   if(path==='/rooms'&&request.method==='GET'){
    const all=await this.ctx.storage.list({prefix:'room:',limit:100}),active=await this.ctx.storage.get('active-room');
-   return reply({rooms:[...all.values()].filter(r=>r.public||r.ownerId===u.id||auth.admin).map(r=>({id:r.id,name:r.name,ownerId:r.ownerId,online:this.players(r.id).length,active:r.id===active,public:r.public}))});
+   const visible=[...all.values()].filter(r=>r.public||r.ownerId===u.id||auth.admin),owners=visible.length?await this.ctx.storage.get([...new Set(visible.map(r=>'user:'+r.ownerId))]):new Map();
+   return reply({rooms:visible.map(r=>({id:r.id,name:r.name,ownerId:r.ownerId,appearance:P.look(owners.get('user:'+r.ownerId)?.appearance||{}),online:this.players(r.id).length,active:r.id===active,public:r.public}))});
   }
   if(path==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
    const previous=this.ownSockets(u.id);if(this.sockets().length-previous.length>=60)reject('La beta está llena. Intentá más tarde.',503);
