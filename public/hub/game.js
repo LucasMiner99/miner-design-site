@@ -736,6 +736,16 @@
     const directions={ArrowDown:[1,0],ArrowLeft:[0,1],ArrowUp:[-1,0],ArrowRight:[0,-1]};
     if(mode==='walk'&&directions[e.key]&&ready){e.preventDefault();if(player.path.length>1)return;const [dx,dy]=directions[e.key],end={x:Math.floor(player.x)+dx,y:Math.floor(player.y)+dy};if(!C.blocked(state.items,end.x,end.y))movePlayer(end);}
   });
+  function setStreamMode(active){
+    if(active&&mode==='decorate')setMode('walk');
+    document.documentElement.classList.toggle('hub-stream',active);
+    $('hubStreamMode').setAttribute('aria-pressed',String(active));
+    $('hubStreamMode').textContent=active?'Salir del modo stream':'Modo stream';
+    try{window.localStorage.setItem('minerhub.stream-mode.v1',String(active));}catch{}
+  }
+  $('hubStreamMode').disabled=false;
+  $('hubStreamMode').onclick=()=>setStreamMode($('hubStreamMode').getAttribute('aria-pressed')!=='true');
+  try{setStreamMode(window.localStorage.getItem('minerhub.stream-mode.v1')==='true');}catch{}
   new ResizeObserver(()=>resize(false)).observe(stage);updateName();updateSwatches();resize();
   function crossSection(s,v){
     const y=Math.min(s.height-1,Math.floor(s.height*v));let left=s.width,right=0;
