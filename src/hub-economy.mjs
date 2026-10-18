@@ -1,12 +1,12 @@
 import {CATALOG,R} from './hub-rules.mjs';
-export const CREDIT_TIERS=Object.freeze([500,1000,2000,5000]);
+export const CREDIT_TIERS=Object.freeze([50,100,500,1000,2000,5000]);
 export const DEFAULT_COSTS=Object.freeze({object:2000,character:2000,environment:2000});
 const MAX_BALANCE=2000000000;
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 export const balance=user=>Number.isSafeInteger(user.credits)&&user.credits>=0?user.credits:0;
 export function validCosts(value){const out={};for(const key of Object.keys(DEFAULT_COSTS)){const n=value?.[key];if(!Number.isSafeInteger(n)||n<1||n>1000000)fail('Cada precio debe ser un entero entre 1 y 1.000.000.');out[key]=n;}return out;}
 export async function economy(storage){return {costs:{...DEFAULT_COSTS},rewards:{},ready:false,...await storage.get('economy-config')};}
-export function publicShop(config){return {costs:config.costs,tiers:CREDIT_TIERS,ready:config.ready};}
+export function publicShop(config){return {costs:config.costs,tiers:CREDIT_TIERS,ready:config.ready&&CREDIT_TIERS.every(t=>config.rewards[t])};}
 export async function saveEconomy(storage,input){
  const config=await economy(storage);
  if(input.costs!==undefined)config.costs=validCosts(input.costs);

@@ -641,7 +641,7 @@ $('hubSyncRewards').addEventListener('click',async()=>{
   const button=$('hubSyncRewards');if(button.disabled)return;
   const costs={};for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const input=$('hubCost'+id);if(!input.reportValidity())return;costs[kind]=Number(input.value);}
   button.disabled=true;$('hubRewardsStatus').textContent='Sincronizando con Kick…';
-  try{await api('/hub/rewards',{method:'POST',body:JSON.stringify({costs})});$('hubRewardsStatus').textContent='Precios guardados. Los paquetes de 500, 1.000, 2.000 y 5.000 créditos están activos en Kick.';}
+  try{await api('/hub/rewards',{method:'POST',body:JSON.stringify({costs})});$('hubRewardsStatus').textContent='Precios guardados. Los paquetes de 50, 100, 500, 1.000, 2.000 y 5.000 créditos están activos en Kick.';}
   catch(e){$('hubRewardsStatus').textContent=e.message+' Si hubo una interrupción, volvé a sincronizar para completar los paquetes de créditos.';}
   finally{button.disabled=false;}
 });

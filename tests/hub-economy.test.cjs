@@ -8,7 +8,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   const sessions={};for(const id of ['1','2','3']){sessions[id]=crypto.randomBytes(32).toString('base64url');await db.prepare('INSERT INTO hub_sessions VALUES(?,?,?,?)').bind(crypto.createHash('sha256').update(sessions[id]).digest('hex'),id,id==='1'?'minerarg':'Player'+id,Date.now()+3600000).run();}
   const req=(id,route,method='GET',body,headers={})=>mf.dispatchFetch('https://minerdesign.xyz/api/hub/'+route,{method,headers:{Cookie:'hub_session='+sessions[id],Origin:'https://minerdesign.xyz',...headers},body:body?JSON.stringify(body):undefined});
   const state=async id=>(await(await req(id,'state')).json());assert.equal((await state('2')).credits,0);assert.equal((await req(null,'box/buy','POST',{})).status,401);assert.equal((await req('2','box/buy','POST',{}, {Origin:'https://evil.test'})).status,403);
-  const config={costs:{object:2000,character:2000,environment:2000},rewards:{500:'c500',1000:'c1000',2000:'c2000',5000:'c5000'},ready:true};assert.equal((await req('2','admin/credits','PUT',config,{'X-Hub-Identity':JSON.stringify({id:'1',admin:true})})).status,404);assert.equal((await req('1','admin/credits','PUT',config)).status,200);
+  const config={costs:{object:2000,character:2000,environment:2000},rewards:{50:'c50',100:'c100',500:'c500',1000:'c1000',2000:'c2000',5000:'c5000'},ready:true};assert.equal((await req('2','admin/credits','PUT',config,{'X-Hub-Identity':JSON.stringify({id:'1',admin:true})})).status,404);assert.equal((await req('1','admin/credits','PUT',config)).status,200);
   const ns=await mf.getDurableObjectNamespace('HUB_WORLD'),stub=ns.get(ns.idFromName('minerarg-beta-v1'));
   const event=(id,uid='2',reward='c2000',status='accepted')=>({id:'event-'+id,type:'channel.reward.redemption.updated',payload:{id,status,reward:{id:reward,cost:999999},amount:999999,redeemer:{user_id:Number(uid),username:'Player'+uid},broadcaster:{user_id:1}}});
   const kick=(value,channel='1')=>stub.fetch('https://hub/kick',{method:'POST',headers:{'X-Hub-Broadcaster':channel},body:JSON.stringify(value)});
@@ -30,8 +30,18 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   await kick(event('offline','99','c5000'));const offline=await(await stub.fetch('https://hub/state',{headers:{'X-Hub-Identity':JSON.stringify({id:'99',name:'Later',admin:false,expiresAt:Date.now()+3600000})}})).json();assert.equal(offline.credits,5000);
   // Automatic setup is resumable, disables legacy box rewards and never alters unrelated rewards.
   const {hubRewardAdmin,ensureCreditRewards}=await import('../src/hub-reward-admin.js');const env={STREAMBOT_DB:db,HUB_ENABLED:'true',HUB_WORLD:{idFromName:n=>ns.idFromName(n),get:id=>ns.get(id)}};
-  const rewards=[{id:'legacy-object',title:'Old box',is_enabled:true},{id:'unrelated',title:'Other reward',is_enabled:true}],calls=[];const api=async(route,method='GET',body)=>{calls.push({route,method});if(method==='GET')return {data:structuredClone(rewards)};if(method==='POST'){const r={id:'new-'+rewards.length,...body};rewards.push(r);return {data:r};}const r=rewards.find(r=>route.endsWith('/'+r.id));Object.assign(r,body);return {data:r};};
+  const rewards=[{id:'legacy-object',title:'Old box',is_enabled:true},{id:'unrelated',title:'Other reward',is_enabled:true}],calls=[];const api=async(route,method='GET',body)=>{calls.push({route,method});if(method==='GET')return {data:structuredClone(rewards)};if(method==='POST'){const r={id:'new-'+crypto.randomUUID(),...body};rewards.push(r);return {data:r};}const r=rewards.find(r=>route.endsWith('/'+r.id));Object.assign(r,body);return {data:r};};
   await ensureCreditRewards(env,api);assert.equal(rewards.find(r=>r.id==='legacy-object').is_enabled,false);assert.equal(rewards.find(r=>r.id==='unrelated').is_enabled,true);assert.equal((await(await req(null,'shop')).json()).ready,true);const before=calls.length;await ensureCreditRewards(env,api);assert.equal(calls.length,before,'One-time migration is not repeated');
-  console.log('PASS: credit redemption replay/remap, CSRF/auth, malicious amounts/prices, concurrent/idempotent purchases, exact inventory, offline/legacy compatibility, automatic Kick migration.');
+  // Small packages use the configured amount, never an amount supplied by the event.
+  const smallConfig=await(await req('1','admin/credits')).json(),smallBefore=(await state('3')).credits;
+  for(const tier of [50,100]){const reward=smallConfig.rewards[tier];await kick(event('small-'+tier,'3',reward,'rejected'));assert.equal((await state('3')).credits,smallBefore+(tier===100?50:0));await Promise.all([kick(event('small-'+tier,'3',reward)),kick(event('small-'+tier,'3',reward))]);}
+  assert.equal((await state('3')).credits,smallBefore+150);
+  // An existing v1 installation adds exactly the two new packages and keeps its four IDs.
+  const savedIds=Object.fromEntries([500,1000,2000,5000].map(t=>[t,smallConfig.rewards[t]]));
+  rewards.splice(0,rewards.length,...rewards.filter(r=>!Object.values(smallConfig.rewards).slice(0,2).includes(r.id)));
+  await db.prepare("DELETE FROM streambot_settings WHERE key='hub_credit_migration_v2'").run();await db.prepare("INSERT INTO streambot_settings(key,value) VALUES('hub_credit_migration_v1','done')").run();
+  const posts=calls.filter(c=>c.method==='POST').length;await ensureCreditRewards(env,api);assert.equal(calls.filter(c=>c.method==='POST').length-posts,2);
+  const migrated=await(await req('1','admin/credits')).json();for(const [tier,id] of Object.entries(savedIds))assert.equal(migrated.rewards[tier],id);
+  console.log('PASS: credit redemption replay/remap, CSRF/auth, malicious amounts/prices, concurrent/idempotent purchases, exact inventory, offline/legacy compatibility, 50/100 packages and v1 migration.');
  }finally{await mf.dispose();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

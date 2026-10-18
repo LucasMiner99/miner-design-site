@@ -26,7 +26,7 @@
       for(const owner of all){
         if(!ids.has(owner.id))continue;let pet=actors.get(owner.id);
         if(!pet){const p=nearby(owner)[0];if(!p)continue;pet={id:'pet:'+owner.id,ownerId:owner.id,...p,path:[],dir:0,step:0,moving:false,cooldown:0};actors.set(owner.id,pet);}
-        pet.kind=owner.appearance.pet;pet.name=owner.name;
+        pet.kind=owner.appearance.pet;pet.name=owner.petName||'';
         if(changed||C.blocked(items(),Math.floor(pet.x),Math.floor(pet.y))){const p=nearby(owner,pet)[0];if(p)Object.assign(pet,p);pet.path=[];pet.cooldown=0;}
         if(pet.path.some(p=>C.blocked(items(),Math.floor(p.x),Math.floor(p.y)))){pet.path=[];pet.cooldown=0;}
       }

@@ -32,7 +32,7 @@
 .hub-room-actions button:not(:disabled):hover,.hub-room-actions button[aria-expanded=true]{background:var(--mint);border-color:var(--line)}
 .hub-room-actions svg{width:15px;height:15px}.hub-room-actions .hub-main-action{border-color:var(--line);font-weight:700}
 .hub-balance{display:flex;align-items:center;justify-content:center;min-height:36px;padding:8px 12px;border-radius:9px;background:var(--ink);color:var(--paper);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.hub-action-spacer{flex:1}#hubLogout{color:var(--muted)}
+.hub-action-spacer{display:none}#hubLogout{color:var(--muted)}
 .hub-room-footer .hub-media-dock{position:static;width:100%;max-height:280px;margin:12px 0 0;padding:12px;border-radius:12px;box-shadow:none;background:var(--bg);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px}
 .hub-media-dock header{grid-column:1/-1;margin:0}.hub-media-dock header b{font-size:11px}.hub-media-dock header button{width:24px;height:24px}
 .hub-media-dock form{grid-column:1/-1;margin:0}.hub-media-dock input[type=url]{padding:8px}
@@ -66,7 +66,7 @@
 .inventory-filters button[aria-pressed=true]{background:var(--ink);color:var(--paper);font-weight:700}
 .inventory-filters button:hover:not([aria-pressed=true]){background:var(--mint);color:var(--ink)}
 
-.hub-session-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-left:auto}
+.hub-session-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-left:0}
 /* The roulette is only reachable from a placed table. */
 .hub-roulette{width:min(440px,calc(100vw - 24px));padding:28px;max-height:calc(100dvh - 32px);overflow:auto}
 .hub-roulette header h2{margin:0 36px 4px 0;font-size:28px}.hub-roulette header p{margin:0;color:var(--muted)}
@@ -106,3 +106,16 @@
 
 .hub-floating-panel .inventory-filters button:nth-child(n+4){grid-column:span 3}.hub-collection-actions button{border-color:var(--line)}
 .hub-trade[open]{display:block}.hub-trade>.people-actions{position:sticky;bottom:-24px;z-index:2;background:var(--paper);padding:12px 0;margin:8px 0 -12px;border-top:1px solid var(--line)}
+
+/* Compact controls stay together at every viewport width. */
+.hub-room-actions,.hub-room-heading{justify-content:center}
+.hub-room-heading #hubStatus{flex:0 1 auto;margin:0}.hub-room-heading .zoom-tools{margin-left:0}
+.hub-expanded .chat-form{width:min(720px,100%);max-width:720px;justify-self:center;margin:8px auto 0}
+.hub-expanded .hub-feedback-footer{width:min(720px,100%);justify-self:center;margin:0 auto}
+.hub-room-footer .hub-media-dock{max-width:720px;margin:12px auto 0}
+.hub-pet-name{position:absolute;z-index:4;pointer-events:none;transform:translate(-50%,-100%);padding:4px 8px;border-radius:6px;background:#fff;color:#171717;font-size:11px;font-weight:900;white-space:nowrap;box-shadow:0 1px 5px #0005}
+.hub-pet-name-field{display:grid;gap:6px;margin:10px auto;max-width:320px;font-size:11px}.hub-pet-name-field input{min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--bg);color:var(--ink)}
+@media(max-width:600px){.hub-expanded .hub-room-heading .zoom-tools{margin-left:0}.hub-room-heading .room-label{flex:0 1 auto}.hub-room-heading #hubStatus{text-align:center}.hub-room-actions .mode-toggle{margin-left:0}}
+
+.hub-groups-modal{width:min(500px,calc(100vw - 24px));border-radius:20px;max-height:85dvh;overflow:auto;padding:28px}.hub-groups-modal h2{font-size:24px}.hub-group-tag{display:inline-block;background:#202020;border-radius:5px;padding:3px 6px;margin-right:5px;font-weight:900;font-size:11px}.hub-group-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}.hub-group-row>span:first-child{flex:1}#hubGroupForm{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:16px 0}#hubGroupForm label{display:grid;gap:7px;font-size:11px}#hubGroupForm input{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px;min-height:38px}#hubGroupForm input[type=color]{width:58px;padding:3px}#hubGroupStatus,#hubGroupNote{font-size:11px;line-height:1.6}#hubGroupLeave{margin-top:16px}
+@font-face{font-family:'Zalando Chat';src:url('assets/fonts/ZalandoSansExpanded-Variable.ttf') format('truetype');font-style:normal;font-weight:200 900;font-display:swap}.chat-bubble>span:not(.bubble-name){font-family:'Zalando Chat','Zalando Sans Expanded',sans-serif;font-weight:550;-webkit-text-stroke:0}

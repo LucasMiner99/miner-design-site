@@ -30,14 +30,14 @@ export async function hubRewardAdmin(request,env,kick){
   const old=await world(env).fetch(new Request('https://hub/admin/rewards',{headers}));if(!old.ok)throw Error('No pudimos leer las cajas anteriores.');
   for(const id of new Set(Object.values((await old.json()).rewards)))if(available.some(r=>r.id===id)&&!Object.values(config.rewards).includes(id))await kick('/channels/rewards/'+encodeURIComponent(id),'PATCH',{is_enabled:false});
   const saved=await save({costs,ready:true});
-  await env.STREAMBOT_DB.prepare("INSERT INTO streambot_settings(key,value) VALUES('hub_credit_migration_v1','done') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();
+  await env.STREAMBOT_DB.prepare("INSERT INTO streambot_settings(key,value) VALUES('hub_credit_migration_v2','done') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();
   return hubJSON({...saved,tiers:CREDIT_TIERS,enabled:true,synced:true});
  }finally{await env.STREAMBOT_DB.prepare("DELETE FROM hub_config_lock WHERE id='rewards' AND owner=?").bind(lease).run();}
 }
 // One-time rollout, reusing the existing minute scheduler; failed attempts back off.
 export async function ensureCreditRewards(env,kick){
  if(!enabled(env))return;
- const state=await env.STREAMBOT_DB.prepare("SELECT value FROM streambot_settings WHERE key='hub_credit_migration_v1'").first();if(state?.value==='done'||Number(state?.value)>Date.now())return;
- await env.STREAMBOT_DB.prepare("INSERT INTO streambot_settings(key,value) VALUES('hub_credit_migration_v1',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+600000)).run();
+ const state=await env.STREAMBOT_DB.prepare("SELECT value FROM streambot_settings WHERE key='hub_credit_migration_v2'").first();if(state?.value==='done'||Number(state?.value)>Date.now())return;
+ await env.STREAMBOT_DB.prepare("INSERT INTO streambot_settings(key,value) VALUES('hub_credit_migration_v2',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(Date.now()+600000)).run();
  const r=await hubRewardAdmin(new Request('https://hub/sync-credits',{method:'POST',body:JSON.stringify({})}),env,kick);if(!r.ok)throw Error('Credit reward setup pending');
 }

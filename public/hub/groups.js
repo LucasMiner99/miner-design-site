@@ -1,0 +1,18 @@
+(()=>{'use strict';
+ const $=id=>document.getElementById(id),bridge=()=>window.MINER_HUB_ONLINE;let data={group:null,invitations:[]},busy=false;
+ function tagBackground(color){const n=parseInt(color.slice(1),16),l=((n>>16)*.2126+((n>>8)&255)*.7152+(n&255)*.0722);return l<115?'#fff':'#202020';}
+ function badge(group){const el=document.createElement('span');el.className='hub-group-tag';el.style.color=group.color;el.style.background=tagBackground(group.color);el.textContent='['+group.name+']';return el;}
+ function button(text,action){const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent=text;b.disabled=busy;b.onclick=action;return b;}
+ async function act(input){if(busy)return;busy=true;render();$('hubGroupStatus').textContent='Guardando…';try{data=await bridge().groupAction(input);$('hubGroupStatus').textContent=input.action==='invite'?'Invitación enviada.':'Listo.';}catch(e){$('hubGroupStatus').textContent=e.message;}finally{busy=false;render();}}
+ function render(){const g=data.group,owner=g?.ownerId===bridge()?.user?.id;
+  $('hubGroupNote').replaceChildren();if(g){$('hubGroupNote').append(badge(g),document.createTextNode(owner?' Tu grupo. Invitá desde el menú de un jugador.':' Solo el creador puede cambiarlo.'));}else $('hubGroupNote').textContent='Creá un grupo o aceptá una invitación.';
+  $('hubGroupForm').hidden=!!g&&!owner;$('hubGroupName').value=g?.name||'';$('hubGroupColor').value=g?.color||'#75c9ff';$('hubGroupSave').textContent=g?'Guardar cambios':'Crear grupo';$('hubGroupSave').disabled=busy;
+  const members=$('hubGroupMembers');members.replaceChildren();for(const m of g?.members||[]){const row=document.createElement('div');row.className='hub-group-row';const name=document.createElement('span');name.textContent=m.name+(m.id===g.ownerId?' · creador':'');row.append(name);if(owner&&m.id!==g.ownerId)row.append(button('Quitar',()=>act({action:'remove',target:m.id})));members.append(row);}
+  const invites=$('hubGroupInvites');invites.replaceChildren();for(const i of data.invitations||[]){const row=document.createElement('div');row.className='hub-group-row';row.append(badge(i),button('Aceptar',()=>act({action:'accept',id:i.id})),button('Rechazar',()=>act({action:'decline',id:i.id})));invites.append(row);}
+  $('hubGroupLeave').hidden=!g;$('hubGroupLeave').disabled=busy;$('hubGroupLeave').textContent=owner?'Disolver grupo':'Salir del grupo';$('hubGroups').textContent='Grupos'+((data.invitations||[]).length?' · '+data.invitations.length:'');
+ }
+ $('hubGroups').onclick=async()=>{try{data=await bridge().groupAction();$('hubGroupStatus').textContent='';render();$('hubGroupsDialog').showModal();}catch(e){$('hubStatus').textContent=e.message;}};
+ $('hubGroupForm').onsubmit=e=>{e.preventDefault();act({action:data.group?'update':'create',name:$('hubGroupName').value,color:$('hubGroupColor').value});};
+ $('hubGroupLeave').onclick=()=>{const owner=data.group?.ownerId===bridge().user.id;if(owner&&!window.confirm('¿Disolver el grupo para todos sus integrantes?'))return;act({action:owner?'disband':'leave'});};
+ window.HubGroups={badge,account(user){data={group:user.group||null,invitations:user.invitations||[]};if(!busy)render();},player(id){const group=bridge().user.group,b=$('hubPlayerGroup');b.hidden=!group||group.ownerId!==bridge().user.id||group.members.some(m=>m.id===id);b.onclick=async()=>{b.disabled=true;try{await bridge().groupAction({action:'invite',target:id});$('hubPlayerDialog').close();$('hubStatus').textContent='Invitación al grupo enviada.';}catch(e){$('hubStatus').textContent=e.message;}finally{b.disabled=false;}};}};
+})();

@@ -1,3 +1,4 @@
+import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
 import {openRoulette,betRoulette} from './hub-roulette.mjs';
 import {C,P,R,CATALOG} from './hub-rules.mjs';
 import {handleTrade,cancelTrade} from './hub-trades.mjs';
@@ -50,9 +51,9 @@ export class HubWorld {
  send(ws,value){try{ws.send(JSON.stringify(value));}catch{try{ws.close(1011,'Conexión cerrada');}catch{}}}
  broadcast(roomId,event,except){for(const ws of this.sockets())if(ws!==except&&ws.deserializeAttachment()?.roomId===roomId)this.send(ws,event);}
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
- async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,admin},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
+ async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
- players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
+ players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,petName:a.petName||'',group:a.group||null,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
  free(room,except,preferred){C.setLayout(room.scene.layout);const occupied=this.occupied(room.id,except),valid=p=>p&&!C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y))&&!occupied.has(Math.floor(p.x)+','+Math.floor(p.y));if(valid(preferred))return preferred;for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++){const p={x:x+.5,y:y+.5};if(valid(p))return p;}return null;}
  async join(ws,id){
@@ -84,9 +85,11 @@ export class HubWorld {
    const previous=this.ownSockets(u.id);if(this.sockets().length-previous.length>=60)reject('La beta está llena. Intentá más tarde.',503);
    for(const old of previous)try{old.close(4001,'Abriste el juego en otra pestaña.');}catch{}
    await this.room(u.id,u.name);const pair=new WebSocketPair(),[client,server]=Object.values(pair);this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({user:auth,appearance:u.appearance,roomId:null,position:{from:{x:1.5,y:1.5},path:[],at:Date.now()},rateAt:0,rateCount:0,lastChat:0});await this.join(server,u.id);
+   server.serializeAttachment({user:auth,appearance:u.appearance,petName:u.petName||'',group:groupBadge(await userGroup(this,u)),roomId:null,position:{from:{x:1.5,y:1.5},path:[],at:Date.now()},rateAt:0,rateCount:0,lastChat:0});await this.join(server,u.id);
    return new Response(null,{status:101,webSocket:client});
   }
+  if(path==='/groups'){if(request.method==='GET')return reply(await groupState(this,u));if(request.method==='POST')return reply(await handleGroup(this,u,await body(request,2048)));}
+  if(path==='/profile'&&request.method==='PUT'){u.petName=profileText((await body(request,2048)).petName);await this.ctx.storage.put('user:'+u.id,u);await refreshProfiles(this,[u.id]);return reply(await this.state(u,auth.admin));}
   if(path==='/look'&&request.method==='PUT'){
    u.appearance=validateLook((await body(request)).appearance,u,auth.admin);await this.ctx.storage.put('user:'+u.id,u);
    for(const ws of this.ownSockets(u.id)){const a=ws.deserializeAttachment();a.appearance=u.appearance;ws.serializeAttachment(a);this.broadcast(a.roomId,{type:'presence',players:this.players(a.roomId)});}
@@ -102,7 +105,7 @@ export class HubWorld {
    if(room.media&&!room.scene.items.some(i=>i.id===room.media.itemId&&MEDIA_TYPES.has(i.type))){room.media=null;this.broadcast(room.id,{type:'media',roomId:room.id,media:null});}
    await this.ctx.storage.put('room:'+u.id,room);
    for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
-    const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip'].some(k=>oldSeat[k]!==newSeat[k]));
+    const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip','rotation'].some(k=>oldSeat[k]!==newSeat[k]));
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
   }

@@ -18,7 +18,7 @@
   <div class="eyebrow">EL BARRIO</div><h2 id="hubRoomsTitle">Elegí tu próximo rincón.</h2>
   <div id="hubRoomsList"></div>
 </dialog>
-<dialog id="hubAdminDialog" class="modal hub-credit-admin"><h2>Administrar</h2><p>Créditos por Kick: 500 · 1.000 · 2.000 · 5.000. Cada punto canjeado suma un crédito.</p><form id="hubRewardForm"><label>Caja de objetos · créditos <input id="hubBoxCost-object" type="number" min="1" max="1000000" required></label><label>Caja de personaje · créditos <input id="hubBoxCost-character" type="number" min="1" max="1000000" required></label><label>Caja de ambiente · créditos <input id="hubBoxCost-environment" type="number" min="1" max="1000000" required></label><button class="primary-button" type="submit">Guardar y sincronizar Kick</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
+<dialog id="hubAdminDialog" class="modal hub-credit-admin"><h2>Administrar</h2><p>Créditos por Kick: 50 · 100 · 500 · 1.000 · 2.000 · 5.000. Cada punto canjeado suma un crédito.</p><form id="hubRewardForm"><label>Caja de objetos · créditos <input id="hubBoxCost-object" type="number" min="1" max="1000000" required></label><label>Caja de personaje · créditos <input id="hubBoxCost-character" type="number" min="1" max="1000000" required></label><label>Caja de ambiente · créditos <input id="hubBoxCost-environment" type="number" min="1" max="1000000" required></label><button class="primary-button" type="submit">Guardar y sincronizar Kick</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
 
 <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></symbol>
@@ -56,7 +56,7 @@
       <div class="hub-game-shell">
       <div id="stage" class="stage">
         <canvas id="game" width="900" height="640" tabindex="0" aria-label="Habitación isométrica. Hacé clic en el piso para caminar. También podés usar las flechas del teclado."></canvas>
-        <div id="bubbleLayer" class="bubble-layer" aria-live="polite" aria-atomic="false"></div>
+        <div id="petHoverLabel" class="hub-pet-name" hidden></div><div id="bubbleLayer" class="bubble-layer" aria-live="polite" aria-atomic="false"></div>
         <div id="loading" class="loading"><span class="loading-home"><svg><use href="#i-home"/></svg></span><b>Preparando tu rincón</b><span>Abriendo las ventanas...</span></div>
         <div id="contextBar" class="context-bar" hidden><span id="selectedName">Mueble</span><button id="moveBtn" class="move-button" title="Mover (M)">Mover</button><button id="flipBtn" title="Girar (R)" aria-label="Girar el mueble"><svg><use href="#i-flip"/></svg></button><button id="wallUpBtn" hidden title="Subir en la pared" aria-label="Subir decoración">↑</button><button id="wallDownBtn" hidden title="Bajar en la pared" aria-label="Bajar decoración">↓</button><button id="interactBtn" class="interact-button" hidden>Usar</button><span id="finishPicker" hidden class="finish-picker"><button id="finishPrev" aria-label="Acabado anterior">‹</button><span id="finishName" aria-live="polite">Original</span><button id="finishNext" aria-label="Acabado siguiente">›</button></span><button id="storeBtn" title="Guardar en el inventario (Supr)" aria-label="Guardar el mueble en el inventario"><svg><use href="#i-box"/></svg></button><button id="deselectBtn" title="Deseleccionar (Escape)" aria-label="Deseleccionar"><svg><use href="#i-close"/></svg></button></div>
         <div id="toast" class="toast" role="status" hidden></div>
@@ -75,7 +75,7 @@
         <button id="inventoryTab" role="tab" aria-selected="true" aria-controls="inventoryPanel" class="active" disabled>Inventario</button>
         <button id="rewardsTab" role="tab" aria-selected="false" aria-controls="rewardsPanel" disabled>Cajas <span id="pendingTotal">0</span></button>
       </div>
-          <span class="hub-action-spacer" aria-hidden="true"></span>
+          <button id="hubGroups" type="button" class="hub-main-action">Grupos</button><span class="hub-action-spacer" aria-hidden="true"></span>
           <div class="hub-session-actions">
           <button id="hubAdmin" type="button" hidden>Administrar</button>
           <button id="hubLogout" type="button">Salir</button>
@@ -177,7 +177,7 @@
       <button id="lookRotate" class="secondary-button" type="button">Girar vista ↻</button>
     </div>
 
-    <p id="lookStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+    <label class="hub-pet-name-field" for="lookPetName">Nombre de tu mascota<input id="lookPetName" maxlength="24" placeholder="Sin nombre" autocomplete="off"></label><p id="lookStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <div class="look-save-actions"><button id="randomLook" type="button" class="secondary-button">Al azar</button><button id="cancelLook" type="button" class="secondary-button">Cancelar</button><button id="saveLook" class="primary-button" type="submit">Guardar look</button></div>
   </form>
   <form id="visitorChatForm" class="visitor-chat"><label for="visitorMessage">Probar mensaje de este visitante</label><div class="people-actions"><input id="visitorMessage" maxlength="120" placeholder="¡Hola, barrio!" required><button class="secondary-button" type="submit">Decir</button></div></form>
@@ -210,7 +210,7 @@
 <dialog id="hubPlayerDialog" class="modal small" aria-labelledby="hubPlayerName">
   <button type="button" class="modal-close icon-button" data-hub-close="hubPlayerDialog" aria-label="Cerrar">×</button>
   <h2 id="hubPlayerName"></h2>
-  <button id="hubPlayerTrade" type="button" class="secondary-button">Intercambiar / regalar</button>
+  <button id="hubPlayerGroup" type="button" class="secondary-button" hidden>Invitar al grupo</button><button id="hubPlayerTrade" type="button" class="secondary-button">Intercambiar / regalar</button>
   <button id="hubPlayerVisit" type="button" class="primary-button">Visitar su casa</button>
 </dialog>
 <dialog id="hubTradeDialog" class="modal hub-trade" aria-labelledby="hubTradeTitle">
@@ -242,6 +242,7 @@
 </dialog>
 
 <div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
+<dialog id="hubGroupsDialog" class="modal hub-groups-modal" aria-labelledby="hubGroupsTitle"><button type="button" class="modal-close icon-button" data-hub-close="hubGroupsDialog" aria-label="Cerrar">×</button><h2 id="hubGroupsTitle">Tu grupo</h2><p id="hubGroupNote"></p><form id="hubGroupForm"><label>Nombre del grupo<input id="hubGroupName" maxlength="16" required autocomplete="off"></label><label>Color del tag<input id="hubGroupColor" type="color" value="#75c9ff"></label><button class="primary-button" type="submit" id="hubGroupSave">Crear grupo</button></form><div id="hubGroupMembers"></div><div id="hubGroupInvites"></div><button id="hubGroupLeave" type="button" class="secondary-button" hidden>Salir del grupo</button><p id="hubGroupStatus" role="status"></p></dialog>
 <script src="media.js"></script>
 <script src="emotes.js"></script>
 <script src="trade.js"></script>
@@ -249,6 +250,7 @@
 <script src="roulette.js"></script>
 <script src="shell.js"></script>
 <script src="emote-picker.js"></script>
+<script src="groups.js"></script>
 <script src="online.js"></script>
 </body>
 </html>

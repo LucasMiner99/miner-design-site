@@ -1,0 +1,414 @@
+{
+  "format": "One rear three-quarter sprite per finish, 512px cells, one horizontal row; original then dark. Runtime mirrors this for rotation 3; rotation 0/1 retain original artwork.",
+  "tool": "Built-in image_gen",
+  "projection": "Orthographic 2:1 isometric",
+  "symmetricReuse": [
+    2,
+    5,
+    8,
+    18,
+    21,
+    46
+  ],
+  "normalizedByMirroring": [
+    19,
+    22,
+    24,
+    32,
+    34,
+    35,
+    41,
+    43,
+    60,
+    71,
+    72,
+    73
+  ],
+  "assets": [
+    {
+      "type": 0,
+      "name": "Sofá Salvia",
+      "file": "0.webp",
+      "frames": 2,
+      "bytes": 42586
+    },
+    {
+      "type": 1,
+      "name": "Sillón Miel",
+      "file": "1.webp",
+      "frames": 2,
+      "bytes": 52978
+    },
+    {
+      "type": 3,
+      "name": "Monstera",
+      "file": "3.webp",
+      "frames": 1,
+      "bytes": 50670
+    },
+    {
+      "type": 4,
+      "name": "Biblioteca Nido",
+      "file": "4.webp",
+      "frames": 2,
+      "bytes": 42946
+    },
+    {
+      "type": 6,
+      "name": "Aparador Bosque",
+      "file": "6.webp",
+      "frames": 2,
+      "bytes": 55046
+    },
+    {
+      "type": 7,
+      "name": "Almohadón Sol",
+      "file": "7.webp",
+      "frames": 2,
+      "bytes": 54926
+    },
+    {
+      "type": 9,
+      "name": "Mesa de café",
+      "file": "9.webp",
+      "frames": 2,
+      "bytes": 51410
+    },
+    {
+      "type": 10,
+      "name": "Helecho",
+      "file": "10.webp",
+      "frames": 1,
+      "bytes": 57950
+    },
+    {
+      "type": 11,
+      "name": "Banquito Roble",
+      "file": "11.webp",
+      "frames": 2,
+      "bytes": 63984
+    },
+    {
+      "type": 12,
+      "name": "Cama Siesta",
+      "file": "12.webp",
+      "frames": 2,
+      "bytes": 39140
+    },
+    {
+      "type": 13,
+      "name": "Tocadiscos",
+      "file": "13.webp",
+      "frames": 2,
+      "bytes": 64950
+    },
+    {
+      "type": 14,
+      "name": "Lectura y café",
+      "file": "14.webp",
+      "frames": 1,
+      "bytes": 33706
+    },
+    {
+      "type": 15,
+      "name": "Lavanda",
+      "file": "15.webp",
+      "frames": 1,
+      "bytes": 49330
+    },
+    {
+      "type": 16,
+      "name": "Escritorio Roble",
+      "file": "16.webp",
+      "frames": 2,
+      "bytes": 58002
+    },
+    {
+      "type": 17,
+      "name": "Sillón Mimbre",
+      "file": "17.webp",
+      "frames": 2,
+      "bytes": 85328
+    },
+    {
+      "type": 19,
+      "name": "Vinilero Sur",
+      "file": "19.webp",
+      "frames": 2,
+      "bytes": 49114
+    },
+    {
+      "type": 20,
+      "name": "Jardín de vidrio",
+      "file": "20.webp",
+      "frames": 2,
+      "bytes": 78810
+    },
+    {
+      "type": 22,
+      "name": "Banco Encuentro",
+      "file": "22.webp",
+      "frames": 2,
+      "bytes": 60052
+    },
+    {
+      "type": 23,
+      "name": "Mesita Nogal",
+      "file": "23.webp",
+      "frames": 2,
+      "bytes": 69440
+    },
+    {
+      "type": 24,
+      "name": "Radio Menta",
+      "file": "24.webp",
+      "frames": 1,
+      "bytes": 38110
+    },
+    {
+      "type": 25,
+      "name": "Cactus Flor",
+      "file": "25.webp",
+      "frames": 1,
+      "bytes": 44452
+    },
+    {
+      "type": 32,
+      "name": "Pecera Calma",
+      "file": "32.webp",
+      "frames": 1,
+      "bytes": 42538
+    },
+    {
+      "type": 33,
+      "name": "Bonsái Brisa",
+      "file": "33.webp",
+      "frames": 1,
+      "bytes": 59288
+    },
+    {
+      "type": 34,
+      "name": "Baúl Tesoro",
+      "file": "34.webp",
+      "frames": 2,
+      "bytes": 56686
+    },
+    {
+      "type": 35,
+      "name": "Carrito Café",
+      "file": "35.webp",
+      "frames": 2,
+      "bytes": 76610
+    },
+    {
+      "type": 36,
+      "name": "Arcade Recreo",
+      "file": "36.webp",
+      "frames": 2,
+      "bytes": 50882
+    },
+    {
+      "type": 37,
+      "name": "Barra Cafecito",
+      "file": "37.webp",
+      "frames": 2,
+      "bytes": 67526
+    },
+    {
+      "type": 38,
+      "name": "Caballete Color",
+      "file": "38.webp",
+      "frames": 2,
+      "bytes": 61986
+    },
+    {
+      "type": 39,
+      "name": "Canasto Abrigo",
+      "file": "39.webp",
+      "frames": 2,
+      "bytes": 126674
+    },
+    {
+      "type": 40,
+      "name": "Heladera Crema",
+      "file": "40.webp",
+      "frames": 2,
+      "bytes": 33274
+    },
+    {
+      "type": 41,
+      "name": "Cocina Oliva",
+      "file": "41.webp",
+      "frames": 2,
+      "bytes": 69296
+    },
+    {
+      "type": 42,
+      "name": "Perchero Paseo",
+      "file": "42.webp",
+      "frames": 2,
+      "bytes": 59068
+    },
+    {
+      "type": 43,
+      "name": "Tele Retro",
+      "file": "43.webp",
+      "frames": 2,
+      "bytes": 63828
+    },
+    {
+      "type": 44,
+      "name": "Guitarra Fogón",
+      "file": "44.webp",
+      "frames": 2,
+      "bytes": 47232
+    },
+    {
+      "type": 45,
+      "name": "Carrito Pochoclos",
+      "file": "45.webp",
+      "frames": 2,
+      "bytes": 83638
+    },
+    {
+      "type": 47,
+      "name": "Gatito de peluche",
+      "file": "47.webp",
+      "frames": 2,
+      "bytes": 100494
+    },
+    {
+      "type": 48,
+      "name": "Escritorio Stream",
+      "file": "48.webp",
+      "frames": 2,
+      "bytes": 59244
+    },
+    {
+      "type": 49,
+      "name": "Silla Gamer",
+      "file": "49.webp",
+      "frames": 2,
+      "bytes": 57454
+    },
+    {
+      "type": 50,
+      "name": "Torre RGB",
+      "file": "50.webp",
+      "frames": 1,
+      "bytes": 39410
+    },
+    {
+      "type": 51,
+      "name": "Micrófono Podcast",
+      "file": "51.webp",
+      "frames": 1,
+      "bytes": 27310
+    },
+    {
+      "type": 52,
+      "name": "Cámara Stream",
+      "file": "52.webp",
+      "frames": 1,
+      "bytes": 20682
+    },
+    {
+      "type": 53,
+      "name": "Aro de Luz",
+      "file": "53.webp",
+      "frames": 1,
+      "bytes": 14478
+    },
+    {
+      "type": 54,
+      "name": "Consola Recreo",
+      "file": "54.webp",
+      "frames": 1,
+      "bytes": 30874
+    },
+    {
+      "type": 55,
+      "name": "Auriculares Estudio",
+      "file": "55.webp",
+      "frames": 2,
+      "bytes": 62758
+    },
+    {
+      "type": 60,
+      "name": "Mesa Auxiliar Estudio",
+      "file": "60.webp",
+      "frames": 2,
+      "bytes": 68610
+    },
+    {
+      "type": 61,
+      "name": "Parlante Estudio",
+      "file": "61.webp",
+      "frames": 2,
+      "bytes": 59110
+    },
+    {
+      "type": 69,
+      "name": "Mini Expendedora",
+      "file": "69.webp",
+      "frames": 1,
+      "bytes": 21762
+    },
+    {
+      "type": 70,
+      "name": "Puf Luna",
+      "file": "70.webp",
+      "frames": 1,
+      "bytes": 56942
+    },
+    {
+      "type": 71,
+      "name": "Pinball Órbita",
+      "file": "71.webp",
+      "frames": 1,
+      "bytes": 33790
+    },
+    {
+      "type": 72,
+      "name": "Mesa DJ",
+      "file": "72.webp",
+      "frames": 1,
+      "bytes": 34502
+    },
+    {
+      "type": 73,
+      "name": "Rascador Mimo",
+      "file": "73.webp",
+      "frames": 1,
+      "bytes": 41942
+    },
+    {
+      "type": 74,
+      "name": "Cama Nube",
+      "file": "74.webp",
+      "frames": 1,
+      "bytes": 63470
+    },
+    {
+      "type": 77,
+      "name": "Cafetera Crema",
+      "file": "77.webp",
+      "frames": 1,
+      "bytes": 31744
+    },
+    {
+      "type": 78,
+      "name": "Globo Viajero",
+      "file": "78.webp",
+      "frames": 1,
+      "bytes": 43696
+    },
+    {
+      "type": 79,
+      "name": "Ruleta",
+      "file": "79.webp",
+      "frames": 1,
+      "bytes": 50542
+    }
+  ]
+}
