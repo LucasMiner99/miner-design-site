@@ -137,7 +137,8 @@
     {name:'Ruleta',w:2,h:2,width:108,category:'deco',sprite:79,interaction:'roulette'},
     {name:'Póster personal · Cuadrado',w:1,h:1,width:64,mountH:64,category:'wall',sprite:80,wall:true,poster:true,ratio:1},
     {name:'Póster personal · Horizontal',w:1,h:1,width:88,mountH:49.5,category:'wall',sprite:81,wall:true,poster:true,ratio:16/9},
-    {name:'Póster personal · Vertical',w:1,h:1,width:45,mountH:80,category:'wall',sprite:82,wall:true,poster:true,ratio:9/16}
+    {name:'Póster personal · Vertical',w:1,h:1,width:45,mountH:80,category:'wall',sprite:82,wall:true,poster:true,ratio:9/16},
+    {name:'Máquina de intercambio',w:1,h:1,width:62,category:'deco',sprite:83,interaction:'exchange'}
   ];
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
@@ -187,6 +188,7 @@
   bases.push(['wall',1],['wall',1],['wall',1],['wall',1],['wall',1],['box',.87],['oval',.88]);
   bases.push(['box',.86],['box',.91],['box',.90],['oval',.94],['wall',1],['wall',1],['box',.86],['oval',.73]);
   TYPES.forEach((t,i)=>t.base={shape:bases[i]?.[0]||'wall',span:bases[i]?.[1]||1,u:.5});
+  TYPES[83].base={shape:'box',span:.94,u:.5};
   function initial(){return {version:1,geometryVersion:2,structureVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
     {id:1,type:0,x:1,y:5,flip:false},
     {id:2,type:4,x:0,y:1,flip:false},

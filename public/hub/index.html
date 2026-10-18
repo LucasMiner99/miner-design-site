@@ -198,6 +198,7 @@
 <script src="scenery.js"></script>
 <script src="wardrobe-cache-v32.js"></script>
 <script src="rewards.js"></script>
+<script src="reward-reel.js"></script>
 <script src="rewards-ui.js"></script>
 <dialog id="hubFeedbackDialog" class="modal small hub-feedback-modal" aria-labelledby="hubFeedbackTitle">
   <button type="button" class="modal-close icon-button" data-hub-close="hubFeedbackDialog" aria-label="Cerrar">×</button>
@@ -252,6 +253,20 @@
 <script src="emotes.js"></script>
 <script src="trade.js"></script>
 <script src="feedback.js"></script>
+<dialog id="hubExchangeDialog" class="modal hub-exchange" aria-labelledby="hubExchangeTitle">
+ <button id="hubExchangeClose" class="modal-close icon-button" type="button" aria-label="Cerrar intercambio">×</button>
+ <div class="eyebrow">MÁQUINA DE INTERCAMBIO</div><h2 id="hubExchangeTitle">Repetido por nuevo.</h2>
+ <div id="hubExchangePick">
+  <p class="hub-exchange-note">Cambiá una copia repetida por algo nuevo de la misma categoría. Un canje por tipo de objeto, por jugador.</p>
+  <div id="hubExchangeItems" class="hub-exchange-items" aria-label="Repetidos disponibles"></div>
+  <p id="hubExchangeEmpty" hidden>No tenés repetidos disponibles para cambiar.</p>
+  <button id="hubExchangeSwap" type="button" class="primary-button" disabled>Cambiar por uno nuevo</button>
+ </div>
+ <div id="hubExchangeAnimation" hidden><canvas id="hubExchangeReel" width="760" height="260" role="img" aria-label="Animación del nuevo objeto" aria-busy="false"></canvas><button id="hubExchangeSkip" type="button" class="secondary-button">Saltar</button></div>
+ <div id="hubExchangeResult" hidden><canvas id="hubExchangeResultArt" width="220" height="200" aria-hidden="true"></canvas><h3 id="hubExchangeResultName"></h3><div class="hub-exchange-actions"><button id="hubExchangeAgain" type="button" class="secondary-button">Cambiar otro</button><button id="hubExchangeDone" type="button" class="primary-button">Listo</button></div></div>
+ <p id="hubExchangeStatus" role="status" aria-live="polite"></p>
+</dialog>
+<script src="exchange.js"></script>
 <script src="roulette.js"></script>
 <script src="shell.js"></script>
 <script src="emote-picker.js"></script>

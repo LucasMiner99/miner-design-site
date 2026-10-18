@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const ids=new Map(),saved=new Map(),requests=[],source={id:'object:0',kind:'object',name:'Sofá',count:2},prize={id:'object:1',kind:'object',name:'Sillón'};let fail=true,used=false;
+function element(){const e={children:[],attrs:{},dataset:{},events:{},hidden:false,open:false,disabled:false,textContent:'',addEventListener:(t,f)=>e.events[t]=f,setAttribute:(k,v)=>e.attrs[k]=v,append:(...c)=>e.children.push(...c),replaceChildren:()=>e.children=[],getContext:()=>({clearRect(){},drawImage(){}}),showModal:()=>e.open=true,close:()=>{e.open=false;e.events.close?.();}};return e;}
+const get=id=>{if(!ids.has(id))ids.set(id,element());return ids.get(id);};
+const bridge={user:{id:'2'},room:{id:'1'},preview(){},ledger:{item:()=>prize,inventory:()=>[prize]},async exchange(action,input){if(action==='open')return {items:used?[]:[source]};requests.push(structuredClone(input));if(fail){fail=false;throw Error('Conexión perdida');}used=true;return {receipt:{rewardId:prize.id,kind:'object'}};}};
+const scope={document:{getElementById:get,createElement:element},MINER_HUB_ONLINE:bridge,sessionStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},VeredaRewards:{catalog:()=>[source,prize]},VeredaCore:{},VeredaPeople:{},crypto,performance:{now:()=>1},matchMedia:()=>({matches:true}),cancelAnimationFrame(){},requestAnimationFrame(){throw Error('Reduced motion should skip animation');}};scope.window=scope;vm.createContext(scope);vm.runInContext(fs.readFileSync(__dirname+'/../public/hub/exchange.js','utf8'),scope);
+(async()=>{
+ await scope.HubExchange.open({id:10});assert(get('hubExchangeDialog').open);assert(get('hubExchangeSwap').disabled);get('hubExchangeItems').children[0].onclick();assert(!get('hubExchangeSwap').disabled);
+ await get('hubExchangeSwap').onclick();assert.equal(get('hubExchangeSwap').textContent,'Recuperar canje');assert.equal(saved.size,1,'Ambiguous failure keeps idempotency key');
+ get('hubExchangeClose').onclick();await scope.HubExchange.open({id:20});assert(!get('hubExchangeSwap').disabled);await get('hubExchangeSwap').onclick();assert.equal(requests[0].requestId,requests[1].requestId);assert.equal(requests[1].itemId,10,'Recover the original machine request, not a new roll');assert.equal(saved.size,0);assert.equal(get('hubExchangeResultName').textContent,'Sillón');assert(!get('hubExchangeResult').hidden);assert(get('hubExchangeAnimation').hidden);
+ get('hubExchangeAgain').onclick();await new Promise(r=>setImmediate(r));assert(get('hubExchangeEmpty').hidden===false);assert(get('hubExchangeSwap').disabled);
+ scope.HubExchange.close();assert(!get('hubExchangeDialog').open);
+ console.log('PASS exchange UI: selection, ambiguous failure/reopen recovery with same request ID, reduced-motion reveal, empty state and close.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

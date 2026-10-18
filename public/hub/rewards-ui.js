@@ -33,12 +33,7 @@
    $('useReward').textContent=item.kind==='object'?'Colocar':item.kind==='environment'?'Aplicar':'Equipar';$('useReward').hidden=item.kind!=='character'&&owner!=='self';status('Guardado en tu inventario.');
   }
   function finish(){if(!opening)return;const item=opening.item;opening=null;$('rewardAnimation').hidden=true;$('skipReward').hidden=true;$('rewardReel').setAttribute('aria-busy','false');refresh();onChange?.();showResult(item);}
-  function drawReel(progress){if(!opening)return;const cv=$('rewardReel'),k=cv.getContext('2d'),w=cv.width,h=cv.height,cardW=190,gap=12,step=cardW+gap;
-   const start=step*2,end=opening.winner*step+cardW/2-w/2,offset=start+(end-start)*(1-Math.pow(1-progress,4));
-   k.clearRect(0,0,w,h);k.fillStyle='#eee';k.fillRect(0,0,w,h);
-   for(let j=0;j<opening.entries.length;j++){const x=j*step-offset;if(x+cardW<0||x>w)continue;const item=opening.entries[j];k.fillStyle='#fff';k.fillRect(x,10,cardW,h-20);k.strokeStyle='#ccc';k.strokeRect(x+.5,10.5,cardW-1,h-21);canvasSprite(k,item,x+8,18,cardW-16,h-65);k.fillStyle='#171717';k.font='900 15px "Zalando Sans Expanded"';k.textAlign='center';k.fillText(item.name,x+cardW/2,h-28,cardW-14);}
-   k.fillStyle='#171717';k.beginPath();k.moveTo(w/2-10,0);k.lineTo(w/2+10,0);k.lineTo(w/2,22);k.fill();k.fillRect(w/2-2,h-15,4,15);
-  }
+  function drawReel(progress){if(opening)root.HubRewardReel.draw($('rewardReel'),opening.entries,opening.winner,progress,canvasSprite);}
   let requesting=false;
   async function open(kind){if(opening||requesting||!ledger)return;let pending=ledger.pending(owner,kind)[0];
    requesting=true;refresh();try{if(!pending){status('Comprando…');pending=await ledger.buy(kind);}const receipt=await ledger.open(pending.id,owner),item=ledger.item(receipt.itemId),pool=catalog.filter(i=>i.kind===kind&&!i.starter),entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]),winner=32;entries[winner]=item;opening={item,entries,winner,at:now()};result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=false;$('skipReward').hidden=false;$('rewardReel').setAttribute('aria-busy','true');status('Abriendo…');refresh();drawReel(0);if(reducedMotion())finish();}catch(e){status('No se pudo guardar. '+e.message);}finally{requesting=false;refresh();}

@@ -2,6 +2,7 @@ import {handlePosters,posterList} from './hub-posters.mjs';
 import {giveaway} from './hub-giveaway.mjs';
 import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
 import {openRoulette,betRoulette} from './hub-roulette.mjs';
+import {openExchange,exchangeItem} from './hub-exchange.mjs';
 import {C,P,R,CATALOG} from './hub-rules.mjs';
 import {handleTrade,cancelTrade} from './hub-trades.mjs';
 import {handleMedia,mediaSnapshot,MEDIA_TYPES} from './hub-media.mjs';
@@ -116,6 +117,10 @@ export class HubWorld {
   if((path==='/roulette/open'||path==='/roulette/bet')&&request.method==='POST'){
    const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
    const result=path==='/roulette/open'?await openRoulette(this,u,input):{receipt:await betRoulette(this,u,input)};
+   return reply({...result,account:await this.state(u,auth.admin)});
+  }
+  if((path==='/exchange/open'||path==='/exchange/swap')&&request.method==='POST'){
+   const input=await body(request,2048),result=path==='/exchange/open'?await openExchange(this,u,input):{receipt:await exchangeItem(this,u,input)};
    return reply({...result,account:await this.state(u,auth.admin)});
   }
   if(path==='/box/buy'&&request.method==='POST'){

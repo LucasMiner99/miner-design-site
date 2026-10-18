@@ -11,6 +11,7 @@
  function schedule(task){saving++;let failed=false;status('Guardando…');queue=queue.then(task).catch(async e=>{failed=true;status(e.message);try{const fresh=await api('state');updateAccount(fresh);seed();if(room?.ownerId===account.user.id){room=fresh.room;game?.room(room.scene);}}catch{status('Sin conexión. Tus cambios no se guardaron.');}}).finally(()=>{saving--;if(!saving&&connected&&!failed)status('Conectado');});return queue;}
  const bridge=window.MINER_HUB_ONLINE={
   get user(){return account.user;},get room(){return room;},canEdit,async giveaway(value){return api('admin/giveaway',value?'POST':'GET',value);},async groupAction(value){return api('groups',value?'POST':'GET',value);},async profile(value){return schedule(async()=>updateAccount(await api('profile','PUT',value)));},preview:(item,canvas)=>game?.preview(item,canvas),
+  async exchange(action,input){if(!connected)throw Error('Esperá a reconectar para usar la máquina.');const data=await api('exchange/'+action,'POST',input);if(data.account)updateAccount(data.account);return data;},
   async roulette(action,input){if(!connected)throw Error('Esperá a reconectar para jugar.');const data=await api('roulette/'+action,'POST',input);if(data.account)updateAccount(data.account);return data;},
   placedCount(type){return [...account.room.scene.items,...(account.room.scene.unplacedItems||[])].filter(i=>i.type===type).length;},
   storage:{getItem:key=>memory.has(key)?memory.get(key):key==='vereda.theme.v1'?window.localStorage.getItem(key):null,setItem(key,value){
@@ -27,7 +28,7 @@
  function connect(){if(stopped)return;status('Conectando…');socket=new WebSocket(location.origin.replace(/^http/,'ws')+'/api/hub/ws');
   socket.onopen=()=>{connected=true;reconnect=0;affordances();status('Conectado');};
   socket.onmessage=e=>{if(e.data==='pong')return;let m;try{m=JSON.parse(e.data);}catch{return;}
-   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);window.HubMedia?.room(room,m.media);window.HubPosters?.room(room,m.posters);window.HubRoulette?.close();}
+   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);window.HubMedia?.room(room,m.media);window.HubPosters?.room(room,m.posters);window.HubRoulette?.close();window.HubExchange?.close();}
    else if(m.type==='posters'&&m.roomId===room?.id)window.HubPosters?.receive(m.slots);
    else if(m.type==='trade')window.HubTrade?.receive(m);
    else if(m.type==='media'&&m.roomId===room?.id)window.HubMedia?.receive(m.media);
@@ -40,7 +41,7 @@
    else if(m.type==='scene'&&m.room.id===room?.id&&room.ownerId!==account.user.id){room=m.room;game.scene(room.scene);game.players(m.players);}
    else if(m.type==='error'){status(m.error);window.HubTrade?.error(m.error);window.HubMedia?.error(m.error,m);}
   };
-  socket.onclose=e=>{connected=false;window.HubTrade?.disconnected();window.HubMedia?.disconnected();window.HubRoulette?.close();game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
+  socket.onclose=e=>{connected=false;window.HubTrade?.disconnected();window.HubMedia?.disconnected();window.HubRoulette?.close();window.HubExchange?.close();game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
  }
  setInterval(()=>{if(connected)socket.send('ping');},25000);
  window.addEventListener('beforeunload',e=>{if(saving){e.preventDefault();e.returnValue='';}});
