@@ -1,3 +1,4 @@
+import {handlePosters,posterList} from './hub-posters.mjs';
 import {giveaway} from './hub-giveaway.mjs';
 import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
 import {openRoulette,betRoulette} from './hub-roulette.mjs';
@@ -62,7 +63,7 @@ export class HubWorld {
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
   const old=a.roomId;const p=this.free(room,a.user.id);
   if(!p)reject('La sala no tiene espacio para entrar.');await cancelTrade(this,a.user.id,'El intercambio se canceló al cambiar de sala.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
-  this.send(ws,{type:'room',room,players:this.players(id),position:p,media:mediaSnapshot(room.media)});
+  this.send(ws,{type:'room',room,players:this.players(id),position:p,media:mediaSnapshot(room.media),posters:await posterList(this,room.ownerId)});
   if(old&&old!==id)this.broadcast(old,{type:'presence',players:this.players(old)});
   this.broadcast(id,{type:'presence',players:this.players(id)},ws);
   if(a.user.admin)await this.ctx.storage.put('active-room',id);
@@ -74,6 +75,7 @@ export class HubWorld {
   let auth;try{auth=JSON.parse(request.headers.get('X-Hub-Identity')||'null');}catch{}
   if(!auth||!/^\d+$/.test(auth.id)||auth.expiresAt<=Date.now())reject('Volvé a iniciar sesión.',401);
   const u=await this.user(auth.id,auth.name);if(u.banned)reject('Tu acceso al juego está suspendido.',403);
+  if(path.startsWith('/posters'))return handlePosters(request,this,u,auth.admin);
   if(path==='/disconnect'&&request.method==='POST'){for(const ws of this.ownSockets(u.id))ws.close(4001,'Sesión cerrada.');return reply({ok:true});}
   if(path==='/state'&&request.method==='GET')return reply(await this.state(u,auth.admin));
   if(path==='/feedback'||path==='/admin/feedback')return await handleFeedback(request,this.ctx.storage,u,auth.admin,body)||reply({error:'No disponible.'},404);

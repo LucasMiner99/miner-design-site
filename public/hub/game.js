@@ -101,7 +101,7 @@
   function refreshMe(){thumbnail('avatarThumb');thumbnail('chatThumb');}
   const bubbleSizes=new ResizeObserver(entries=>{for(const entry of entries){const b=bubbles.find(b=>b.el===entry.target);if(b)b.measure=true;}});
   function removeBubble(b){bubbleSizes.unobserve?.(b.el);b.el.remove();}
-  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,2000);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const group=id==='self'?online.user.group:actor.group;if(group&&window.HubGroups)name.prepend(window.HubGroups.badge(group));const content=document.createElement('span');if(window.HubEmotes)window.HubEmotes.render(content,text);else content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);const v=id==='self'?playerVisual():actorVisual(actor);bubbles.push({el,actorId:id,at:now,until:now+20000,anchor:{x:v.p.x,y:v.y},measure:true});bubbleSizes.observe(el);while(bubbles.length>60)removeBubble(bubbles.shift());return true;}
+  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,2000);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const group=id==='self'?online.user.group:actor.group;if(group&&window.HubGroups)name.prepend(window.HubGroups.badge(group));const content=document.createElement('span');if(window.HubEmotes)window.HubEmotes.render(content,text);else content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);const v=id==='self'?playerVisual():actorVisual(actor);bubbles.push({el,actorId:id,at:now,until:now+35000,anchor:{x:v.p.x,y:v.y},measure:true});bubbleSizes.observe(el);while(bubbles.length>60)removeBubble(bubbles.shift());return true;}
   function forgetActor(id){if(!people.remove(id))return false;renderPeople();savePeople();return true;}
   $('spawnOne').addEventListener('click',()=>spawnVisitors(1));$('spawnThree').addEventListener('click',()=>spawnVisitors(3));
   $('pausePeople').addEventListener('click',()=>{people.pause(!people.isPaused());$('pausePeople').textContent=people.isPaused()?'Reanudar paseos':'Pausar paseos';$('pausePeople').setAttribute('aria-pressed',String(people.isPaused()));});
@@ -224,7 +224,7 @@
   function setMode(next){if(next==='decorate'&&!online.canEdit()){toast('Podés decorar tu propia sala.');return;}if((seatedId||pendingSeat||pendingWalk)&&next==='decorate'){const seq=++walkSequence;if(online.send('stand',{seq}))pendingWalk=seq;}mode=next;standUp();cancelSelection(false);if(mode==='decorate'){player.path=[];player.moving=false;snapPlayer();}canvas.classList.toggle('decorating',mode==='decorate');$('walkBtn').classList.toggle('active',mode==='walk');$('walkBtn').setAttribute('aria-pressed',String(mode==='walk'));modeHint();}
   function snapPlayer(){const p=C.findFree(state.items,{x:Math.floor(player.x)+.5,y:Math.floor(player.y)+.5});player.x=p.x;player.y=p.y;}
   function cancelSelection(walk=true){clearTimeout(objectClickTimer);objectClick=null;if(walk){mode='walk';canvas.classList.remove('decorating');$('walkBtn').classList.add('active');$('walkBtn').setAttribute('aria-pressed','true');}selectedId=null;pendingType=null;movingId=null;ghost=null;pointer=null;canvas.classList.remove('dragging','placing');$('contextBar').hidden=true;document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
-  function selectItem(id){pendingType=null;movingId=null;ghost=null;canvas.classList.remove('placing');selectedId=id;const item=state.items.find(i=>i.id===id);if(!item)return cancelSelection();if(!C.TYPES[item.type].wall)loadRotation(item.type).catch(()=>{});$('selectedName').textContent=C.TYPES[item.type].name;updateInteraction(item);$('finishPicker').hidden=!C.TYPES[item.type].finishes;$('finishName').textContent=item.finish===1?'Nogal y negro':'Original';$('contextBar').hidden=false;$('moveBtn').disabled=false;const onWall=!!C.TYPES[item.type].wall;$('wallUpBtn').hidden=$('wallDownBtn').hidden=!onWall;$('flipBtn').title=onWall?'Cambiar de pared (R)':'Girar (R)';document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
+  function selectItem(id){pendingType=null;movingId=null;ghost=null;canvas.classList.remove('placing');selectedId=id;const item=state.items.find(i=>i.id===id);if(!item)return cancelSelection();if(!C.TYPES[item.type].wall)loadRotation(item.type).catch(()=>{});$('selectedName').textContent=C.TYPES[item.type].name;$('posterImageBtn').hidden=!C.TYPES[item.type].poster;updateInteraction(item);$('finishPicker').hidden=!C.TYPES[item.type].finishes;$('finishName').textContent=item.finish===1?'Nogal y negro':'Original';$('contextBar').hidden=false;$('moveBtn').disabled=false;const onWall=!!C.TYPES[item.type].wall;$('wallUpBtn').hidden=$('wallDownBtn').hidden=!onWall;$('flipBtn').title=onWall?'Cambiar de pared (R)':'Girar (R)';document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
   function cycleFinish(){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].finishes||movingId!==null)return;checkpoint();if(item.finish===1)delete item.finish;else item.finish=1;selectItem(item.id);save();}
   $('finishPrev').addEventListener('click',cycleFinish);$('finishNext').addEventListener('click',cycleFinish);
   function beginMove(){if(selectedId===null)return;movingId=selectedId;ghost=null;canvas.classList.add('placing');$('moveBtn').disabled=true;$('interactBtn').disabled=true;modeHint();}
@@ -289,6 +289,8 @@
   function tileInRoom(tile){return C.inside(tile.x,tile.y);}
   let objectClick=null,objectClickTimer=null;
   function walkClick(world,tile,hit){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type))){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);}
+  $('posterImageBtn').onclick=()=>{const item=state.items.find(i=>i.id===selectedId);if(item&&C.TYPES[item.type].poster&&online.canEdit())window.HubPosters.open(item,slot=>{if(!online.canEdit()||!state.items.includes(item))return;checkpoint();item.posterSlot=slot;save();});};
+  function positionMusicLabel(){const label=$('hubNowPlaying'),media=window.HubMedia?.nowPlaying(),item=media?.playing&&state.items.find(i=>i.id===media.itemId);label.hidden=!item;if(!item)return;const b=itemPosition(item);const text='♫ '+(media.title||'YouTube');if(label.textContent!==text){label.textContent=text;label.title=media.title||'YouTube';}label.style.left=Math.max(90,Math.min(view.w-90,view.x+(b.x+b.w/2)*view.s))+'px';label.style.top=Math.max(12,view.y+b.y*view.s-12)+'px';}
   function positionObjectMenu(){if(selectedId===null||$('contextBar').hidden)return;const item=state.items.find(i=>i.id===selectedId);if(!item)return cancelSelection();const b=itemPosition(item),bar=$('contextBar'),w=bar.offsetWidth||320,h=bar.offsetHeight||50;const x=view.x+(b.x+b.w/2)*view.s,y=view.y+(b.y+b.h)*view.s+10;bar.style.left=Math.max(8,Math.min(view.w-w-8,x-w/2))+'px';bar.style.top=Math.max(8,Math.min(view.h-h-8,y))+'px';}
   canvas.addEventListener('pointerdown',e=>{
     if(!ready||e.button!==0)return;e.preventDefault();canvas.focus({preventScroll:true});const world=toWorld(e),tile=unproject(world.x,world.y),hit=hitAt(world);
@@ -336,7 +338,7 @@
   }
   function loadRotation(type){if(C.TYPES[type].wall||C.TYPES[type].flat||symmetricRotation.has(type))return Promise.resolve();if(rotationLoads.has(type))return rotationLoads.get(type);const load=loadImage(ASSETS['rotation'+type]||'assets/rotations/'+type+'.webp').then(img=>{const frames=extractAtlas(img,false,C.TYPES[type].finishes?2:1,1);rotationArt.set(type,frames);return frames;}).catch(e=>{setTimeout(()=>rotationLoads.delete(type),10000);throw e;});rotationLoads.set(type,load);return load;}
   function itemPosition(item){
-    const t=C.TYPES[item.type],rot=C.rotation(item),rear=rot>=2&&!t.wall&&!t.flat&&!symmetricRotation.has(item.type),views=rotationArt.get(item.type);if(rear&&!views)loadRotation(item.type).catch(()=>{});const sprite=rear&&views?views[item.finish===1&&t.finishes?1:0]:lightStates.has(item.type)?lightStates.get(item.type)[item.on===false?0:1]:windowStates.has(item.type)?windowStates.get(item.type)[item.closed?1:0]:item.finish===1&&darkFurniture.has(item.type)?darkFurniture.get(item.type):furniture[t.sprite],w=t.width,h=w*sprite.height/sprite.width,flip=rear&&views?rot===3:!!item.flip!==!!t.artFlip;
+    const t=C.TYPES[item.type],rot=C.rotation(item),rear=rot>=2&&!t.wall&&!t.flat&&!symmetricRotation.has(item.type),views=rotationArt.get(item.type);if(rear&&!views)loadRotation(item.type).catch(()=>{});const sprite=t.poster?window.HubPosters.sprite(item,t):rear&&views?views[item.finish===1&&t.finishes?1:0]:lightStates.has(item.type)?lightStates.get(item.type)[item.on===false?0:1]:windowStates.has(item.type)?windowStates.get(item.type)[item.closed?1:0]:item.finish===1&&darkFurniture.has(item.type)?darkFurniture.get(item.type):furniture[t.sprite],w=t.width,h=w*sprite.height/sprite.width,flip=rear&&views?rot===3:!!item.flip!==!!t.artFlip;
     if(t.wall){const left=item.wallSide==='left',p=project(left?0:item.wallU,left?item.wallU:0,C.wallHeight(item.wallSide,item.wallU));return {x:p.x-w/2,y:p.y-item.wallZ-h/2,w,h,sprite,item,flip:left,ground:p,baseWidth:0,anchorX:w/2,anchorY:h/2};}
     const d=C.dimensions(item);let ground=project(item.x+d.w/2,item.y+d.h/2,C.tileHeight(item.x,item.y));
     if(item.parentId){const parent=state.items.find(i=>i.id===item.parentId);if(parent)ground=surfacePoint(parent,item.slot);}
@@ -538,7 +540,7 @@
     if(ghost&&mode==='decorate')drawItem(ghost,C.canPlace(state.items,ghost,player)?.75:.4,false);
     // A few unobtrusive dust motes catching the afternoon light.
     if(!reduceMotion&&animationEnabled){for(let j=0;j<7;j++){const x=250+Math.sin(now*.00012+j*1.8)*95+j*17,y=240+Math.sin(now*.00018+j)*60;rect(g,x,y,2,2,'#fff5c74d');}}
-    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scene,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);positionObjectMenu();
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scene,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);positionObjectMenu();positionMusicLabel();
   }
   function drawNames(now){
     const label=$('petHoverLabel'),pet=petPointer&&petBounds.slice().reverse().find(b=>{const x=petPointer.x-b.x,y=petPointer.y-b.y;if(x<0||y<0||x>=b.w||y>=b.h||!b.pet.name)return false;return b.s.alpha[Math.floor(y/b.h*b.s.height)*b.s.width+Math.floor(x/b.w*b.s.width)]>48;});label.hidden=!pet;if(pet){label.textContent=pet.pet.name;label.style.left=(view.x+(pet.x+pet.w/2)*view.s)+'px';label.style.top=(view.y+pet.y*view.s-5)+'px';}
@@ -611,13 +613,12 @@
       const b=bubbles[j];if(now>=b.until){removeBubble(b);bubbles.splice(j,1);continue;}
       b.el.hidden=false;const w=Math.min(b.width,view.w-16),h=b.height;
       const x=Math.max(w/2+8,Math.min(view.w-w/2-8,view.x+b.anchor.x*view.s));
-      let y=Math.min(view.h-12,view.y+b.anchor.y*view.s-22)-(now-b.at)*.003;
+      const base=Math.min(view.h-12,view.y+b.anchor.y*view.s-22);let y=base-(b.rise||0);
       // Preserve the place where each message was spoken. Only overlapping
       // horizontal lanes push earlier messages upward; they never jump sideways.
       for(const q of boxes)if(x-w/2<q.right+6&&x+w/2+6>q.left&&y>q.top-7)y=q.top-7;
-      const elapsed=Math.min(80,now-(b.lastFrame??now));b.lastFrame=now;
-      b.y=b.y===undefined||reduceMotion?y:b.y+(y-b.y)*(1-Math.exp(-elapsed/90));
-      const opacity=Math.max(0,Math.min(1,(b.until-now)/3000,(b.y-8)/60));
+      b.rise=Math.max(b.rise||0,base-y);b.y=y;
+      const opacity=Math.max(0,Math.min(1,(b.until-now)/4000,(b.y-8)/60));
       b.el.hidden=b.y<0;b.el.setAttribute('aria-hidden',String(b.el.hidden));b.el.style.opacity=String(opacity);b.el.style.left=x+'px';b.el.style.top=b.y+'px';
       boxes.push({left:x-w/2,right:x+w/2,top:y-h,bottom:y});
     }
@@ -854,6 +855,7 @@
     const newProps=extractAtlas(propsV35,false,2,2);
     furniture.push(S.volume(document,newProps[0],.35,-.60),projectWall(newProps[1],76),S.volume(document,newProps[2],.34,-.50),newProps[3]);
     furniture.push(S.volume(document,extractAtlas(rouletteV1,false,1,1)[0],.60,-.60));
+    for(let type=80;type<=82;type++)furniture.push(window.HubPosters.sprite({type},C.TYPES[type]));
     petSheets=[catV27,dogV27,catGray,catTux,dogChocolate,dogBlack].map(img=>extractAtlas(img,true,4,3));
     buildAvatar(a,extractAtlas(parts,true,5,4));
     // Each head atlas declares which face/hair combinations it supplies.

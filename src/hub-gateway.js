@@ -1,6 +1,7 @@
 import {enabled,broadcaster,hubJSON,hubAuth,hubSession,sameOrigin} from './hub-auth.js';
 import {hubRewardAdmin} from './hub-reward-admin.js';
 import {sevenTvMap} from './chat.js';
+import {posterBytes} from './hub-posters.mjs';
 import {body} from './hub-world.mjs';
 export function world(env){return env.HUB_WORLD.get(env.HUB_WORLD.idFromName('minerarg-beta-v1'));}
 export async function handleHub(request,env,services={}){
@@ -18,6 +19,10 @@ export async function handleHub(request,env,services={}){
   if(route==='/emotes'&&request.method==='GET')return hubJSON({emotes:await sevenTvMap(env,{chat_7tv_enabled:true,kick_user_id:await broadcaster(env)})});
   if(route==='/admin/kick-rewards'&&auth.admin&&request.method==='GET')return hubJSON({rewards:await services.listRewards()});
   if(route==='/admin/credit-rewards'&&auth.admin&&['GET','POST'].includes(request.method))return hubRewardAdmin(request,env,services.kick);
+  if((route==='/posters'&&request.method==='GET')||(/^\/posters\/[0-4]$/.test(route)&&request.method==='PUT')||(/^\/posters\/image\/\d{1,30}\/[0-4]$/.test(route)&&request.method==='GET')){
+   const headers={'X-Hub-Identity':JSON.stringify(auth),'Content-Type':'image/jpeg'};
+   return world(env).fetch(new Request('https://hub'+route,{method:request.method,headers,body:request.method==='PUT'?await posterBytes(request):undefined}));
+  }
   const allowed={'admin/giveaway':['GET','POST'],groups:['GET','POST'],profile:['PUT'],state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'box/buy':['POST'],'roulette/open':['POST'],'roulette/bet':['POST'],'admin/credits':['GET','PUT'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
   if(!allowed[route.slice(1)]?.includes(request.method))return hubJSON({error:'No disponible.'},404);
   if(route==='/ws'&&!sameOrigin(request,env))return hubJSON({error:'Origen no permitido.'},403);

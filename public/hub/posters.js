@@ -1,0 +1,28 @@
+(()=>{'use strict';
+ const $=id=>document.getElementById(id),bridge=()=>window.MINER_HUB_ONLINE;
+ let room=null,slots=Array(5).fill(null),ownSlots=Array(5).fill(null),choose=null,editingSlot=0,busy=false,dialogGeneration=0;
+ const images=new Map(),sprites=new Map();
+ const url=(owner,entry)=>'/api/hub/posters/image/'+owner+'/'+entry.slot+'?v='+entry.version;
+ async function request(path,options){const response=await fetch('/api/hub/posters'+path,{credentials:'same-origin',...options});const result=await response.json();if(!response.ok)throw Error(result.error||'No pudimos guardar la imagen.');return result;}
+ function receive(next){slots=Array.from({length:5},(_,i)=>next?.[i]||null);images.clear();sprites.clear();if(room?.ownerId===bridge()?.user?.id){ownSlots=slots;if($('hubPostersDialog').open)render();}}
+ function art(entry){if(!entry||!room)return null;const key=url(room.ownerId,entry);if(!images.has(key)){const image=new Image();images.set(key,image);image.onload=()=>{if(images.get(key)===image)sprites.clear();};image.src=key;}const image=images.get(key);return image.complete&&image.naturalWidth?image:null;}
+ function sprite(item,type){
+  const entry=Number.isInteger(item.posterSlot)?slots[item.posterSlot]:null,image=art(entry),left=item.wallSide==='left',key=type.sprite+':'+(entry?.slot??'-')+':'+(entry?.version||0)+':'+!!image+':'+left;
+  if(sprites.has(key))return sprites.get(key);
+  const S=window.VeredaScenery,cv=document.createElement('canvas');cv.width=512;cv.height=Math.round(512/type.ratio);const k=cv.getContext('2d');
+  k.fillStyle='#292827';k.fillRect(0,0,cv.width,cv.height);k.fillStyle='#ddd7cb';k.fillRect(7,7,cv.width-14,cv.height-14);k.fillStyle='#f8f5ef';k.fillRect(12,12,cv.width-24,cv.height-24);
+  if(image){const scale=Math.min((cv.width-30)/image.width,(cv.height-30)/image.height);k.save();if(left){k.translate(cv.width,0);k.scale(-1,1);}k.drawImage(image,(cv.width-image.width*scale)/2,(cv.height-image.height*scale)/2,image.width*scale,image.height*scale);k.restore();}
+  else {k.fillStyle='#c6c0b7';k.beginPath();k.arc(cv.width*.65,cv.height*.34,Math.min(cv.width,cv.height)*.075,0,Math.PI*2);k.fill();k.beginPath();k.moveTo(40,cv.height-40);k.lineTo(cv.width*.38,cv.height*.42);k.lineTo(cv.width*.58,cv.height*.68);k.lineTo(cv.width*.73,cv.height*.52);k.lineTo(cv.width-40,cv.height-40);k.fill();}
+  const result=S.wall(document,S.sprite(cv),type);sprites.set(key,result);return result;
+ }
+ function render(){const list=$('hubPosterSlots');list.replaceChildren();ownSlots.forEach((entry,index)=>{const card=document.createElement('div');card.className='hub-poster-slot';const pick=document.createElement('button');pick.className='hub-poster-preview';pick.disabled=busy||!entry;pick.setAttribute('aria-label',entry?'Usar imagen '+(index+1):'Espacio '+(index+1)+' vacío');if(entry){const image=document.createElement('img');image.src=url(bridge().user.id,entry);image.alt='Imagen '+(index+1);pick.append(image);}else pick.textContent=String(index+1);pick.onclick=()=>{choose?.(index);$('hubPostersDialog').close();};const upload=document.createElement('button');upload.className='secondary-button';upload.textContent=entry?'Reemplazar':'Subir imagen';upload.disabled=busy;upload.onclick=()=>{editingSlot=index;$('hubPosterFile').value='';$('hubPosterFile').click();};card.append(pick,upload);list.append(card);});}
+ async function open(item,callback){if(!bridge().canEdit())return;const token=++dialogGeneration;choose=callback;$('hubPosterStatus').textContent='Cargando…';ownSlots=Array(5).fill(null);render();$('hubPostersDialog').showModal();try{const result=await request('');if(token!==dialogGeneration)return;ownSlots=result.slots;render();$('hubPosterStatus').textContent='';}catch(e){$('hubPosterStatus').textContent=e.message;}}
+ async function compress(file){
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('Elegí un JPG, PNG o WebP de hasta 10 MB.');
+  const image=await createImageBitmap(file,{resizeWidth:1024,resizeQuality:'high'});try{const scale=Math.min(1,1024/image.width,1024/image.height),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(image.width*scale));cv.height=Math.max(1,Math.round(image.height*scale));const k=cv.getContext('2d');k.fillStyle='#fff';k.fillRect(0,0,cv.width,cv.height);k.drawImage(image,0,0,cv.width,cv.height);
+   for(const quality of [.87,.74,.6,.45]){const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',quality));if(blob&&blob.size<=512*1024)return blob;}throw Error('No pudimos comprimir esta imagen. Probá otra.');
+  }finally{image.close();}
+ }
+ $('hubPosterFile').onchange=async()=>{const file=$('hubPosterFile').files?.[0];if(!file||busy||!bridge().canEdit())return;busy=true;render();$('hubPosterStatus').textContent='Preparando imagen…';try{const blob=await compress(file);$('hubPosterStatus').textContent='Guardando…';const result=await request('/'+editingSlot,{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:blob});ownSlots=result.slots;if(room?.ownerId===bridge().user.id)receive(result.slots);$('hubPosterStatus').textContent='Lista. Tocá la imagen para ponerla en el póster.';}catch(e){$('hubPosterStatus').textContent=e.message;}finally{busy=false;render();}};
+ window.HubPosters={sprite,open,receive,room(next,nextSlots){room=next;dialogGeneration++;$('hubPostersDialog').close();choose=null;receive(nextSlots);}};
+})();

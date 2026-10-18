@@ -134,7 +134,10 @@
     {name:'Cuadro Lunar',w:1,h:1,width:48,mountH:48,category:'wall',sprite:76,wall:true},
     {name:'Cafetera Crema',w:1,h:1,width:34,category:'deco',sprite:77,tabletop:true},
     {name:'Globo Viajero',w:1,h:1,width:29,category:'deco',sprite:78,tabletop:true},
-    {name:'Ruleta',w:2,h:2,width:108,category:'deco',sprite:79,interaction:'roulette'}
+    {name:'Ruleta',w:2,h:2,width:108,category:'deco',sprite:79,interaction:'roulette'},
+    {name:'Póster personal · Cuadrado',w:1,h:1,width:64,mountH:64,category:'wall',sprite:80,wall:true,poster:true,ratio:1},
+    {name:'Póster personal · Horizontal',w:1,h:1,width:88,mountH:49.5,category:'wall',sprite:81,wall:true,poster:true,ratio:16/9},
+    {name:'Póster personal · Vertical',w:1,h:1,width:45,mountH:80,category:'wall',sprite:82,wall:true,poster:true,ratio:9/16}
   ];
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
@@ -279,6 +282,7 @@
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type])return null;
       const item={id:raw.id,type:raw.type,x:raw.x,y:raw.y,flip:legacy?false:!!raw.flip};
       if(raw.rotation!==undefined){if(!Number.isInteger(raw.rotation)||raw.rotation<0||raw.rotation>3)return null;item.rotation=raw.rotation;item.flip=!!(raw.rotation%2);}
+      if(TYPES[item.type].poster&&raw.posterSlot!==undefined){if(!Number.isInteger(raw.posterSlot)||raw.posterSlot<0||raw.posterSlot>4)return null;item.posterSlot=raw.posterSlot;}
       if(TYPES[item.type].finishes&&raw.finish===1)item.finish=1;
       if(TYPES[item.type].interaction==='light'&&typeof raw.on==='boolean')item.on=raw.on;
       if(TYPES[item.type].interaction==='curtain'&&typeof raw.closed==='boolean')item.closed=raw.closed;
@@ -305,6 +309,7 @@
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type]||!Number.isInteger(raw.x)||!Number.isInteger(raw.y))return null;
       const item={id:raw.id,type:raw.type,x:raw.x,y:raw.y,flip:!!raw.flip};
       if(raw.rotation!==undefined){if(!Number.isInteger(raw.rotation)||raw.rotation<0||raw.rotation>3)return null;item.rotation=raw.rotation;item.flip=!!(raw.rotation%2);}
+      if(TYPES[item.type].poster&&raw.posterSlot!==undefined){if(!Number.isInteger(raw.posterSlot)||raw.posterSlot<0||raw.posterSlot>4)return null;item.posterSlot=raw.posterSlot;}
       if(TYPES[item.type].finishes&&raw.finish===1)item.finish=1;
       if(TYPES[item.type].interaction==='light'&&typeof raw.on==='boolean')item.on=raw.on;
       if(TYPES[item.type].interaction==='curtain'&&typeof raw.closed==='boolean')item.closed=raw.closed;

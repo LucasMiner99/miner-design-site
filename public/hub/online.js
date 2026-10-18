@@ -27,7 +27,8 @@
  function connect(){if(stopped)return;status('Conectando…');socket=new WebSocket(location.origin.replace(/^http/,'ws')+'/api/hub/ws');
   socket.onopen=()=>{connected=true;reconnect=0;affordances();status('Conectado');};
   socket.onmessage=e=>{if(e.data==='pong')return;let m;try{m=JSON.parse(e.data);}catch{return;}
-   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);window.HubMedia?.room(room,m.media);window.HubRoulette?.close();}
+   if(m.type==='room'){room=m.room;if(room.ownerId===account.user.id)account.room=room;game.room(room.scene,m.position);game.players(m.players);affordances();status('Sala de '+room.name);window.HubMedia?.room(room,m.media);window.HubPosters?.room(room,m.posters);window.HubRoulette?.close();}
+   else if(m.type==='posters'&&m.roomId===room?.id)window.HubPosters?.receive(m.slots);
    else if(m.type==='trade')window.HubTrade?.receive(m);
    else if(m.type==='media'&&m.roomId===room?.id)window.HubMedia?.receive(m.media);
    else if(m.type==='presence')game.players(m.players);
