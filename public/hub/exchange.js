@@ -13,14 +13,14 @@
   for(const item of items){
    const button=document.createElement('button');button.type='button';button.className='hub-exchange-item';button.dataset.complete=String(item.complete);button.setAttribute('aria-pressed','false');
    const cv=document.createElement('canvas');cv.width=120;cv.height=110;paint(cv.getContext('2d'),item,0,0,120,110);
-   const name=document.createElement('strong');name.textContent=item.name;const detail=document.createElement('small');detail.textContent=item.complete?'Categoría completa':labels[item.kind]+' · ×'+item.count;
+   const name=document.createElement('strong');name.textContent=item.name;const detail=document.createElement('small');detail.textContent=item.complete?'Categoría completa':labels[item.kind]+' · '+item.available+' para cambiar';
    button.append(cv,name,detail);button.onclick=()=>{if(busy||spin||pending||item.complete)return;selected=item;for(const b of list.children)b.setAttribute('aria-pressed',String(b===button));status('Entregás 1 '+item.name+'. Conservás al menos una copia.');controls();};list.append(button);
   }
   $('hubExchangeEmpty').hidden=!!items.length;controls();
  }
  async function load(token){
   busy=true;controls();status('Buscando repetidos…');
-  try{const data=await bridge().exchange('open',table);if(token!==generation)return;items=data.items;render();status(pending?'Tenés un canje pendiente. Recuperalo sin gastar otra copia.':items.length?'Elegí el repetido que querés cambiar.':'Solo aparecen copias obtenidas, libres y que todavía no hayas canjeado.');}
+  try{const data=await bridge().exchange('open',table);if(token!==generation)return;items=data.items;render();status(pending?'Tenés un canje pendiente. Recuperalo sin gastar otra copia.':items.length?'Elegí el repetido que querés cambiar.':'Necesitás una copia extra libre. Los premios de esta máquina no se pueden volver a canjear acá.');}
   catch(e){if(token===generation){table=null;status(e.message);}}
   finally{busy=false;if(token===generation)controls();}
  }

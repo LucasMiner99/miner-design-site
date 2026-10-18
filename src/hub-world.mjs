@@ -3,6 +3,7 @@ import {giveaway} from './hub-giveaway.mjs';
 import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
 import {openRoulette,betRoulette} from './hub-roulette.mjs';
 import {openExchange,exchangeItem} from './hub-exchange.mjs';
+import {migrateExchangeProvenance} from './hub-item-provenance.mjs';
 import {C,P,R,CATALOG} from './hub-rules.mjs';
 import {handleTrade,cancelTrade} from './hub-trades.mjs';
 import {handleMedia,mediaSnapshot,MEDIA_TYPES} from './hub-media.mjs';
@@ -44,7 +45,7 @@ export function currentPosition(p,now=Date.now()){
 }
 export function clipChat(value){let result='',left=120;for(const token of String(value||'').trim().slice(0,2000).match(/\[emote:\d{1,20}:[^\]\r\n]{1,80}\]|[\s\S]/gu)||[]){if(!left--)break;result+=token;}return result;}
 export class HubWorld {
- constructor(ctx,env){this.ctx=ctx;this.env=env;if(typeof WebSocketRequestResponsePair!=='undefined')ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping','pong'));}
+ constructor(ctx,env){this.ctx=ctx;this.env=env;ctx.blockConcurrencyWhile(()=>migrateExchangeProvenance(ctx.storage));if(typeof WebSocketRequestResponsePair!=='undefined')ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping','pong'));}
  async fetch(request){
   return this.ctx.blockConcurrencyWhile(async()=>{try{return await this.handle(request);}catch(e){console.error('Hub:',e.status?e.message:'operation failed');return reply({error:e.status?e.message:'No se pudo guardar. Intentá otra vez.'},e.status||500);}});
  }

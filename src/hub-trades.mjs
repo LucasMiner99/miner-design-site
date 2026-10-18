@@ -1,4 +1,5 @@
 import {balance} from './hub-economy.mjs';
+import {transferItemCopies} from './hub-item-provenance.mjs';
 import {C,CATALOG} from './hub-rules.mjs';
 const catalog=new Map(CATALOG.map(i=>[i.id,i]));
 const fail=message=>{throw Object.assign(Error(message),{status:400});};
@@ -54,7 +55,7 @@ export async function handleTrade(world,ws,b){
    for(let n=0;n<2;n++){const after=balance(users[n])-t.credits[n]+t.credits[1-n];if(balance(users[n])<t.credits[n]||after>2000000000){t.accepted=[false,false];t.revision++;await storage.put('trade:'+t.id,t);await publish(world,t);fail('El saldo cambió o supera el límite. Revisen los créditos ofrecidos.');}}
    for(let n=0;n<2;n++){users[n].credits=balance(users[n])-t.credits[n]+t.credits[1-n];users[n].walletVersion=(users[n].walletVersion||0)+1;}
    t.adminGrants=t.users.map(id=>adminAccess(world,id));
-   for(let n=0;n<2;n++)for(const [id,count] of Object.entries(t.offers[n])){if(!t.adminGrants[n])users[n].inventory[id]-=count;users[1-n].inventory[id]=(users[1-n].inventory[id]||0)+count;users[1-n].collected[id]=true;}
+   t.exchangeLocked=transferItemCopies(users,t.offers,t.adminGrants);
    t.status='completed';t.completedAt=Date.now();t.message='¡Intercambio completado!';
    await storage.transaction(async tx=>{await tx.put({['user:'+users[0].id]:users[0],['user:'+users[1].id]:users[1],['trade:'+t.id]:t});await tx.delete(t.users.map(id=>'active-trade:'+id));});
    for(const id of t.users)await world.notifyUser(id);await publish(world,t);return;

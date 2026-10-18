@@ -20,13 +20,29 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   const responses=await Promise.all([req('2','exchange/swap','POST',{...input,rewardId:'object:999',userId:'3',count:99}),req('2','exchange/swap','POST',input)]);assert(responses.every(r=>r.status===200));
   const data=await responses[0].json();assert.equal((await responses[1].json()).receipt.rewardId,data.receipt.rewardId);assert(!['object:0','object:1','object:2','object:999'].includes(data.receipt.rewardId));
   let current=await state('2');assert.equal(current.inventory.find(i=>i.id==='object:0').count,3);assert.equal(current.inventory.find(i=>i.id===data.receipt.rewardId).count,1);assert.equal(current.credits,0);assert(!(await state('3')).inventory.some(i=>i.id===data.receipt.rewardId));
-  assert.equal((await req('2','exchange/swap','POST',{...input,requestId:crypto.randomUUID()})).status,409,'Limit survives fresh request IDs');
+  for(let i=0;i<2;i++)assert.equal((await req('2','exchange/swap','POST',{...input,requestId:crypto.randomUUID()})).status,200,'Each ordinary duplicate may be consumed');
+  assert.equal((await req('2','exchange/swap','POST',{...input,requestId:crypto.randomUUID()})).status,409,'Must retain the final copy');
   const concurrent=await Promise.all([0,1,2].map(()=>req('2','exchange/swap','POST',{...table,sourceId:'object:1',requestId:crypto.randomUUID()})));assert.equal(concurrent.filter(r=>r.status===200).length,1,'Competing requests consume only one duplicate');
   current=await state('2');assert.equal(current.inventory.find(i=>i.id==='object:1').count,1);assert.equal((await req('3','exchange/swap','POST',{...table,sourceId:'object:2',requestId:crypto.randomUUID()})).status,409,'Identity cannot be forged');
+  // A machine prize keeps its origin when gifted, even after being mixed with fresh copies.
+  const prize=data.receipt.rewardId;
+  await send('2','invite',{target:'3'});await send('3','join');await send('2','offer',{items:[{id:prize,count:1}],credits:0});await send('2','accept');await send('3','accept');assert.equal(latest('3').trade.status,'completed');
+  await send('3','invite',{target:'1'});await send('1','join');await send('1','offer',{items:[{id:prize,count:2},{id:'object:0',count:1}],credits:0});await send('1','accept');await send('3','accept');assert.equal(latest('3').trade.status,'completed');
+  let giftChoices=(await(await req('3','exchange/open','POST',table)).json()).items;assert.equal(giftChoices.find(i=>i.id===prize).available,2);
+  for(let i=0;i<2;i++)assert.equal((await req('3','exchange/swap','POST',{...table,sourceId:prize,requestId:crypto.randomUUID()})).status,200,'Only two newly granted copies exchangeable');
+  assert.equal((await req('3','exchange/swap','POST',{...table,sourceId:prize,requestId:crypto.randomUUID()})).status,409);
+  // Gift the marked copy back alongside a fresh duplicate of a previously consumed type.
+  await new Promise(r=>setTimeout(r,5100));
+  await send('3','invite',{target:'2'});await send('2','join');await send('3','offer',{items:[{id:prize,count:1},{id:'object:0',count:1}],credits:0});await send('3','accept');await send('2','accept');assert.equal(latest('2').trade.status,'completed');
+  assert.equal((await req('2','exchange/swap','POST',{...table,sourceId:'object:0',requestId:crypto.randomUUID()})).status,200,'Same type available again after receiving another ordinary copy');
+  await send('1','invite',{target:'2'});await send('2','join');await send('1','offer',{items:[{id:prize,count:1}],credits:0});await send('1','accept');await send('2','accept');assert.equal(latest('2').trade.status,'completed');
+  giftChoices=(await(await req('2','exchange/open','POST',table)).json()).items;assert.equal(giftChoices.find(i=>i.id===prize).available,1,'Returned marked prize remains ineligible while the fresh unit is eligible');
+  assert.equal((await req('2','exchange/swap','POST',{...table,sourceId:prize,requestId:crypto.randomUUID()})).status,200);
+  assert.equal((await req('2','exchange/swap','POST',{...table,sourceId:prize,requestId:crypto.randomUUID()})).status,409);
   // The machine must still exist when submitting, not just when opening its menu.
   const fresh=await state('1');fresh.room.scene.items=[];await req('1','room','PUT',{scene:fresh.room.scene,revision:fresh.room.revision});
   assert.equal((await req('2','exchange/swap','POST',{...table,sourceId:'object:2',requestId:crypto.randomUUID()})).status,409);assert.equal((await state('2')).inventory.find(i=>i.id==='object:2').count,2);
   assert.equal((await req('2','exchange/swap','POST',input)).status,200,'Successful receipt remains recoverable after machine removal');
-  console.log('PASS exchange real Worker + D1 + DO/SQLite + WebSocket: authentication/origin, machine presence, admin placement, earned duplicates, forged prize/identity, atomic concurrent canjes, replay recovery and persistent per-type limits.');
+  console.log('PASS exchange real Worker + D1 + DO/SQLite + WebSocket: authentication/origin, machine presence, earned duplicates, forged prize/identity, atomic concurrent canjes, replay, per-copy limits, gifts/return trips and newly acquired copies.');
  }finally{for(const c of Object.values(clients))c.ws.close();await mf.dispose();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
