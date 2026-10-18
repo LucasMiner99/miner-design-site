@@ -1,0 +1,701 @@
+{
+  "format": "lossless WebP",
+  "pixelVerification": "Exact visible RGBA pixels, original resolution and alpha",
+  "before": 131966153,
+  "after": 71253944,
+  "images": [
+    {
+      "file": "aquarium-v20.png",
+      "before": 1727619,
+      "after": 762986,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "avatar-parts.png",
+      "before": 764098,
+      "after": 528926,
+      "width": 1402,
+      "height": 1122
+    },
+    {
+      "file": "avatar.png",
+      "before": 993968,
+      "after": 702466,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "back-v28.png",
+      "before": 1790339,
+      "after": 577736,
+      "width": 1024,
+      "height": 1536
+    },
+    {
+      "file": "body-coat-v22.png",
+      "before": 1130142,
+      "after": 800516,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-hood-v22.png",
+      "before": 1018479,
+      "after": 735366,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-jacket-v15.png",
+      "before": 1027567,
+      "after": 718616,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-knit-v21.png",
+      "before": 1056472,
+      "after": 760382,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-lila-v12.png",
+      "before": 982855,
+      "after": 677356,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-night-v18.png",
+      "before": 961394,
+      "after": 663226,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-salvia-v12.png",
+      "before": 1006210,
+      "after": 682802,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-shirt-v15.png",
+      "before": 1030834,
+      "after": 697854,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-stripes-v16.png",
+      "before": 1039055,
+      "after": 722844,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-varsity-v16.png",
+      "before": 1048301,
+      "after": 735590,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "body-vest-v18.png",
+      "before": 1028534,
+      "after": 705650,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "bonsai-v19.png",
+      "before": 1470802,
+      "after": 504910,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "cart-v19.png",
+      "before": 1591456,
+      "after": 553272,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "cat-gray-v28.png",
+      "before": 927242,
+      "after": 578250,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "cat-tux-v28.png",
+      "before": 764477,
+      "after": 462442,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "cat-v27.png",
+      "before": 930528,
+      "after": 652858,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "chain-v24.png",
+      "before": 452504,
+      "after": 260104,
+      "width": 2172,
+      "height": 724
+    },
+    {
+      "file": "chains-v33.png",
+      "before": 848742,
+      "after": 544138,
+      "width": 1448,
+      "height": 1086
+    },
+    {
+      "file": "chair-backrest.png",
+      "before": 1728729,
+      "after": 675244,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "chest-v20.png",
+      "before": 1167942,
+      "after": 705892,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "dog-black-v28.png",
+      "before": 1087247,
+      "after": 656832,
+      "width": 1246,
+      "height": 1263
+    },
+    {
+      "file": "dog-chocolate-v28.png",
+      "before": 1063530,
+      "after": 711142,
+      "width": 1246,
+      "height": 1263
+    },
+    {
+      "file": "dog-v27.png",
+      "before": 1160953,
+      "after": 799506,
+      "width": 1246,
+      "height": 1263
+    },
+    {
+      "file": "door-v32.png",
+      "before": 1551739,
+      "after": 994060,
+      "width": 971,
+      "height": 1619
+    },
+    {
+      "file": "doors-v33.png",
+      "before": 1647341,
+      "after": 611534,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "fish-v20.png",
+      "before": 1508179,
+      "after": 498568,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-cohesive.png",
+      "before": 1484993,
+      "after": 991528,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "furniture-new-v15.png",
+      "before": 1929669,
+      "after": 693594,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-new-v16.png",
+      "before": 1920277,
+      "after": 694800,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-v21.png",
+      "before": 1947863,
+      "after": 711780,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-v22.png",
+      "before": 1781555,
+      "after": 616950,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-v23.png",
+      "before": 1852158,
+      "after": 696706,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-v28.png",
+      "before": 1910488,
+      "after": 680352,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "furniture-v30.png",
+      "before": 1355028,
+      "after": 852100,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "furniture-v35.png",
+      "before": 1975482,
+      "after": 739076,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "gaming-v27.png",
+      "before": 1177472,
+      "after": 773290,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "heads-beard-v34.png",
+      "before": 2110853,
+      "after": 1009066,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "heads-glasses-v15.png",
+      "before": 1535141,
+      "after": 1069108,
+      "width": 1402,
+      "height": 1122
+    },
+    {
+      "file": "heads-hats-v22.png",
+      "before": 1944148,
+      "after": 1335556,
+      "width": 887,
+      "height": 1774
+    },
+    {
+      "file": "heads-laugh-v16.png",
+      "before": 1582468,
+      "after": 1093378,
+      "width": 1402,
+      "height": 1122
+    },
+    {
+      "file": "heads-moustache-v34.png",
+      "before": 2109107,
+      "after": 1006746,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "heads-new-v15.png",
+      "before": 1478801,
+      "after": 1048148,
+      "width": 1402,
+      "height": 1122
+    },
+    {
+      "file": "heads-new-v16.png",
+      "before": 2354433,
+      "after": 1217180,
+      "width": 1024,
+      "height": 1536
+    },
+    {
+      "file": "heads-new-v18.png",
+      "before": 1986803,
+      "after": 1325200,
+      "width": 887,
+      "height": 1774
+    },
+    {
+      "file": "heads-peach-v21.png",
+      "before": 1910893,
+      "after": 1295526,
+      "width": 1230,
+      "height": 1278
+    },
+    {
+      "file": "heads-sunglasses-v34.png",
+      "before": 2071280,
+      "after": 975392,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "heads-unified.png",
+      "before": 1364420,
+      "after": 982376,
+      "width": 1402,
+      "height": 1122
+    },
+    {
+      "file": "lights-v27.png",
+      "before": 1805525,
+      "after": 627736,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "pants-baggy-v24.png",
+      "before": 569931,
+      "after": 345964,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "pants-cross-v24.png",
+      "before": 763132,
+      "after": 460678,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "props-v35.png",
+      "before": 1761694,
+      "after": 649196,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "radio-v17.png",
+      "before": 1691900,
+      "after": 670534,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "roulette-v1.png",
+      "before": 231198,
+      "after": 160984,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "file": "shoes-laces-v24.png",
+      "before": 754221,
+      "after": 481286,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "shoes-panel-v24.png",
+      "before": 682773,
+      "after": 433360,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "shoes-strap-v24.png",
+      "before": 767781,
+      "after": 471042,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "shoes-tall-v24.png",
+      "before": 788425,
+      "after": 503830,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "sofa-backrest.png",
+      "before": 1552661,
+      "after": 589876,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "upper-cream-v28.png",
+      "before": 927214,
+      "after": 621112,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "upper-cross-v24.png",
+      "before": 672137,
+      "after": 454574,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "upper-night-v24.png",
+      "before": 882268,
+      "after": 603790,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "upper-tank-v24.png",
+      "before": 503386,
+      "after": 332442,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "upper-wine-v28.png",
+      "before": 749195,
+      "after": 537902,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "upper-zip-v24.png",
+      "before": 676997,
+      "after": 446722,
+      "width": 1086,
+      "height": 1448
+    },
+    {
+      "file": "v29-darkaux.png",
+      "before": 1994457,
+      "after": 1104728,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkbasic.png",
+      "before": 1482027,
+      "after": 943612,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "v29-darkbench-clean.png",
+      "before": 1971040,
+      "after": 794990,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkcafe.png",
+      "before": 1938551,
+      "after": 986196,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkcart-clean.png",
+      "before": 1526422,
+      "after": 548454,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkchair.png",
+      "before": 1690075,
+      "after": 689004,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkchest.png",
+      "before": 1102331,
+      "after": 644514,
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "file": "v29-darkgaming.png",
+      "before": 1124885,
+      "after": 712134,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "v29-darkkitchen-clean.png",
+      "before": 1613014,
+      "after": 538666,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darkmusic.png",
+      "before": 1765866,
+      "after": 714952,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darknew.png",
+      "before": 1900602,
+      "after": 791516,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-darksofa-clean.png",
+      "before": 1886570,
+      "after": 850636,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-tank.png",
+      "before": 1680711,
+      "after": 730588,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "v29-wall.png",
+      "before": 1745895,
+      "after": 1188072,
+      "width": 1448,
+      "height": 1086
+    },
+    {
+      "file": "v29-windows.png",
+      "before": 2042484,
+      "after": 1179082,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "walk-classic-v15.png",
+      "before": 937581,
+      "after": 627050,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "walk-knit-v21.png",
+      "before": 1084903,
+      "after": 753402,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "walk-new-v15.png",
+      "before": 934539,
+      "after": 642102,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "walk-new-v16.png",
+      "before": 982069,
+      "after": 673992,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "walk-new-v18.png",
+      "before": 923327,
+      "after": 622264,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "walk-outfits-v22-fixed.png",
+      "before": 1021579,
+      "after": 708910,
+      "width": 1774,
+      "height": 887
+    },
+    {
+      "file": "wall-decor-v18.png",
+      "before": 2094927,
+      "after": 804826,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "wall-states-v20.png",
+      "before": 1925311,
+      "after": 742224,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "wall-v27.png",
+      "before": 1920094,
+      "after": 704484,
+      "width": 1536,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-0.png",
+      "before": 1180203,
+      "after": 841702,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-1.png",
+      "before": 1189471,
+      "after": 862170,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-2.png",
+      "before": 1169044,
+      "after": 859926,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-3.png",
+      "before": 1138157,
+      "after": 820142,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-4.png",
+      "before": 871172,
+      "after": 570644,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-5.png",
+      "before": 999353,
+      "after": 688150,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "wardrobe-cache-v32-6.png",
+      "before": 58445,
+      "after": 34864,
+      "width": 1024,
+      "height": 1024
+    }
+  ]
+}

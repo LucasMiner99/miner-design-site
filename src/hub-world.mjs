@@ -1,3 +1,4 @@
+import {giveaway} from './hub-giveaway.mjs';
 import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
 import {openRoulette,betRoulette} from './hub-roulette.mjs';
 import {C,P,R,CATALOG} from './hub-rules.mjs';
@@ -88,6 +89,7 @@ export class HubWorld {
    server.serializeAttachment({user:auth,appearance:u.appearance,petName:u.petName||'',group:groupBadge(await userGroup(this,u)),roomId:null,position:{from:{x:1.5,y:1.5},path:[],at:Date.now()},rateAt:0,rateCount:0,lastChat:0});await this.join(server,u.id);
    return new Response(null,{status:101,webSocket:client});
   }
+  if(path==='/admin/giveaway'&&['GET','POST'].includes(request.method))return reply(await giveaway(this,auth,request.method==='POST'?await body(request,16000):null));
   if(path==='/groups'){if(request.method==='GET')return reply(await groupState(this,u));if(request.method==='POST')return reply(await handleGroup(this,u,await body(request,2048)));}
   if(path==='/profile'&&request.method==='PUT'){u.petName=profileText((await body(request,2048)).petName);await this.ctx.storage.put('user:'+u.id,u);await refreshProfiles(this,[u.id]);return reply(await this.state(u,auth.admin));}
   if(path==='/look'&&request.method==='PUT'){

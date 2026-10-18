@@ -1,0 +1,19 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require('esbuild');
+(async()=>{
+ const {chooseGiveaway,giveawayNames}=await import('../src/hub-giveaway.mjs');let draws=[4294967295,4];assert.equal(chooseGiveaway(3,()=>draws.shift()),1);assert.equal(draws.length,0);assert.deepEqual(giveawayNames([' Ana ','ana','Luis']),['Ana','Luis']);assert.throws(()=>giveawayNames(['A','a']));
+ const site=path.join(__dirname,'..');await esbuild.build({entryPoints:[site+'/src/index.js'],outfile:site+'/.test-build/giveaway-test.mjs',bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers']});
+ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'giveaway-test',modules:true,scriptPath:site+'/.test-build/giveaway-test.mjs',compatibilityDate:'2026-06-20',bindings:{HUB_ENABLED:'true',HUB_ORIGIN:'https://minerdesign.xyz'},d1Databases:['STREAMBOT_DB'],durableObjects:{HUB_WORLD:{className:'HubWorld',useSQLite:true},OVERLAY_ROOM:{className:'OverlayRoom',useSQLite:true}}}]}));
+ try{
+  const db=await mf.getD1Database('STREAMBOT_DB');await db.exec("CREATE TABLE streambot_settings(key TEXT PRIMARY KEY,value TEXT); INSERT INTO streambot_settings VALUES ('kick_user_id','1'),('kick_username','minerarg');");for(const sql of fs.readFileSync(site+'/hub-schema.sql','utf8').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+  const sessions={};for(const id of ['1','2','3']){sessions[id]=crypto.randomBytes(32).toString('base64url');await db.prepare('INSERT INTO hub_sessions VALUES(?,?,?,?)').bind(crypto.createHash('sha256').update(sessions[id]).digest('hex'),id,id==='2'?'Invitado':'minerarg',Date.now()+3600000).run();}
+  const req=(id,route,method='GET',body,headers={})=>mf.dispatchFetch('https://minerdesign.xyz/api/hub/'+route,{method,headers:{Cookie:'hub_session='+sessions[id],Origin:'https://minerdesign.xyz',...headers},body:body?JSON.stringify(body):undefined});
+  for(const id of ['1','2','3'])await req(id,'state');
+  assert.equal((await req(null,'admin/giveaway')).status,401);for(const id of ['2','3']){assert.equal((await req(id,'admin/giveaway')).status,403);assert.equal((await req(id,'admin/giveaway','POST',{names:['A','B'],requestId:crypto.randomUUID(),admin:true})).status,403);}
+  assert.equal((await req('1','admin/giveaway','POST',{}, {Origin:'https://evil.test'})).status,403);
+  const response=await req('2','ws','GET',null,{Upgrade:'websocket'}),ws=response.webSocket;ws.accept();const list=await(await req('1','admin/giveaway')).json();assert.deepEqual(list.players,[{id:'2',name:'Invitado'}]);
+  for(const names of [[],['a'],['a','A'],Array(201).fill('a'),['a'.repeat(41),'b']])assert.equal((await req('1','admin/giveaway','POST',{names,requestId:crypto.randomUUID()})).status,400);
+  const input={names:[' Ana ','ana','Luis','Miner'],requestId:crypto.randomUUID(),winner:'hack',index:999};const [a,b]=await Promise.all([req('1','admin/giveaway','POST',input),req('1','admin/giveaway','POST',input)]);assert.equal(a.status,200);assert.equal(b.status,200);const result=await a.json();assert.deepEqual(result,await b.json());assert.deepEqual(result.names,['Ana','Luis','Miner']);assert.equal(result.winner,result.names[result.index]);assert(result.index>=0&&result.index<3);assert.equal((await req('1','admin/giveaway','POST',{...input,names:['A','B']})).status,409);
+  assert.equal((await req('1','admin/giveaway','POST',{...input,requestId:crypto.randomUUID()})).status,429);ws.close();console.log('PASS giveaway: trusted owner only, spoofed username/admin denied, CSRF, live participant list, normalization/deduplication, unbiased selection, concurrent request replay and throttling.');
+ }finally{await mf.dispose();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

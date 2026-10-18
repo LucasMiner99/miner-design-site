@@ -52,6 +52,7 @@
   const symmetricRotation=new Set([2,5,18,21,46]);
   let furniture=[],avatar=[],ready=false,drawBounds=[],history=[],pointer=null,toastTimer,saveTimer,latestTime=0,arrivalMarker=null,filter='all',walkSoundTimer=0;
   let petBounds=[],petPointer=null;
+  for(const key of Object.keys(ASSETS))ASSETS[key]=window.HUB_OPTIMIZED_ASSETS?.[ASSETS[key]]||ASSETS[key];
   let bubbles=[],soundEnabled=false,audioCtx=null,lastChatAt=0;const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const animationEnabled=true;let effectsTime=0,clockStill=Date.now();
 
@@ -98,8 +99,10 @@
   }
   function drawLook(){if(!draftLook||!wardrobe)return;const cv=$('lookPreview'),k=cv.getContext('2d'),s=wardrobe.frame(draftLook,previewDir);k.clearRect(0,0,cv.width,cv.height);k.imageSmoothingEnabled=true;k.drawImage(s.canvas,0,0,cv.width,cv.height);if(draftLook.pet&&petSheets[draftLook.pet-1]){const pet=petSheets[draftLook.pet-1][previewDir],w=cv.width*.24,h=w*pet.height/pet.width;k.drawImage(pet.canvas,cv.width*.03,cv.height*.89-h,w,h);}}
   function refreshMe(){thumbnail('avatarThumb');thumbnail('chatThumb');}
-  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,2000);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const group=id==='self'?online.user.group:actor.group;if(group&&window.HubGroups)name.prepend(window.HubGroups.badge(group));const content=document.createElement('span');if(window.HubEmotes)window.HubEmotes.render(content,text);else content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);bubbles.push({el,actorId:id,at:now,until:now+6500+Math.min(2500,text.length*25)});while(bubbles.filter(b=>b.actorId===id).length>3){const n=bubbles.findIndex(b=>b.actorId===id);bubbles[n].el.remove();bubbles.splice(n,1);}while(bubbles.length>24)bubbles.shift().el.remove();return true;}
-  function forgetActor(id){if(!people.remove(id))return false;for(const b of bubbles.filter(b=>b.actorId===id))b.el.remove();bubbles=bubbles.filter(b=>b.actorId!==id);renderPeople();savePeople();return true;}
+  const bubbleSizes=new ResizeObserver(entries=>{for(const entry of entries){const b=bubbles.find(b=>b.el===entry.target);if(b)b.measure=true;}});
+  function removeBubble(b){bubbleSizes.unobserve?.(b.el);b.el.remove();}
+  function messageFor(id,text){const actor=id==='self'?{name:online.user.name}:people.actors.get(id);if(!actor||typeof text!=='string'||!ready)return false;text=text.trim().slice(0,2000);if(!text)return false;const now=performance.now(),recent=bubbles.filter(b=>b.actorId===id);if(recent.length&&now-recent[recent.length-1].at<600)return false;const el=document.createElement('div');el.className='chat-bubble';const name=document.createElement('span');name.className='bubble-name';name.textContent=actor.name+': ';const group=id==='self'?online.user.group:actor.group;if(group&&window.HubGroups)name.prepend(window.HubGroups.badge(group));const content=document.createElement('span');if(window.HubEmotes)window.HubEmotes.render(content,text);else content.textContent=text;el.append(name,content);$('bubbleLayer').appendChild(el);const v=id==='self'?playerVisual():actorVisual(actor);bubbles.push({el,actorId:id,at:now,until:now+20000,anchor:{x:v.p.x,y:v.y},measure:true});bubbleSizes.observe(el);while(bubbles.length>60)removeBubble(bubbles.shift());return true;}
+  function forgetActor(id){if(!people.remove(id))return false;renderPeople();savePeople();return true;}
   $('spawnOne').addEventListener('click',()=>spawnVisitors(1));$('spawnThree').addEventListener('click',()=>spawnVisitors(3));
   $('pausePeople').addEventListener('click',()=>{people.pause(!people.isPaused());$('pausePeople').textContent=people.isPaused()?'Reanudar paseos':'Pausar paseos';$('pausePeople').setAttribute('aria-pressed',String(people.isPaused()));});
   $('peopleTab').addEventListener('click',()=>showPanel('people'));$('editMe').addEventListener('click',()=>openLook('self'));
@@ -218,9 +221,9 @@
     $('modeHint').textContent=mode==='walk'?(seatedId?'Estás sentado. Hacé clic en el piso para levantarte.':'Clic: caminar, sentarte, encender luces o abrir cortinas.'):(movingId!==null||pendingType!==null?(C.TYPES[pendingType??state.items.find(i=>i.id===movingId)?.type]?.wall?'Apuntá a una pared y elegí la altura. Esc cancela.':'Elegí dónde colocarlo. Esc cancela sin cambiar nada.'):'Seleccioná un mueble y apretá Mover.');
   }
   function standUp(){seatedId=null;pendingSeat=null;seatedSlot=0;pendingSeatSlot=0;modeHint();}
-  function setMode(next){if(next==='decorate'&&!online.canEdit()){toast('Podés decorar tu propia sala.');return;}if((seatedId||pendingSeat||pendingWalk)&&next==='decorate'){const seq=++walkSequence;if(online.send('stand',{seq}))pendingWalk=seq;}mode=next;standUp();cancelSelection();if(mode==='decorate'){player.path=[];player.moving=false;snapPlayer();}canvas.classList.toggle('decorating',mode==='decorate');$('walkBtn').classList.toggle('active',mode==='walk');$('decorateBtn').classList.toggle('active',mode==='decorate');$('walkBtn').setAttribute('aria-pressed',String(mode==='walk'));$('decorateBtn').setAttribute('aria-pressed',String(mode==='decorate'));modeHint();}
+  function setMode(next){if(next==='decorate'&&!online.canEdit()){toast('Podés decorar tu propia sala.');return;}if((seatedId||pendingSeat||pendingWalk)&&next==='decorate'){const seq=++walkSequence;if(online.send('stand',{seq}))pendingWalk=seq;}mode=next;standUp();cancelSelection(false);if(mode==='decorate'){player.path=[];player.moving=false;snapPlayer();}canvas.classList.toggle('decorating',mode==='decorate');$('walkBtn').classList.toggle('active',mode==='walk');$('walkBtn').setAttribute('aria-pressed',String(mode==='walk'));modeHint();}
   function snapPlayer(){const p=C.findFree(state.items,{x:Math.floor(player.x)+.5,y:Math.floor(player.y)+.5});player.x=p.x;player.y=p.y;}
-  function cancelSelection(){selectedId=null;pendingType=null;movingId=null;ghost=null;pointer=null;canvas.classList.remove('dragging','placing');$('contextBar').hidden=true;document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
+  function cancelSelection(walk=true){clearTimeout(objectClickTimer);objectClick=null;if(walk){mode='walk';canvas.classList.remove('decorating');$('walkBtn').classList.add('active');$('walkBtn').setAttribute('aria-pressed','true');}selectedId=null;pendingType=null;movingId=null;ghost=null;pointer=null;canvas.classList.remove('dragging','placing');$('contextBar').hidden=true;document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
   function selectItem(id){pendingType=null;movingId=null;ghost=null;canvas.classList.remove('placing');selectedId=id;const item=state.items.find(i=>i.id===id);if(!item)return cancelSelection();if(!C.TYPES[item.type].wall)loadRotation(item.type).catch(()=>{});$('selectedName').textContent=C.TYPES[item.type].name;updateInteraction(item);$('finishPicker').hidden=!C.TYPES[item.type].finishes;$('finishName').textContent=item.finish===1?'Nogal y negro':'Original';$('contextBar').hidden=false;$('moveBtn').disabled=false;const onWall=!!C.TYPES[item.type].wall;$('wallUpBtn').hidden=$('wallDownBtn').hidden=!onWall;$('flipBtn').title=onWall?'Cambiar de pared (R)':'Girar (R)';document.querySelectorAll('.item-card').forEach(b=>b.classList.remove('selected'));modeHint();}
   function cycleFinish(){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].finishes||movingId!==null)return;checkpoint();if(item.finish===1)delete item.finish;else item.finish=1;selectItem(item.id);save();}
   $('finishPrev').addEventListener('click',cycleFinish);$('finishNext').addEventListener('click',cycleFinish);
@@ -235,7 +238,7 @@
   }
   function placedCount(type){return [...state.items,...(state.unplacedItems||[])].filter(i=>i.type===type).length;}
   function availableCount(type){return Math.max(0,(rewardsUI?.count('self','object:'+type)||0)-placedCount(type));}
-  function startPlacement(type){if(!online.canEdit()){toast('Volvé a tu sala para colocar muebles.');return false;}if(!ready||availableCount(type)<1){toast('Ya colocaste todas tus unidades de este objeto.');return false;}if(state.items.length+(state.unplacedItems?.length||0)>=96){toast('Por ahora entran hasta 96 objetos. Guardá alguno para hacer lugar.');return;}if(mode!=='decorate')setMode('decorate');cancelSelection();pendingType=type;ghost=null;canvas.classList.add('placing');modeHint();document.querySelectorAll('.item-card').forEach(b=>b.classList.toggle('selected',+b.dataset.type===type));sfx('click');window.HubPanels?.close(false);return true;}
+  function startPlacement(type){if(!online.canEdit()){toast('Volvé a tu sala para colocar muebles.');return false;}if(!ready||availableCount(type)<1){toast('Ya colocaste todas tus unidades de este objeto.');return false;}if(state.items.length+(state.unplacedItems?.length||0)>=96){toast('Por ahora entran hasta 96 objetos. Guardá alguno para hacer lugar.');return;}if(mode!=='decorate')setMode('decorate');cancelSelection(false);pendingType=type;ghost=null;canvas.classList.add('placing');modeHint();document.querySelectorAll('.item-card').forEach(b=>b.classList.toggle('selected',+b.dataset.type===type));sfx('click');window.HubPanels?.close(false);return true;}
   function placementCandidate(tile,base){const t=C.dimensions(base);return {...base,x:Math.floor(tile.x)-Math.floor((t.w-1)/2),y:Math.floor(tile.y)-Math.floor((t.h-1)/2)};}
   function tryPlace(item,isNew){if(isNew&&availableCount(item.type)<1){toast('No quedan unidades disponibles.');cancelSelection();return false;}if(!item.parentId&&!C.TYPES[item.type].flat&&[...people.actors.values()].some(a=>C.covers(item,Math.floor(a.x),Math.floor(a.y)))){toast('Hay un visitante ahí. Elegí otro lugar o esperá a que pase.');return false;}if(!C.canPlace(state.items,item,player)){toast(C.TYPES[item.type].wall?'Buscá un espacio libre dentro de la pared. Podés cambiar la altura.':item.parentId?'Ese lugar de la mesa está ocupado. Probá el otro lado.':'Ahí no entra. Probá un espacio libre del piso.');return false;}const old=state.items.find(i=>i.id===item.id);if(old&&old.x===item.x&&old.y===item.y&&old.parentId===item.parentId&&old.slot===item.slot&&old.wallSide===item.wallSide&&old.wallU===item.wallU&&old.wallZ===item.wallZ){selectItem(item.id);return true;}checkpoint();C.moveItem(state.items,item);pendingType=null;ghost=null;selectItem(item.id);save();sfx('place');toast(item.parentId?'Listo, quedó apoyado.':'Listo. El mueble quedó en su lugar.');return true;}
   function removeSelected(){const item=state.items.find(i=>i.id===selectedId);if(!item)return;const children=state.items.filter(i=>i.parentId===item.id).length;checkpoint();state.items=C.removeItem(state.items,selectedId);cancelSelection();save();sfx('place');toast(children?'Guardamos el mueble y sus objetos. Siguen disponibles en el catálogo.':'Mueble guardado. Podés colocarlo de nuevo desde el inventario.');}
@@ -284,12 +287,23 @@
     return placementCandidate(tile,clean);
   }
   function tileInRoom(tile){return C.inside(tile.x,tile.y);}
+  let objectClick=null,objectClickTimer=null;
+  function walkClick(world,tile,hit){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type))){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);}
+  function positionObjectMenu(){if(selectedId===null||$('contextBar').hidden)return;const item=state.items.find(i=>i.id===selectedId);if(!item)return cancelSelection();const b=itemPosition(item),bar=$('contextBar'),w=bar.offsetWidth||320,h=bar.offsetHeight||50;const x=view.x+(b.x+b.w/2)*view.s,y=view.y+(b.y+b.h)*view.s+10;bar.style.left=Math.max(8,Math.min(view.w-w-8,x-w/2))+'px';bar.style.top=Math.max(8,Math.min(view.h-h-8,y))+'px';}
   canvas.addEventListener('pointerdown',e=>{
     if(!ready||e.button!==0)return;e.preventDefault();canvas.focus({preventScroll:true});const world=toWorld(e),tile=unproject(world.x,world.y),hit=hitAt(world);
-    if(mode==='walk'){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type))){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);return;}
+    if(mode==='walk'){
+      const person=characterAt(world,hit);
+      if(hit&&online.canEdit()&&!person&&!doorAtPointer(world)){
+        const now=performance.now();if(objectClick?.id===hit.id&&now-objectClick.at<420){clearTimeout(objectClickTimer);objectClick=null;setMode('decorate');selectItem(hit.id);positionObjectMenu();return;}
+        clearTimeout(objectClickTimer);objectClick={id:hit.id,at:now};objectClickTimer=setTimeout(()=>{objectClick=null;if(mode==='walk'&&state.items.includes(hit))walkClick(world,tile,hit);},420);return;
+      }
+      clearTimeout(objectClickTimer);objectClick=null;walkClick(world,tile,hit);return;
+    }
+    if(!online.canEdit()){cancelSelection();return;}
     if(pendingType!==null){const id=Math.max(0,...state.items.map(i=>i.id),...(state.unplacedItems||[]).map(i=>i.id))+1;tryPlace(candidateAt(world,{id,type:pendingType,flip:false}),true);return;}
     if(movingId!==null){tryPlace(candidateAt(world,state.items.find(i=>i.id===movingId)),false);return;}
-    if(hit)selectItem(hit.id);else cancelSelection();
+    if(hit)selectItem(hit.id);else {cancelSelection();if(tileInRoom(tile))movePlayer(tile);}
   });
   canvas.addEventListener('pointermove',e=>{
     if(!ready)return;const world=toWorld(e),tile=unproject(world.x,world.y);hoverTile=tileInRoom(tile)?{x:Math.floor(tile.x),y:Math.floor(tile.y)}:null;
@@ -511,7 +525,7 @@
     g.imageSmoothingEnabled=true;g.imageSmoothingQuality=backgroundQuality;drawBounds=[];actorBounds=[];
     state.items.filter(i=>C.TYPES[i.type].wall).forEach(i=>drawItem(i,ghost?.id===i.id ? .36 : 1));
     const flat=state.items.filter(i=>C.TYPES[i.type].flat).sort((a,b)=>a.x+a.y-b.x-b.y);flat.forEach(i=>drawItem(i,selectedId===i.id&&ghost?.id===i.id ? .5 : 1));
-    if(mode==='decorate')drawGrid();
+    if(movingId!==null||pendingType!==null)drawGrid();
     if(mode==='walk'&&hoverTile&&!C.blocked(state.items,hoverTile.x,hoverTile.y))poly(g,tilePoints(hoverTile.x,hoverTile.y),'#ffffff22','#ffffff66');
     if(arrivalMarker&&now-arrivalMarker.at<1400){const p=groundProject(arrivalMarker.x+.5,arrivalMarker.y+.5);g.save();g.globalAlpha=Math.max(0,1-(now-arrivalMarker.at)/1400);poly(g,[{x:p.x,y:p.y-9},{x:p.x+17,y:p.y},{x:p.x,y:p.y+9},{x:p.x-17,y:p.y}],'#ffffff2a','#eeeeee');g.restore();}
     if(mode==='decorate'&&selectedId!==null){const selected=state.items.find(i=>i.id===selectedId);if(selected&&!selected.parentId)poly(g,footprint(selected),'#ffffff45','#ffffff');}
@@ -524,14 +538,14 @@
     if(ghost&&mode==='decorate')drawItem(ghost,C.canPlace(state.items,ghost,player)?.75:.4,false);
     // A few unobtrusive dust motes catching the afternoon light.
     if(!reduceMotion&&animationEnabled){for(let j=0;j<7;j++){const x=250+Math.sin(now*.00012+j*1.8)*95+j*17,y=240+Math.sin(now*.00018+j)*60;rect(g,x,y,2,2,'#fff5c74d');}}
-    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scene,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scene,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);positionObjectMenu();
   }
   function drawNames(now){
     const label=$('petHoverLabel'),pet=petPointer&&petBounds.slice().reverse().find(b=>{const x=petPointer.x-b.x,y=petPointer.y-b.y;if(x<0||y<0||x>=b.w||y>=b.h||!b.pet.name)return false;return b.s.alpha[Math.floor(y/b.h*b.s.height)*b.s.width+Math.floor(x/b.w*b.s.width)]>48;});label.hidden=!pet;if(pet){label.textContent=pet.pet.name;label.style.left=(view.x+(pet.x+pet.w/2)*view.s)+'px';label.style.top=(view.y+pet.y*view.s-5)+'px';}
 
     ctx.save();ctx.font='900 12px "Zalando Sans Expanded", Arial';ctx.textAlign='center';ctx.textBaseline='middle';
     for(const v of [...actorBounds].sort((a,b)=>a.y-b.y)){
-      if(bubbles.some(b=>b.actorId===v.id&&now<b.until&&!b.el.hidden))continue;
+      if(bubbles.some(b=>b.actorId===v.id&&now-b.at<2500&&!b.el.hidden))continue;
       const name=v.id==='self'?online.user.name:people.actors.get(v.id)?.name;if(!name)continue;const group=v.id==='self'?online.user.group:people.actors.get(v.id)?.group;
       const x=view.x+v.p.x*view.s,y=view.y+v.y*view.s-7;if(x<0||x>view.w||y<0||y>view.h)continue;
       const nw=Math.min(230,ctx.measureText(name).width+14),tag=group?'['+group.name+']':'',tw=group?Math.min(130,ctx.measureText(tag).width+12):0,w=nw+(tw?tw+3:0),left=Math.max(3,Math.min(view.w-w-3,x-w/2)),nx=left+(tw?tw+3:0);
@@ -591,21 +605,21 @@
   function tick(now){const dt=Math.min((now-latestTime)/1000||0,.05);latestTime=now;if(ready){if(animationEnabled)effectsTime+=dt*1000;if(Math.abs(targetZoom-zoom)>.0001){zoom=reduceMotion?targetZoom:zoom+(targetZoom-zoom)*(1-Math.exp(-12*dt));if(Math.abs(targetZoom-zoom)<.0001)zoom=targetZoom;updateView();if(zoom===targetZoom)zoomAnchor=null;}updatePlayer(dt,now);people.update(dt);pets.update(dt,true);rewardsUI?.tick(now);paint(now,dt);}requestAnimationFrame(tick);}
   function updateBubbles(now){
     const boxes=[];
+    // Batch measurements before position writes to avoid per-message layout work.
+    for(const b of bubbles)if(b.measure){b.width=b.el.offsetWidth||300;b.height=b.el.offsetHeight||36;b.measure=false;}
     for(let j=bubbles.length-1;j>=0;j--){
-      const b=bubbles[j],actor=people.actors.get(b.actorId);
-      if(now>b.until+450||(b.actorId!=='self'&&!actor)){b.el.remove();bubbles.splice(j,1);continue;}
-      b.el.hidden=false;
-      const v=b.actorId==='self'?playerVisual():actorVisual(actor),w=Math.min(b.el.offsetWidth||280,view.w-16),h=b.el.offsetHeight||55;
-      const ax=view.x+v.p.x*view.s,ay=view.y+v.y*view.s-26;
-      const clamp=x=>Math.max(w/2+8,Math.min(view.w-w/2-8,x));let chosen=null;
-      for(let row=0;row<Math.ceil(view.h/20)&&!chosen;row++)for(const dx of [0,-w*.65,w*.65]){
-        const x=clamp(ax+dx),y=Math.min(view.h-48,ay)-row*20,r={left:x-w/2,right:x+w/2,top:y-h,bottom:y};
-        if(r.top<8)continue;if(boxes.some(q=>r.left<q.right+8&&r.right+8>q.left&&r.top<q.bottom+14&&r.bottom+14>q.top))continue;
-        chosen={x,y,...r};break;
-      }
-      b.el.hidden=!chosen;b.el.setAttribute('aria-hidden',String(!chosen));
-      if(chosen){b.el.style.left=chosen.x+'px';b.el.style.top=chosen.y+'px';boxes.push(chosen);}
-      b.el.classList.toggle('expiring',now>b.until);
+      const b=bubbles[j];if(now>=b.until){removeBubble(b);bubbles.splice(j,1);continue;}
+      b.el.hidden=false;const w=Math.min(b.width,view.w-16),h=b.height;
+      const x=Math.max(w/2+8,Math.min(view.w-w/2-8,view.x+b.anchor.x*view.s));
+      let y=Math.min(view.h-12,view.y+b.anchor.y*view.s-22)-(now-b.at)*.003;
+      // Preserve the place where each message was spoken. Only overlapping
+      // horizontal lanes push earlier messages upward; they never jump sideways.
+      for(const q of boxes)if(x-w/2<q.right+6&&x+w/2+6>q.left&&y>q.top-7)y=q.top-7;
+      const elapsed=Math.min(80,now-(b.lastFrame??now));b.lastFrame=now;
+      b.y=b.y===undefined||reduceMotion?y:b.y+(y-b.y)*(1-Math.exp(-elapsed/90));
+      const opacity=Math.max(0,Math.min(1,(b.until-now)/3000,(b.y-8)/60));
+      b.el.hidden=b.y<0;b.el.setAttribute('aria-hidden',String(b.el.hidden));b.el.style.opacity=String(opacity);b.el.style.left=x+'px';b.el.style.top=b.y+'px';
+      boxes.push({left:x-w/2,right:x+w/2,top:y-h,bottom:y});
     }
   }
   function sendChat(e){e.preventDefault();const input=$('chatInput');if(input.value.trim()&&online.send('chat',{text:input.value})){input.value='';updateInput();sfx('chat');}}
@@ -682,7 +696,7 @@
     return out;
   }
   $('catalogSearch').addEventListener('input',buildCatalog);
-  $('walkBtn').addEventListener('click',()=>setMode('walk'));$('decorateBtn').addEventListener('click',()=>setMode('decorate'));
+  $('walkBtn').addEventListener('click',()=>setMode('walk'));
   $('undoBtn').addEventListener('click',undo);$('moveBtn').addEventListener('click',beginMove);$('interactBtn').addEventListener('click',()=>interact(state.items.find(i=>i.id===selectedId)));$('flipBtn').addEventListener('click',flipSelected);$('wallUpBtn').addEventListener('click',()=>raiseWall(8));$('wallDownBtn').addEventListener('click',()=>raiseWall(-8));$('storeBtn').addEventListener('click',removeSelected);$('deselectBtn').addEventListener('click',cancelSelection);
   $('chatForm').addEventListener('submit',sendChat);$('chatInput').addEventListener('input',updateInput);
   $('soundBtn').addEventListener('click',()=>{soundEnabled=!soundEnabled;updateSound();sfx('place');});
@@ -700,7 +714,7 @@
       const next=window.VeredaGenerator.generate(C,{excludeLayout:state.layout,seed:Date.now()+Math.floor(Math.random()*1000000),name:online.user.name});
       checkpoint();standUp();cancelSelection();state=next;C.setLayout(state.layout);
       player={...player,...C.findFree(state.items,{x:C.room().w/2+.5,y:C.room().h/2+.5}),path:[],moving:false};rehomeActors();
-      bubbles.forEach(b=>b.el.remove());bubbles=[];resetView();resize();updateName();updateSwatches();save();savePeople();
+      bubbles.forEach(removeBubble);bubbles=[];resetView();resize();updateName();updateSwatches();save();savePeople();
       toast('Sala lista: '+state.items.length+' piezas.'+(state.unplacedItems?.length?' '+state.unplacedItems.length+' en reserva.':'')+' Podés deshacer el cambio.');
     }catch(error){console.error(error);toast('No pudimos generar esa sala. Tu decoración sigue guardada.');}
   });
@@ -871,7 +885,7 @@ myAppearance=ownedLook('self',myAppearance);for(const actor of people.actors.val
 
   const networkGame={
    portrait,
-   room(raw,position){pendingWalk=0;const next=C.restore(raw);if(!next)return;state=next;C.setLayout(state.layout);standUp();cancelSelection();history=[];$('undoBtn').disabled=true;player={...player,...(position||C.findFree(state.items,player)),path:[],moving:false};for(const b of bubbles)b.el.remove();bubbles=[];people.actors.clear();pets.actors.clear();mode='walk';updateName();buildRoom();updateSwatches();updateRoomPickers();resetView();resize();rewardsUI?.refreshInventory();},
+   room(raw,position){pendingWalk=0;const next=C.restore(raw);if(!next)return;state=next;C.setLayout(state.layout);standUp();cancelSelection();history=[];$('undoBtn').disabled=true;player={...player,...(position||C.findFree(state.items,player)),path:[],moving:false};for(const b of bubbles)removeBubble(b);bubbles=[];people.actors.clear();pets.actors.clear();mode='walk';updateName();buildRoom();updateSwatches();updateRoomPickers();resetView();resize();rewardsUI?.refreshInventory();},
    scene(raw){const next=C.restore(raw);if(!next)return;const changed=state.layout!==next.layout;state=next;C.setLayout(state.layout);buildRoom();if(changed){resetView();resize();}updateName();},
    players(rows){const present=new Set();for(const row of rows){if(row.id===online.user.id)continue;present.add(row.id);let a=people.actors.get(row.id)||people.join(row);if(a)Object.assign(a,{name:row.name,appearance:P.look(row.appearance),petName:row.petName||'',group:row.group||null,x:row.x,y:row.y,path:row.path||[],seat:row.seat||null,moving:false});}for(const id of people.actors.keys())if(!present.has(id))people.remove(id);},
    walk(id,from,path,seq,seat=null){const a=id===online.user.id?player:people.actors.get(id);if(!a)return;

@@ -1,0 +1,22 @@
+(()=>{'use strict';
+ const $=id=>document.getElementById(id),bridge=()=>window.MINER_HUB_ONLINE,dialog=$('hubGiveawayDialog'),wheel=$('hubGiveawayWheel'),field=$('hubGiveawayNames');
+ let busy=false,pending=null,result=null,rotation=0;
+ const names=()=>[...new Map(field.value.split(/\r?\n/).map(n=>n.normalize('NFC').replace(/[\p{Cc}\p{Cf}]/gu,'').trim()).filter(Boolean).map(n=>[n.toLocaleLowerCase(),n])).values()];
+ function status(text){$('hubGiveawayStatus').textContent=text;}
+ function controls(){const n=names();field.disabled=busy||!!pending;$('hubGiveawayOnline').disabled=busy||!!pending;$('hubGiveawaySpin').disabled=busy||n.length<2||n.length>200;$('hubGiveawaySpin').textContent=busy?'Sorteando…':pending?'Recuperar resultado':'Sortear';$('hubGiveawayCount').textContent=n.length+' participantes';for(const el of $('hubGiveawayPlayers').querySelectorAll('input,button'))el.disabled=busy||!!pending;}
+ function paint(list=names()){
+  const q=wheel.getContext('2d'),n=list.length||1;q.clearRect(0,0,640,640);q.save();q.translate(320,320);
+  for(let i=0;i<n;i++){const a=i*2*Math.PI/n-Math.PI/2,b=(i+1)*2*Math.PI/n-Math.PI/2;q.beginPath();q.moveTo(0,0);q.arc(0,0,304,a,b);q.closePath();q.fillStyle=i%2?'#e8e8e8':'#303030';q.fill();q.strokeStyle='#888';q.lineWidth=1;q.stroke();if(n<=60){q.save();q.rotate((a+b)/2);q.textAlign='right';q.fillStyle=i%2?'#151515':'#fff';q.font='700 '+Math.min(24,Math.max(11,420/n))+'px "Zalando Sans Expanded",sans-serif';q.fillText((list[i]||'Agregá nombres').slice(0,20),280,6,225);q.restore();}}
+  q.beginPath();q.arc(0,0,27,0,Math.PI*2);q.fillStyle='#aaa';q.fill();q.restore();
+ }
+ function changed(){result=null;$('hubGiveawayWinner').textContent='';wheel.style.transition='none';wheel.style.transform='rotate(0deg)';rotation=0;paint();controls();}
+ function remember(value){pending=value;try{if(value)sessionStorage.setItem('minerhub.giveaway',JSON.stringify(value));else sessionStorage.removeItem('minerhub.giveaway');}catch{}}
+ $('hubGiveaway').onclick=()=>{if(!bridge()?.user.admin)return;if(!pending)try{pending=JSON.parse(sessionStorage.getItem('minerhub.giveaway'));}catch{}if(pending?.names)field.value=pending.names.join('\n');paint(result?.names);controls();dialog.showModal();};
+ field.addEventListener('input',changed);
+ $('hubGiveawayOnline').onclick=async()=>{const host=$('hubGiveawayPlayers');host.hidden=false;host.replaceChildren();status('Buscando conectados…');try{const {players}=await bridge().giveaway();status(players.length?'':'No hay jugadores conectados.');const selected=new Set(names().map(n=>n.toLocaleLowerCase()));for(const player of players){const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span');check.type='checkbox';check.checked=selected.has(player.name.toLocaleLowerCase());text.textContent=player.name;check.onchange=()=>{if(busy||pending)return;const current=names().filter(n=>n.toLocaleLowerCase()!==player.name.toLocaleLowerCase());if(check.checked)current.push(player.name);field.value=current.join('\n');changed();};label.append(check,text);host.append(label);}const all=document.createElement('button');all.type='button';all.textContent='Agregar a todos';all.className='secondary-button';all.onclick=()=>{if(busy||pending)return;const unique=new Map([...names(),...players.map(p=>p.name)].map(n=>[n.toLocaleLowerCase(),n]));field.value=[...unique.values()].join('\n');for(const c of host.querySelectorAll('input'))c.checked=true;changed();};host.prepend(all);controls();}catch(e){status(e.message);}};
+ $('hubGiveawaySpin').onclick=async()=>{
+  if(busy||!bridge()?.user.admin)return;const list=names();if(list.length<2||list.length>200)return;busy=true;remember(pending||{names:list,requestId:crypto.randomUUID()});controls();$('hubGiveawayWinner').textContent='';status('');
+  try{const data=await bridge().giveaway(pending);result=data;paint(data.names);const target=(360-(data.index+.5)*360/data.names.length)%360;rotation+=1800+((target-rotation%360+360)%360);const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:4200;wheel.style.transition=duration?'transform 4.2s cubic-bezier(.12,.7,.12,1)':'none';wheel.style.transform='rotate('+rotation+'deg)';await new Promise(resolve=>setTimeout(resolve,duration));$('hubGiveawayWinner').textContent=data.winner;status('Ganador del sorteo');remember(null);
+  }catch(e){status(e.message);if(e.status&&e.status<500)remember(null);}finally{busy=false;controls();}
+ };
+})();
