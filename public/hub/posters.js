@@ -19,7 +19,7 @@
  async function open(item,callback){if(!bridge().canEdit())return;const token=++dialogGeneration;choose=callback;$('hubPosterStatus').textContent='Cargando…';ownSlots=Array(5).fill(null);render();$('hubPostersDialog').showModal();try{const result=await request('');if(token!==dialogGeneration)return;ownSlots=result.slots;render();$('hubPosterStatus').textContent='';}catch(e){$('hubPosterStatus').textContent=e.message;}}
  async function compress(file){
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('Elegí un JPG, PNG o WebP de hasta 10 MB.');
-  const image=await createImageBitmap(file,{resizeWidth:1024,resizeQuality:'high'});try{const scale=Math.min(1,1024/image.width,1024/image.height),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(image.width*scale));cv.height=Math.max(1,Math.round(image.height*scale));const k=cv.getContext('2d');k.fillStyle='#fff';k.fillRect(0,0,cv.width,cv.height);k.drawImage(image,0,0,cv.width,cv.height);
+  const image=await createImageBitmap(file);try{const scale=Math.min(1,1024/image.width,1024/image.height),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(image.width*scale));cv.height=Math.max(1,Math.round(image.height*scale));const k=cv.getContext('2d');k.fillStyle='#fff';k.fillRect(0,0,cv.width,cv.height);k.drawImage(image,0,0,cv.width,cv.height);
    for(const quality of [.87,.74,.6,.45]){const blob=await new Promise(resolve=>cv.toBlob(resolve,'image/jpeg',quality));if(blob&&blob.size<=512*1024)return blob;}throw Error('No pudimos comprimir esta imagen. Probá otra.');
   }finally{image.close();}
  }
