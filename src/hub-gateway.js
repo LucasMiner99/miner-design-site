@@ -22,7 +22,12 @@ export async function handleHub(request,env,services={}){
   if((route==='/posters'&&request.method==='GET')||(/^\/posters\/[0-4]$/.test(route)&&request.method==='PUT')||(/^\/posters\/image\/\d{1,30}\/[0-4]$/.test(route)&&request.method==='GET')){
    const headers={'X-Hub-Identity':JSON.stringify(auth),'Content-Type':'image/jpeg'};
    const response=await world(env).fetch(new Request('https://hub'+route,{method:request.method,headers,body:request.method==='PUT'?await posterBytes(request):undefined}));
-   if(request.method==='GET'&&route.startsWith('/posters/image/')&&response.ok)return await posterImage(env,(await response.json()).key);
+   if(request.method==='GET'&&route.startsWith('/posters/image/')&&response.ok){
+    // Durable Objects and the gateway can run different revisions during rollout.
+    // Older room versions return JPEG bytes directly; newer ones authorize an R2 key.
+    if(response.headers.get('Content-Type')?.split(';')[0]==='image/jpeg')return response;
+    return await posterImage(env,(await response.json()).key);
+   }
    return response;
   }
   const allowed={'admin/giveaway':['GET','POST'],groups:['GET','POST'],profile:['PUT'],state:['GET'],feedback:['POST'],'admin/feedback':['GET','PUT'],rooms:['GET'],ws:['GET'],look:['PUT'],room:['PUT'],'box/open':['POST'],'box/buy':['POST'],'roulette/open':['POST'],'roulette/bet':['POST'],'admin/credits':['GET','PUT'],'admin/rewards':['GET','PUT'],'admin/moderate':['POST']};
