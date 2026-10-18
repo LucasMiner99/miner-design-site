@@ -146,3 +146,4 @@
 #hubMediaLoop{font-size:12px;border:1px solid var(--line,#777);border-radius:9px;padding:7px 10px}
 #hubMediaLoop[aria-pressed=true]{background:var(--ink);color:var(--paper,#fff)}
 @media(max-width:520px){#hubPosterSlots{grid-template-columns:repeat(3,minmax(0,1fr))}.context-actions{max-width:290px}}
+#hubMediaTitle{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hub-media-dock header button{flex-shrink:0}
