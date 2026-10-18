@@ -146,6 +146,7 @@
     {name:'Mesa Taller',w:3,h:1,width:118,category:'tables',sprite:88,rearArtFlip:true,surface:[{u:.30,v:.23},{u:.70,v:.42}]},
     {name:'Lámpara Luna',w:1,h:1,width:25,category:'deco',sprite:89,tabletop:true,interaction:'light',rotationLight:true}
   ];
+  for(const [index,name,rarity] of [[0,'Girasol','Común'],[1,'Rosa','Rara'],[2,'Cannabis Dorada','Épica']])TYPES.push({name,w:1,h:1,width:46,category:'deco',sprite:90+index,interaction:'plant',plantation:true,rarity});
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -194,6 +195,7 @@
   bases.push(['wall',1],['wall',1],['wall',1],['wall',1],['wall',1],['box',.87],['oval',.88]);
   bases.push(['box',.86],['box',.91],['box',.90],['oval',.94],['wall',1],['wall',1],['box',.86],['oval',.73]);
   TYPES.forEach((t,i)=>t.base={shape:bases[i]?.[0]||'wall',span:bases[i]?.[1]||1,u:.5});
+  for(let i=90;i<=92;i++)TYPES[i].base={shape:'oval',span:.62,u:.5};
   TYPES[83].base={shape:'box',span:.94,u:.5};
   for(const [i,shape,span] of [[84,'box',.4],[85,'box',.55],[86,'box',.94],[88,'box',.94],[89,'oval',.8]])TYPES[i].base={shape,span,u:.5};
   // Local tabletop plane, separate from room/pathfinding cells. A quarter-tile

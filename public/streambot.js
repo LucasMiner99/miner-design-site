@@ -633,13 +633,13 @@ document.querySelectorAll(".nav-link").forEach(button => button.addEventListener
 })();
 
 async function loadHubRewards(){
-  try{const data=await api('/hub/rewards');for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']])$('hubCost'+id).value=data.costs[kind];$('hubRewardsStatus').textContent=data.ready?'Paquetes de créditos activos. Los precios de abajo son los de las cajas dentro del juego.':'Al guardar se crean los cuatro paquetes de créditos y se desactivan las recompensas de cajas anteriores.';}
+  try{const data=await api('/hub/rewards');for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment'],['plantation','Plantation']])$('hubCost'+id).value=data.costs[kind];$('hubRewardsStatus').textContent=data.ready?'Paquetes de créditos activos. Los precios de abajo son los de las cajas dentro del juego.':'Al guardar se crean los cuatro paquetes de créditos y se desactivan las recompensas de cajas anteriores.';}
   catch(e){$('hubRewardsStatus').textContent=e.message;}
 }
 $('hubReloadRewards').addEventListener('click',loadHubRewards);
 $('hubSyncRewards').addEventListener('click',async()=>{
   const button=$('hubSyncRewards');if(button.disabled)return;
-  const costs={};for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const input=$('hubCost'+id);if(!input.reportValidity())return;costs[kind]=Number(input.value);}
+  const costs={};for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment'],['plantation','Plantation']]){const input=$('hubCost'+id);if(!input.reportValidity())return;costs[kind]=Number(input.value);}
   button.disabled=true;$('hubRewardsStatus').textContent='Sincronizando con Kick…';
   try{await api('/hub/rewards',{method:'POST',body:JSON.stringify({costs})});$('hubRewardsStatus').textContent='Precios guardados. Los paquetes de 50, 100, 500, 1.000, 2.000 y 5.000 créditos están activos en Kick.';}
   catch(e){$('hubRewardsStatus').textContent=e.message+' Si hubo una interrupción, volvé a sincronizar para completar los paquetes de créditos.';}

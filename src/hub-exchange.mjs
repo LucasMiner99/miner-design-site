@@ -10,14 +10,14 @@ async function machine(world,user,input){
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='exchange'))fail('La máquina ya no está colocada en esta sala.',409);
 }
 function unseen(user,kind){
- return CATALOG.filter(i=>i.kind===kind&&!i.starter&&!user.collected?.[i.id]&&!(user.inventory?.[i.id]>0));
+ return CATALOG.filter(i=>i.kind===kind&&!i.starter&&!i.plantation&&!user.collected?.[i.id]&&!(user.inventory?.[i.id]>0));
 }
 async function choices(world,user){
  const own=await world.room(user.id,user.name),free=new Map(tradeInventory(user,own,false).map(i=>[i.id,i.count]));
  const kinds=new Set(['object','character','environment'].filter(kind=>unseen(user,kind).length));
  return Object.entries(user.inventory||{}).flatMap(([id,count])=>{
   const item=catalog.get(id),available=Math.min(count-1,free.get(id)||0,count-lockedCopies(user,id));
-  return item&&!item.starter&&available>0?[{...item,count,available,complete:!kinds.has(item.kind)}]:[];
+  return item&&!item.starter&&!item.plantation&&available>0?[{...item,count,available,complete:!kinds.has(item.kind)}]:[];
  });
 }
 export async function openExchange(world,user,input){

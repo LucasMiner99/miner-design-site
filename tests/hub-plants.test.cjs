@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+(async()=>{
+ const {C,CATALOG,R}=await import('../src/hub-rules.mjs'),{DEFAULT_PLANTS,drawPlant,reconcilePlants,harvestPlant,savePlantConfig}=await import('../src/hub-plants.mjs');
+ const common=90,items=[0,1,2].map((n)=>({id:n+1,type:common+n,x:2+n*2,y:2}));
+ assert.deepEqual(R.poolFor(CATALOG,'plantation').map(i=>i.type),[90,91,92]);assert(!R.poolFor(CATALOG,'object').some(i=>i.plantation));
+ const count=[0,0,0];for(let i=0;i<10000;i++)count[drawPlant(DEFAULT_PLANTS,()=>i/10000).type-90]++;assert.deepEqual(count,[8000,1700,300]);
+ const room={id:'2',scene:{...C.initial(),items}},start=100000;reconcilePlants(room,{},DEFAULT_PLANTS,start);const original=structuredClone(room.plants);
+ room.scene.items[0].x=4.5;reconcilePlants(room,room.plants,DEFAULT_PLANTS,start+10000);assert.deepEqual(room.plants,original,'Moving preserves cycles');
+ assert.throws(()=>reconcilePlants({...room,scene:{items:[...items,{id:4,type:90}]}},{},DEFAULT_PLANTS),/tres/);
+ room.scene.items=items.slice(1);reconcilePlants(room,room.plants,DEFAULT_PLANTS,start+20000);assert(!room.plants[1]);room.scene.items=items;reconcilePlants(room,room.plants,DEFAULT_PLANTS,start+30000);assert.notEqual(room.plants[1].cycle,original[1].cycle,'Stored plant starts over');
+ const data=new Map(),clone=v=>v===undefined?v:structuredClone(v),storage={get:async k=>clone(data.get(k)),put:async(k,v)=>{if(typeof k==='string')data.set(k,clone(v));else for(const [key,value]of Object.entries(k))data.set(key,clone(value));},transaction:async fn=>fn(storage)};
+ const user={id:'2',credits:0,walletVersion:0},world={ctx:{storage},room:async()=>clone(room),ownSockets:()=>[{deserializeAttachment:()=>({roomId:'2'})}],broadcast(){},async notifyUser(){}};
+ await assert.rejects(harvestPlant(world,user,{roomId:'3',itemId:1,cycle:room.plants[1].cycle},start+9999999),/inválida/);
+ await assert.rejects(harvestPlant(world,user,{roomId:'2',itemId:1,cycle:room.plants[1].cycle},start),/creciendo/);
+ const input={roomId:'2',itemId:1,cycle:room.plants[1].cycle,amount:99999999,readyAt:0};const result=await harvestPlant(world,user,input,start+9999999);assert.equal(result.amount,100);assert.equal(user.credits,100,'No multi-cycle offline accrual or client amount');
+ world.room=async()=>storage.get('room:2');await assert.rejects(harvestPlant(world,user,input,start+19999999),/recogida/);assert.equal(user.credits,100);
+ const cycle=data.get('room:2').plants[1];await assert.rejects(harvestPlant(world,user,{...input,cycle:cycle.cycle},cycle.readyAt-1),/creciendo/);
+ world.ownSockets=()=>[];await assert.rejects(harvestPlant(world,user,{...input,cycle:cycle.cycle},cycle.readyAt),/Entrá/);world.ownSockets=()=>[{deserializeAttachment:()=>({roomId:'2'})}];
+ const tx=storage.transaction;storage.transaction=async()=>{throw Error('disk');};await assert.rejects(harvestPlant(world,user,{...input,cycle:cycle.cycle},cycle.readyAt),/disk/);assert.equal(user.credits,100);assert.equal(data.get('room:2').plants[1].cycle,cycle.cycle);storage.transaction=tx;
+ for(const value of [{...DEFAULT_PLANTS,minutes:0},{...DEFAULT_PLANTS,amounts:[-1,250,500]},{...DEFAULT_PLANTS,weights:[80,17,4]}])await assert.rejects(savePlantConfig(storage,value));
+ await savePlantConfig(storage,{minutes:45,amounts:[125,250,500],weights:[85,13,2]});await harvestPlant(world,user,{...input,cycle:cycle.cycle},cycle.readyAt);assert.equal(user.credits,200,'Active cycle retains its promised payout');assert.equal(data.get('room:2').plants[1].amount,125,'New cycle gets updated payout');
+ console.log('PASS plants: weighted odds, isolated pools, limit, move/store semantics, server clock, offline cap, replay, forged amount, owner/presence, atomic failure and cycle config snapshots.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

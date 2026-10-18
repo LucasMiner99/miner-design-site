@@ -17,10 +17,10 @@ const scope={};vm.createContext(scope);for(const name of ['core','people','gener
  assert.equal(C.removeItem([parent,center],1).length,0);
  for(let rotation=0;rotation<4;rotation++)assert(C.restore({...scene,items:[{...parent,rotation,flip:!!(rotation%2)},center]}));
  assert(C.restore(C.reflow(scene,'square')),'Reflow preserves valid surface placements');
- assert.equal(C.TYPES.length,90);assert.equal(shared.CATALOG.filter(i=>i.kind==='object').length,90);
+ assert.equal(C.TYPES.length,93);assert.equal(shared.CATALOG.filter(i=>i.kind==='object').length,93);
  }
  assert.equal(shared.P.choices.top.length,19);assert.equal(shared.P.choices.hair.length,13);assert.equal(shared.P.choices.back.length,8);
  for(const id of ['look:top:16','look:top:17','look:top:18','look:hair:11','look:hair:12','look:back:7','object:84','object:89'])assert(shared.CATALOG.find(i=>i.id===id&&!i.starter));
- for(const layout of ['square','grand']){const room=scope.VeredaGenerator.generate(scope.VeredaCore,{seed:45,layout});assert(scope.VeredaCore.restore(room));assert.equal(room.items.length+(room.unplacedItems?.length||0),90,'Generation keeps every object, placed or reserved');}
+ for(const layout of ['square','grand']){const room=scope.VeredaGenerator.generate(scope.VeredaCore,{seed:45,layout});assert(scope.VeredaCore.restore(room));assert.equal(room.items.length+(room.unplacedItems?.length||0),93,'Generation keeps every object, placed or reserved');}
  console.log('Fine surfaces: center, boundaries, collisions, legacy saves, rotations, reflow, authoritative catalog OK.');
 })();

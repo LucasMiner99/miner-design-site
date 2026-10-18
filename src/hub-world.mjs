@@ -1,3 +1,4 @@
+import {plantConfig,savePlantConfig,reconcilePlants,harvestPlant} from './hub-plants.mjs';
 import {handlePosters,posterList} from './hub-posters.mjs';
 import {giveaway} from './hub-giveaway.mjs';
 import {profileText,userGroup,groupBadge,groupState,handleGroup,refreshProfiles} from './hub-groups.mjs';
@@ -49,13 +50,13 @@ export class HubWorld {
  async fetch(request){
   return this.ctx.blockConcurrencyWhile(async()=>{try{return await this.handle(request);}catch(e){console.error('Hub:',e.status?e.message:'operation failed');return reply({error:e.status?e.message:'No se pudo guardar. Intentá otra vez.'},e.status||500);}});
  }
- async user(id,name){let u=await this.ctx.storage.get('user:'+id);if(!u){u={id,name,appearance:P.look({}),inventory:{},collected:{},mutedUntil:0,banned:false};await this.ctx.storage.put('user:'+id,u);}else if(name&&u.name!==name){u.name=name;await this.ctx.storage.put('user:'+id,u);}return u;}
+ async user(id,name){let u=await this.ctx.storage.get('user:'+id);if(!u){u={id,name,appearance:P.look({}),inventory:{},collected:{},mutedUntil:0,banned:false};await this.ctx.storage.put('user:'+id,u);}else if(name&&u.name!==name){u.name=name;await this.ctx.storage.put('user:'+id,u);}if(!u.plantStarter){u.plantStarter=true;u.inventory['object:90']=(u.inventory['object:90']||0)+1;u.collected['object:90']=true;u.walletVersion=(u.walletVersion||0)+1;await this.ctx.storage.put('user:'+id,u);}return u;}
  async room(id,name){let room=await this.ctx.storage.get('room:'+id);if(!room){const scene=C.initial();scene.items=[];scene.name=name;room={id,ownerId:id,name,public:true,revision:0,scene};await this.ctx.storage.put('room:'+id,room);}return room;}
  sockets(){return this.ctx.getWebSockets().filter(ws=>ws.readyState===1);}
  send(ws,value){try{ws.send(JSON.stringify(value));}catch{try{ws.close(1011,'Conexión cerrada');}catch{}}}
  broadcast(roomId,event,except){for(const ws of this.sockets())if(ws!==except&&ws.deserializeAttachment()?.roomId===roomId)this.send(ws,event);}
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
- async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
+ async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {serverNow:Date.now(),user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
  players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,petName:a.petName||'',group:a.group||null,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
@@ -65,7 +66,7 @@ export class HubWorld {
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
   const old=a.roomId;const p=this.free(room,a.user.id);
   if(!p)reject('La sala no tiene espacio para entrar.');await cancelTrade(this,a.user.id,'El intercambio se canceló al cambiar de sala.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
-  this.send(ws,{type:'room',room,players:this.players(id),position:p,media:mediaSnapshot(room.media),posters:await posterList(this,room.ownerId)});
+  this.send(ws,{type:'room',serverNow:Date.now(),room,players:this.players(id),position:p,media:mediaSnapshot(room.media),posters:await posterList(this,room.ownerId)});
   if(old&&old!==id)this.broadcast(old,{type:'presence',players:this.players(old)});
   this.broadcast(id,{type:'presence',players:this.players(id)},ws);
   if(a.user.admin)await this.ctx.storage.put('active-room',id);
@@ -103,7 +104,7 @@ export class HubWorld {
   }
   if(path==='/room'&&request.method==='PUT'){
    const b=await body(request),room=await this.room(u.id,u.name);if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
-   const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);
+   const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);reconcilePlants(room,room.plants,await plantConfig(this.ctx.storage));
    // Decoration saves must not overwrite a visitor's more recent switch state.
    for(const item of room.scene.items){const old=previous.items.find(i=>i.id===item.id&&i.type===item.type);if(!old)continue;for(const key of ['on','closed'])if(typeof old[key]==='boolean')item[key]=old[key];}
    room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
@@ -113,13 +114,15 @@ export class HubWorld {
    for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
     const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip','rotation'].some(k=>oldSeat[k]!==newSeat[k]));
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
-   this.broadcast(u.id,{type:'scene',room,players:this.players(u.id)});return reply({room});
+   this.broadcast(u.id,{type:'scene',serverNow:Date.now(),room,players:this.players(u.id)});return reply({room,serverNow:Date.now()});
   }
   if((path==='/roulette/open'||path==='/roulette/bet')&&request.method==='POST'){
    const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
    const result=path==='/roulette/open'?await openRoulette(this,u,input):{receipt:await betRoulette(this,u,input)};
    return reply({...result,account:await this.state(u,auth.admin)});
   }
+  if(path==='/plants/harvest'&&request.method==='POST'){const result=await harvestPlant(this,u,await body(request,2048));return reply({...result,account:await this.state(u,auth.admin)});}
+  if(path==='/admin/plants'&&auth.admin){if(request.method==='GET')return reply(await plantConfig(this.ctx.storage));if(request.method==='PUT'){const config=await savePlantConfig(this.ctx.storage,await body(request,2048));const shop=publicShop(await economy(this.ctx.storage));for(const ws of this.sockets())this.send(ws,{type:'shop',shop});return reply(config);}}
   if((path==='/exchange/open'||path==='/exchange/swap')&&request.method==='POST'){
    const input=await body(request,2048),result=path==='/exchange/open'?await openExchange(this,u,input):{receipt:await exchangeItem(this,u,input)};
    return reply({...result,account:await this.state(u,auth.admin)});
@@ -157,7 +160,7 @@ export class HubWorld {
    const id=String(p.id||''),uid=String(p.redeemer?.user_id||'');if(!/^[\w-]{1,120}$/.test(id)||!/^\d+$/.test(uid))reject('Canje inválido.');
    const prior=await this.ctx.storage.get('box:'+id);if(prior){if(prior.userId!==uid||prior.kind!==kind)reject('Canje inconsistente.');return reply({duplicate:true});}
    if(p.status!=='accepted')return reply({ignored:true,pending:p.status==='pending',redemptionId:id});
-   const u=await this.user(uid,p.redeemer.username);const item=R.draw(CATALOG.filter(i=>i.kind===kind&&!i.starter),new Set(Object.keys(u.collected)));
+   const u=await this.user(uid,p.redeemer.username);const item=R.draw(R.poolFor(CATALOG,kind),new Set(Object.keys(u.collected)));
    const box={id,userId:uid,kind,itemId:item.id,opened:false};u.collected[item.id]=true;
    await this.ctx.storage.put({['box:'+id]:box,['pending:'+uid+':'+id]:box,['user:'+uid]:u});await this.notifyUser(uid);return reply({ok:true});
   }

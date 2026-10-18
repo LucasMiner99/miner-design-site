@@ -11,6 +11,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   await req('1','admin/credits','PUT',{rewards:{5000:'funds'}});
   const ns=await mf.getDurableObjectNamespace('HUB_WORLD'),stub=ns.get(ns.idFromName('minerarg-beta-v1'));
   for(const uid of ['1','2','3'])await stub.fetch('https://hub/kick',{method:'POST',headers:{'X-Hub-Broadcaster':'1'},body:JSON.stringify({type:'channel.reward.redemption.updated',payload:{id:'fund-'+uid,status:'accepted',reward:{id:'funds'},redeemer:{user_id:Number(uid),username:'Player'+uid},broadcaster:{user_id:1}}})});
+  const versionBefore=(await state('1')).walletVersion;
   const clients={};for(const id of ['1','2','3']){const r=await req(id,'ws','GET',null,{Upgrade:'websocket'});assert.equal(r.status,101);const ws=r.webSocket,messages=[];ws.addEventListener('message',e=>messages.push(JSON.parse(e.data)));ws.accept();clients[id]={ws,messages};await new Promise(r=>setTimeout(r,30));ws.send(JSON.stringify({type:'join',roomId:'1'}));await new Promise(r=>setTimeout(r,45));}
   const latest=id=>clients[id].messages.filter(m=>m.type==='trade').at(-1),send=async(id,action,extra={})=>{const t=latest(id)?.trade;clients[id].ws.send(JSON.stringify({type:'trade',action,id:t?.id,revision:t?.revision,...extra}));await new Promise(r=>setTimeout(r,170));};
   await send('1','invite',{target:'2'});await send('2','join');
@@ -19,7 +20,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   await send('1','accept');assert(latest('1').trade.accepted[0]);await send('2','offer',{items:[],credits:400});assert.deepEqual(latest('1').trade.accepted,[false,false]);
   await send('1','accept');await send('2','accept');assert.equal(latest('1').trade.status,'completed');
   assert.equal((await state('1')).credits,5300);assert.equal((await state('2')).credits,4700);assert.equal((await state('2')).inventory.find(i=>i.id==='object:0').count,1);
-  await send('2','accept');assert.equal((await state('2')).credits,4700,'Repeated completion cannot transfer twice');assert.equal((await state('1')).walletVersion,2);
+  await send('2','accept');assert.equal((await state('2')).credits,4700,'Repeated completion cannot transfer twice');assert.equal((await state('1')).walletVersion,versionBefore+1);
   assert.equal(latest('2').creditsAvailable,4700);assert.deepEqual(latest('2').trade.credits,[100,400]);
   await send('2','invite',{target:'3'});await send('3','join');await send('2','offer',{items:[],credits:3000});await send('3','accept');
   assert.equal((await req('2','box/buy','POST',{kind:'object',expectedCost:2000,requestId:crypto.randomUUID()})).status,200);

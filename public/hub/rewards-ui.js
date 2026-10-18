@@ -5,7 +5,7 @@
   let ledger,owner='self',opening=null,result=null,serial=0,error='',panel='inventory',inventoryKey='',inventoryFilter='all';
   try{ledger=root.MINER_HUB_ONLINE.ledger;}catch(e){error=e.message;}
   const labels={hair:'Pelo y gorros',face:'Cara',top:'Torso',bottom:'Pantalón',shoes:'Calzado',accessory:'Cadena',back:'Espalda',pet:'Mascota'};
-  const title=i=>i.kind==='object'?'Objeto':i.kind==='environment'?(i.slot==='layout'?'Tipo de sala':'Ambiente'):labels[i.slot];
+  const title=i=>i.plantation?'Planta · '+i.rarity:i.kind==='object'?'Objeto':i.kind==='environment'?(i.slot==='layout'?'Tipo de sala':'Ambiente'):labels[i.slot];
   function status(text){$('rewardStatus').textContent=text;$('rewardStatus').hidden=!text||!['inventory','rewards'].includes(panel);}
   // Cache isolated artwork, also reused by the moving reel.
   const previews=new WeakMap();
@@ -24,7 +24,8 @@
    $('rewardInventoryCount').textContent=inventory.reduce((sum,i)=>sum+i.count,0)+' obtenidos';
   }
   function refresh(){let total=0;
-   for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){const count=ledger?.pending(owner,kind).length||0;total+=count;const price=ledger?.price?.(kind)||2000;$('pending'+id).textContent=count?count+' disponibles':price.toLocaleString('es-AR')+' créditos';$('open'+id+'Box').textContent=count?'Abrir':'Comprar';$('open'+id+'Box').disabled=!!opening||requesting||!ledger||!count&&(ledger.credits?.()||0)<price;$('test'+id+'Claim').disabled=!!opening||!ledger;}
+   for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment'],['plantation','Plantation']]){const count=ledger?.pending(owner,kind).length||0;total+=count;const price=ledger?.price?.(kind)||2000;$('pending'+id).textContent=count?count+' disponibles':price.toLocaleString('es-AR')+' créditos';$('open'+id+'Box').textContent=count?'Abrir':'Comprar';$('open'+id+'Box').disabled=!!opening||requesting||!ledger||!count&&(ledger.credits?.()||0)<price;$('test'+id+'Claim').disabled=!!opening||!ledger;}
+   const weights=root.MINER_HUB_ONLINE.shop?.plantations?.weights||[80,17,3];$('plantationOdds').textContent='Común '+weights[0]+' % · Rara '+weights[1]+' % · Épica '+weights[2]+' %';
    $('pendingTotal').textContent=String(total);$('pendingTotal').hidden=!total;$('rewardOwner').disabled=!!opening;refreshInventory();
   }
   function refreshOwners(){const options=$('rewardOwner'),rows=players();options.textContent='';if(!rows.some(p=>p.id===owner)&&!opening){owner='self';result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=true;}for(const p of rows){const o=doc.createElement('option');o.value=p.id;o.textContent=p.name;options.appendChild(o);}options.value=owner;}
@@ -36,14 +37,14 @@
   function drawReel(progress){if(opening)root.HubRewardReel.draw($('rewardReel'),opening.entries,opening.winner,progress,canvasSprite);}
   let requesting=false;
   async function open(kind){if(opening||requesting||!ledger)return;let pending=ledger.pending(owner,kind)[0];
-   requesting=true;refresh();try{if(!pending){status('Comprando…');pending=await ledger.buy(kind);}const receipt=await ledger.open(pending.id,owner),item=ledger.item(receipt.itemId),pool=catalog.filter(i=>i.kind===kind&&!i.starter),entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]),winner=32;entries[winner]=item;opening={item,entries,winner,at:now()};result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=false;$('skipReward').hidden=false;$('rewardReel').setAttribute('aria-busy','true');status('Abriendo…');refresh();drawReel(0);if(reducedMotion())finish();}catch(e){status('No se pudo guardar. '+e.message);}finally{requesting=false;refresh();}
+   requesting=true;refresh();try{if(!pending){status('Comprando…');pending=await ledger.buy(kind);}const receipt=await ledger.open(pending.id,owner),item=ledger.item(receipt.itemId),pool=catalog.filter(i=>!i.starter&&(kind==='plantation'?i.plantation:i.kind===kind&&!i.plantation)),entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]),winner=32;entries[winner]=item;opening={item,entries,winner,at:now()};result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=false;$('skipReward').hidden=false;$('rewardReel').setAttribute('aria-busy','true');status('Abriendo…');refresh();drawReel(0);if(reducedMotion())finish();}catch(e){status('No se pudo guardar. '+e.message);}finally{requesting=false;refresh();}
   }
   function claim(kind){if(opening||!ledger)return;try{const id='demo-'+Date.now()+'-'+(++serial)+'-'+Math.random().toString(36).slice(2);ledger.grant({id,userId:owner,kind,status:'accepted'});refresh();status('Caja de prueba lista.');}catch(e){status('No se pudo guardar. '+e.message);}}
   $('rewardOwner').addEventListener('change',()=>{if(opening)return;owner=$('rewardOwner').value;result=null;$('rewardResult').hidden=true;$('rewardAnimation').hidden=true;refresh();status('Inventario de '+(players().find(p=>p.id===owner)?.name||'jugador')+'.');});
   const filters=[['all','inventoryAll'],['layout','inventoryLayout'],['environment','inventoryEnvironment'],['character','inventoryCharacter'],['object','inventoryObject']];
   for(const [kind,id] of filters)$(id).addEventListener('click',()=>{inventoryFilter=kind;for(const [value,button] of filters)$(button).setAttribute('aria-pressed',String(value===kind));refreshInventory();});
  $('inventorySearch').addEventListener('input',refreshInventory);
-  for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment']]){$('test'+id+'Claim').addEventListener('click',()=>claim(kind));$('open'+id+'Box').addEventListener('click',()=>open(kind));}
+  for(const [kind,id] of [['object','Object'],['character','Character'],['environment','Environment'],['plantation','Plantation']]){$('test'+id+'Claim').addEventListener('click',()=>claim(kind));$('open'+id+'Box').addEventListener('click',()=>open(kind));}
   $('skipReward').addEventListener('click',finish);$('useReward').addEventListener('click',()=>{if(result)use(result);});
   refreshOwners();refresh();status(error);
   return {refreshInventory,count:(user,id)=>ledger?.inventory(user).find(i=>i.id===id)?.count||0,owns:(user,id)=>ledger?.owns(user,id)||!!catalog.find(i=>i.id===id)?.starter,showPanel(name){panel=name;refreshOwners();refresh();status(error||$('rewardStatus').textContent);},tick(t){if(opening){const p=Math.min(1,(t-opening.at)/4000);if(p>=1)finish();else if(panel==='rewards')drawReel(p);}},snapshot:()=>({owner,opening:!!opening,result:result?.id,receipts:ledger?.receipts()||[]})};

@@ -3,10 +3,11 @@
  const KEY='minerhub.rewards.demo.v1';
  const slots=['hair','face','top','bottom','shoes','accessory','back','pet'];
  function catalog(C,P,environment=[]){return [
-  ...C.TYPES.map((t,type)=>({id:'object:'+type,kind:'object',type,name:t.name})),
+  ...C.TYPES.map((t,type)=>({id:'object:'+type,kind:'object',type,name:t.name,...(t.plantation?{plantation:true,rarity:t.rarity}:{})})),
   ...slots.flatMap(slot=>P.choices[slot].map((name,index)=>({id:'look:'+slot+':'+index,kind:'character',slot,index,name,starter:index===0||slot==='hair'&&index===1})).filter(i=>!(['accessory','back','pet'].includes(slot)&&i.index===0))),
   ...environment.flatMap(({key,label,options})=>options.map((option,index)=>({id:'environment:'+key+':'+index,kind:'environment',slot:key,index,value:option.id??index,name:label+' · '+option.name,starter:index===0})))
  ];}
+ function poolFor(catalog,kind){return catalog.filter(i=>!i.starter&&(kind==='plantation'?i.plantation:i.kind===kind&&!i.plantation));}
  function randomIndex(length,random=Math.random){const r=random();if(!Number.isFinite(r)||r<0||r>=1)throw new Error('Sorteo inválido.');return Math.floor(r*length);}
  function secureRandom(){if(root.crypto?.getRandomValues){const n=new Uint32Array(1);root.crypto.getRandomValues(n);return n[0]/4294967296;}return Math.random();}
  // Pending prizes also count as collected, so saving boxes cannot reroll the
@@ -44,5 +45,5 @@
    receipts:()=>copy(data.receipts),item:id=>byId.get(id)
   };
  }
- const api={KEY,catalog,create,randomIndex,draw};root.VeredaRewards=api;if(typeof module!=='undefined')module.exports=api;
+ const api={KEY,catalog,poolFor,create,randomIndex,draw};root.VeredaRewards=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

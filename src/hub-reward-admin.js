@@ -12,7 +12,7 @@ export async function hubRewardAdmin(request,env,kick){
  const config=await read.json();
  if(request.method==='GET')return hubJSON({...config,tiers:CREDIT_TIERS,enabled:true});
  if(request.method!=='POST')return hubJSON({error:'Método no permitido.'},405);
- const input=await body(request),costs=validCosts(input.costs||config.costs),lease=crypto.randomUUID();
+ const input=await body(request),costs=validCosts({...config.costs,...input.costs}),lease=crypto.randomUUID();
  const lock=await env.STREAMBOT_DB.prepare("INSERT INTO hub_config_lock(id,owner,until_ms) VALUES('rewards',?,?) ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,until_ms=excluded.until_ms WHERE until_ms<=? RETURNING owner").bind(lease,now+120000,now).first();
  if(lock?.owner!==lease)return hubJSON({error:'Ya se están sincronizando las recompensas. Esperá un momento.'},409);
  try{

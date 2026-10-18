@@ -1,15 +1,16 @@
+import {plantConfig,drawPlant} from './hub-plants.mjs';
 import {CATALOG,R} from './hub-rules.mjs';
 export const CREDIT_TIERS=Object.freeze([50,100,500,1000,2000,5000]);
-export const DEFAULT_COSTS=Object.freeze({object:2000,character:2000,environment:2000});
+export const DEFAULT_COSTS=Object.freeze({object:2000,character:2000,environment:2000,plantation:2000});
 const MAX_BALANCE=2000000000;
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 export const balance=user=>Number.isSafeInteger(user.credits)&&user.credits>=0?user.credits:0;
-export function validCosts(value){const out={};for(const key of Object.keys(DEFAULT_COSTS)){const n=value?.[key];if(!Number.isSafeInteger(n)||n<1||n>1000000)fail('Cada precio debe ser un entero entre 1 y 1.000.000.');out[key]=n;}return out;}
-export async function economy(storage){return {costs:{...DEFAULT_COSTS},rewards:{},ready:false,...await storage.get('economy-config')};}
-export function publicShop(config){return {costs:config.costs,tiers:CREDIT_TIERS,ready:config.ready&&CREDIT_TIERS.every(t=>config.rewards[t])};}
+export function validCosts(value){const out={};for(const key of Object.keys(DEFAULT_COSTS)){const n=key==='plantation'&&value?.[key]===undefined?DEFAULT_COSTS.plantation:value?.[key];if(!Number.isSafeInteger(n)||n<1||n>1000000)fail('Cada precio debe ser un entero entre 1 y 1.000.000.');out[key]=n;}return out;}
+export async function economy(storage){const saved=await storage.get('economy-config');return {rewards:{},ready:false,...saved,costs:{...DEFAULT_COSTS,...saved?.costs},plantations:await plantConfig(storage)};}
+export function publicShop(config){return {costs:config.costs,plantations:config.plantations,tiers:CREDIT_TIERS,ready:config.ready&&CREDIT_TIERS.every(t=>config.rewards[t])};}
 export async function saveEconomy(storage,input){
  const config=await economy(storage);
- if(input.costs!==undefined)config.costs=validCosts(input.costs);
+ if(input.costs!==undefined)config.costs=validCosts({...config.costs,...input.costs});
  if(input.rewards!==undefined){for(const [tier,id] of Object.entries(input.rewards)){if(!CREDIT_TIERS.includes(Number(tier))||typeof id!=='string'||!/^[\w-]{1,100}$/.test(id))fail('Recompensa de créditos inválida.');config.rewards[tier]=id;}
   if(new Set(Object.values(config.rewards)).size!==Object.keys(config.rewards).length)fail('Cada paquete necesita una recompensa distinta.');}
  if(input.ready!==undefined){if(typeof input.ready!=='boolean'||input.ready&&!CREDIT_TIERS.every(t=>config.rewards[t]))fail('Faltan recompensas por configurar.');config.ready=input.ready;}
@@ -36,7 +37,7 @@ export async function buyBox(world,user,input){
  if(prior){if(prior.kind!==input.kind)fail('Esta compra ya corresponde a otra caja.',409);return await storage.get('box:'+prior.boxId);}
  const config=await economy(storage),cost=config.costs[input.kind],before=balance(user);if(input.expectedCost!==cost)fail('El precio cambió. Actualizá las cajas y probá de nuevo.',409);if(before<cost)fail('No tenés créditos suficientes.',409);
  const pending=await storage.list({prefix:'pending:'+user.id+':',limit:100});if(pending.size>=100)fail('Abrí alguna de tus cajas antes de comprar más.',409);
- const item=R.draw(CATALOG.filter(i=>i.kind===input.kind&&!i.starter),new Set(Object.keys(user.collected))),id='credits-'+user.id+'-'+input.requestId;
+ const item=input.kind==='plantation'?drawPlant(await plantConfig(storage)):R.draw(R.poolFor(CATALOG,input.kind),new Set(Object.keys(user.collected))),id='credits-'+user.id+'-'+input.requestId;
  const box={id,userId:user.id,kind:input.kind,itemId:item.id,opened:false,purchaseId:input.requestId};user.credits=before-cost;user.walletVersion=(user.walletVersion||0)+1;user.collected[item.id]=true;
  await storage.transaction(async tx=>tx.put({['user:'+user.id]:user,['box:'+id]:box,['pending:'+user.id+':'+id]:box,[key]:{requestId:input.requestId,userId:user.id,kind:input.kind,boxId:id,cost,before,after:user.credits,at:Date.now()}}));
  await world.notifyUser(user.id);return box;
