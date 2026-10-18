@@ -24,8 +24,8 @@ export async function handlePosters(request,world,user,admin=false){
  const image=path.match(/^\/posters\/image\/(\d{1,30})\/([0-4])$/);
  if(image&&request.method==='GET'){
   const room=await world.ctx.storage.get('room:'+image[1]);if(image[1]!==user.id&&(!room||(!room.public&&!admin)||!room.scene.items.some(i=>[80,81,82].includes(i.type)&&i.posterSlot===Number(image[2]))))fail('Imagen no disponible.',404);
-  const object=await world.env.STREAMBOT_MEDIA.get('hub-posters/'+image[1]+'/'+image[2]+'.jpg');if(!object)fail('Imagen no disponible.',404);
-  return new Response(object.body,{headers:{'Content-Type':'image/jpeg','X-Content-Type-Options':'nosniff','Cache-Control':'private, no-cache','ETag':object.httpEtag||''}});
+  // Authorize here, then stream R2 from the gateway without holding the room's lock.
+  return Response.json({key:'hub-posters/'+image[1]+'/'+image[2]+'.jpg'});
  }
  const upload=path.match(/^\/posters\/([0-4])$/);
  if(upload&&request.method==='PUT'){
@@ -39,3 +39,5 @@ export async function handlePosters(request,world,user,admin=false){
  }
  fail('No disponible.',404);
 }
+
+export async function posterImage(env,key){const object=await env.STREAMBOT_MEDIA.get(key);if(!object)fail('Imagen no disponible.',404);return new Response(object.body,{headers:{'Content-Type':'image/jpeg','X-Content-Type-Options':'nosniff','Cache-Control':'private, no-cache','ETag':object.httpEtag||''}});}
