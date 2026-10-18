@@ -131,7 +131,7 @@
       if(baked){const cv=document.createElement('canvas');cv.width=288;cv.height=384;if(!baked.empty)cv.getContext('2d').drawImage(modular.compiled.images[baked.sheet],baked.x,baked.y,baked.w,baked.h,baked.dx,baked.dy,baked.w,baked.h);components.set(key,cv);return cv;}
       const cv=document.createElement('canvas');cv.width=288;cv.height=384;const k=cv.getContext('2d');k.scale(4,4);
       const base=legacy(0,kind==='pants'?Math.min(index,2):0,dir,pose),cell=pose*4+dir;
-      if(kind==='top'&&index>=16){const art=modular.dresses[index-16][cell],idle=modular.dresses[index-16][dir],p=art.canvas.getContext('2d').getImageData(0,0,art.width,art.height).data;let sum=0,n=0;for(let y=0;y<art.height*.055;y++)for(let x=0;x<art.width;x++)if(p[(y*art.width+x)*4+3]>128){sum+=x;n++;}const scale=40/idle.height,neck=n?sum/n:art.width/2;k.drawImage(art.canvas,36-neck*scale,CONTRACT.neckY,art.width*scale,art.height*scale);}
+      if(kind==='top'&&index>=16){const art=modular.dresses[index-16][cell],idle=modular.dresses[index-16][dir],p=art.canvas.getContext('2d').getImageData(0,0,art.width,art.height).data;let sum=0,n=0;for(let y=0;y<art.height*.055;y++)for(let x=0;x<art.width;x++)if(p[(y*art.width+x)*4+3]>128){sum+=x;n++;}const scale=31/idle.height,neck=n?sum/n:art.width/2;k.drawImage(art.canvas,36-neck*scale,CONTRACT.neckY,art.width*scale,art.height*scale);}
       else if(kind==='top'&&index<11&&index!==6)k.drawImage(legacy(index,0,dir,pose)[0].canvas,0,0,72,96);
       else if(kind==='pants'&&index<3)k.drawImage(base[1].canvas,0,0,72,96);
       else if(kind==='shoes'&&index<3){const shoe=legacy(index===1?9:index===2?10:0,0,dir,pose)[2],b=base[2].bounds,s=shoe.bounds;k.drawImage(shoe.canvas,s.x*4,s.y*4,s.w*4,s.h*4,b.x,b.y+(index?-.7:0),b.w,b.h+(index?.7:0));}
@@ -203,8 +203,8 @@
         k.drawImage(scaledIllustration(art,w,h),x,y,w,h);
       };
       if(dir<2)drawBack();
-      const lower=a.top>=16?[]:[['shoes',a.shoes],['pants',a.bottom]];
-      for(const [kind,index] of [...lower,['top',a.top],...(a.top>=16?[['shoes',a.shoes]]:[]),['accessory',a.accessory]])k.drawImage(component(kind,index,dir,selected.pose),0,selected.bob,72,96);
+      const lower=[['shoes',a.shoes],['pants',a.bottom]];
+      for(const [kind,index] of [...lower,['top',a.top],['accessory',a.accessory]])k.drawImage(component(kind,index,dir,selected.pose),0,selected.bob,72,96);
       const head=heads[(a.face*choices.hair.length+a.hair)*4+dir];
       // Calibrated jaw/skull registration: hair tips and ponytails do not define
       // the head center. These landmarks are shared by all faces of a hairstyle.
@@ -225,7 +225,8 @@
       // Front views register the chin, not the lowest hair tip. The reviewed
       // face-size factors are shared by every expression and direction.
       const landmark=chinLandmark(head),front=dir<2;
-      const hx=front?36+(dir===0?2.5:-2.5)-landmark.x*scale:36-w*profile.x[dir];
+      const headForward=a.hair===12?.5:2.5;
+      const hx=front?36+(dir===0?headForward:-headForward)-landmark.x*scale:36-w*profile.x[dir];
       const hy=(front?41.4-landmark.y*scale:42.5-h*profile.jaw)+1.25;
       const headDX=hx-(36-w/2),headDY=hy-(43-h);
       k.drawImage(scaledIllustration(head,w,h),hx,hy+selected.bob,w,h);

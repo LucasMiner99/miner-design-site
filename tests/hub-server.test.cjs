@@ -188,9 +188,11 @@ const digest=s=>crypto.createHash('sha256').update(s).digest('hex');
   await new Promise(r=>setTimeout(r,100));assert.equal((await(await req('1','rooms')).json()).rooms.find(r=>r.id==='1').online,20);assert(crowd.at(-1).messages.some(m=>m.type==='error'&&/llena/.test(m.error)));for(const c of crowd)c.ws.close();
   // Tabletop coordinates survive the real room API and authoritative storage.
   const current=(await(await req('1','state')).json()).room;
-  const fineScene={...current.scene,items:[{id:1,type:88,x:2,y:2},{id:2,type:77,x:2,y:2,parentId:1,surfaceX:6,surfaceY:2}]};
+  const fineScene={...current.scene,items:[{id:1,type:88,x:2.5,y:2.5},{id:2,type:77,x:2.5,y:2.5,parentId:1,surfaceX:6,surfaceY:2}]};
   const fineSave=await req('1','room','PUT',{scene:fineScene,revision:current.revision});assert.equal(fineSave.status,200);
   const fineRoom=(await fineSave.json()).room;assert.equal(fineRoom.scene.items[1].surfaceX,6);assert.equal((await(await req('1','state')).json()).room.scene.items[1].surfaceY,2);
+  assert.equal(fineRoom.scene.items[0].x,2.5);assert.equal(fineRoom.scene.items[1].y,2.5);
+  const offFloor={...fineScene,items:fineScene.items.map(i=>({...i,x:2.25}))};assert.equal((await req('1','room','PUT',{scene:offFloor,revision:fineRoom.revision})).status,400);
   const duplicate={...fineScene,items:[...fineScene.items,{...fineScene.items[1],id:3}]};assert.equal((await req('1','room','PUT',{scene:duplicate,revision:fineRoom.revision})).status,400);
   const offGrid={...fineScene,items:[fineScene.items[0],{...fineScene.items[1],surfaceX:6.5}]};assert.equal((await req('1','room','PUT',{scene:offGrid,revision:fineRoom.revision})).status,400);
   assert.equal((await req('1','look','PUT',{appearance:{top:18,hair:12,back:7}})).status,200);

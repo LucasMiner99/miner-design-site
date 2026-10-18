@@ -225,6 +225,17 @@
     return Math.hypot(p.x-q.x,p.y-q.y)<radius(a)+radius(b)-.001;
   }
   function surfaceGrid(parent){const a=TYPES[parent.type]?.surfaceArea,out=[];if(a)for(let y=1;y<a.ny;y++)for(let x=1;x<a.nx;x++)out.push({surfaceX:x,surfaceY:y});return out;}
+  function surfaceOffset(parent,spot){
+    const t=TYPES[parent.type],x=spot.surfaceX/4-t.w/2,y=spot.surfaceY/4-t.h/2,r=rotation(parent);
+    const a=r===0?x:r===1?y:r===2?-x:-y,b=r===0?y:r===1?x:r===2?-y:-x;
+    return {x:32*(a-b),y:16*(a+b)};
+  }
+  // Top-center landmarks only; spacing and angles always come from room cells.
+  const surfaceCenters={2:.32,6:.30,9:.38,16:.28,19:.28,23:.27,34:.30,35:.29,60:.265,88:.29};
+  for(const [id,v] of Object.entries(surfaceCenters))TYPES[id].surfaceCenter={u:.5,v};
+  TYPES[9].artAxes=[.57,-.57];
+  TYPES[88].artAxes=[.52,-.56];
+  TYPES[86].artAxes=[.45,-.57];
   function initial(){return {version:1,geometryVersion:2,structureVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
     {id:1,type:0,x:1,y:5,flip:false},
     {id:2,type:4,x:0,y:1,flip:false},
@@ -245,7 +256,7 @@
     {id:17,type:20,x:9,y:1,flip:false,parentId:13,slot:0},
     {id:18,type:21,x:1,y:10,flip:false,parentId:16,slot:0}
   ]};}
-  function covers(item,x,y){if(TYPES[item.type].wall)return false;const t=dimensions(item);return x>=item.x&&x<item.x+t.w&&y>=item.y&&y<item.y+t.h;}
+  function covers(item,x,y){if(TYPES[item.type].wall)return false;const t=dimensions(item);return x+1>item.x&&x<item.x+t.w&&y+1>item.y&&y<item.y+t.h;}
   function blocked(items,x,y,ignoreId,layout=activeLayout){return !inside(x,y,layout)||partitionAt(x,y,layout)||items.some(i=>i.id!==ignoreId&&!i.parentId&&!TYPES[i.type].flat&&covers(i,x,y));}
   function overlap(a,b){if(TYPES[a.type].wall||TYPES[b.type].wall)return false;const ta=dimensions(a),tb=dimensions(b);return a.x<b.x+tb.w&&a.x+ta.w>b.x&&a.y<b.y+tb.h&&a.y+ta.h>b.y;}
   function canPlace(items,item,player,layout=activeLayout){
@@ -261,9 +272,9 @@
       const parent=items.find(i=>i.id===item.parentId);
       return !!(t?.tabletop&&parent&&parent.id!==item.id&&!parent.parentId&&TYPES[parent.type].surface&&surfaceFits(parent,item)&&item.x===parent.x&&item.y===parent.y&&!items.some(i=>i.id!==item.id&&i.parentId===item.parentId&&surfaceOccupied(parent,item,i)));
     }
-    if(!t||!Number.isInteger(item.x)||!Number.isInteger(item.y)||item.x<0||item.y<0||!inside(item.x,item.y,layout)||!inside(item.x+d.w-1,item.y,layout)||!inside(item.x,item.y+d.h-1,layout)||!inside(item.x+d.w-1,item.y+d.h-1,layout))return false;
+    if(!t||!Number.isFinite(item.x)||!Number.isFinite(item.y)||!Number.isSafeInteger(item.x*2)||!Number.isSafeInteger(item.y*2)||item.x<0||item.y<0||!inside(item.x,item.y,layout)||!inside(Math.ceil(item.x+d.w)-1,item.y,layout)||!inside(item.x,Math.ceil(item.y+d.h)-1,layout)||!inside(Math.ceil(item.x+d.w)-1,Math.ceil(item.y+d.h)-1,layout))return false;
     // Check every cell, including concave cutouts and interior wall strips.
-    for(let y=item.y;y<item.y+d.h;y++)for(let x=item.x;x<item.x+d.w;x++)if(!inside(x,y,layout)||partitionAt(x,y,layout)||stairAccess(x,y,layout)||doorAccess(x,y,layout)||tileHeight(x,y,layout)!==tileHeight(item.x,item.y,layout))return false;
+    for(let y=Math.floor(item.y);y<Math.ceil(item.y+d.h);y++)for(let x=Math.floor(item.x);x<Math.ceil(item.x+d.w);x++)if(!inside(x,y,layout)||partitionAt(x,y,layout)||stairAccess(x,y,layout)||doorAccess(x,y,layout)||tileHeight(x,y,layout)!==tileHeight(item.x,item.y,layout))return false;
     if(items.some(i=>i.id!==item.id&&!i.parentId&&TYPES[i.type].flat===t.flat&&overlap(i,item)))return false;
     if(!t.flat&&player&&covers(item,Math.floor(player.x),Math.floor(player.y)))return false;
     return true;
@@ -288,8 +299,9 @@
   function seatApproach(items,player,item,occupied=new Set()){
     const type=TYPES[item.type];if(!type?.seat||item.parentId)return null;const t=dimensions(item);
     let best=null;
-    for(let y=item.y-1;y<=item.y+t.h;y++)for(let x=item.x-1;x<=item.x+t.w;x++){
-      const beside=(x>=item.x&&x<item.x+t.w&&(y===item.y-1||y===item.y+t.h))||(y>=item.y&&y<item.y+t.h&&(x===item.x-1||x===item.x+t.w));
+    const left=Math.floor(item.x),right=Math.ceil(item.x+t.w),top=Math.floor(item.y),bottom=Math.ceil(item.y+t.h);
+    for(let y=top-1;y<=bottom;y++)for(let x=left-1;x<=right;x++){
+      const beside=(x>=left&&x<right&&(y===top-1||y===bottom))||(y>=top&&y<bottom&&(x===left-1||x===right));
       if(!beside)continue;
       if(tileHeight(x,y)!==tileHeight(item.x,item.y)||stairAt(x,y))continue;
       const path=route(items,player,{x,y},occupied);
@@ -344,7 +356,7 @@
       ids.add(item.id);result.items.push(item);
     }
     for(const raw of data.unplacedItems||[]){
-      if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type]||!Number.isInteger(raw.x)||!Number.isInteger(raw.y))return null;
+      if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type]||!Number.isFinite(raw.x)||!Number.isFinite(raw.y)||!Number.isSafeInteger(raw.x*2)||!Number.isSafeInteger(raw.y*2))return null;
       const item={id:raw.id,type:raw.type,x:raw.x,y:raw.y,flip:!!raw.flip};
       if(raw.rotation!==undefined){if(!Number.isInteger(raw.rotation)||raw.rotation<0||raw.rotation>3)return null;item.rotation=raw.rotation;item.flip=!!(raw.rotation%2);}
       if(TYPES[item.type].poster&&raw.posterSlot!==undefined){if(!Number.isInteger(raw.posterSlot)||raw.posterSlot<0||raw.posterSlot>4)return null;item.posterSlot=raw.posterSlot;}
@@ -390,6 +402,6 @@
     }
     if(reserve.length)out.unplacedItems=reserve;return out;
   }
-  const api={surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
+  const api={surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.VeredaCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
