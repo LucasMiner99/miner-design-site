@@ -44,7 +44,30 @@
  }
  setInterval(()=>{if(connected)socket.send('ping');},25000);
  window.addEventListener('beforeunload',e=>{if(saving){e.preventDefault();e.returnValue='';}});
- async function rooms(){try{const result=await api('rooms'),list=$('hubRoomsList');list.replaceChildren();for(const r of result.rooms){const b=document.createElement('button');b.className='hub-room-card';const current=r.id===room?.id;b.setAttribute('aria-current',String(current));b.disabled=current;const mark=document.createElement('span');mark.className='hub-room-card-mark';const portrait=document.createElement('canvas');portrait.width=72;portrait.height=80;portrait.setAttribute('aria-hidden','true');game?.portrait(portrait,r.appearance);mark.append(portrait);const copy=document.createElement('span');copy.className='hub-room-card-copy';const name=document.createElement('strong');name.textContent=r.name;const detail=document.createElement('small');detail.textContent=r.online+'/20 en la sala'+(current?' · Estás acá':r.active?' · En actividad':'');copy.append(name,detail);const arrow=document.createElement('span');arrow.className='hub-room-card-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent=current?'✓':'›';b.append(mark,copy,arrow);b.onclick=()=>{bridge.visit(r.id);$('hubRoomsDialog').close();};list.append(b);}$('hubRoomsDialog').showModal();}catch(e){status(e.message);}}
+ const roomSearchKey=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').trim();
+ function filterRooms(){
+  const query=roomSearchKey($('hubRoomsSearch').value),list=$('hubRoomsList');let count=0;
+  for(const card of list.children){card.hidden=!card.dataset.searchName.includes(query);if(!card.hidden)count++;}
+  list.scrollTop=0;$('hubRoomsCount').textContent=count?count+(count===1?' sala':' salas'):query?'No encontramos salas con ese nombre.':'Todavía no hay salas disponibles.';
+ }
+ $('hubRoomsSearch').addEventListener('input',filterRooms);
+ async function rooms(){
+  if($('hubRoomsDialog').open)return;
+  $('hubRooms').disabled=true;
+  try{
+   const result=await api('rooms'),list=$('hubRoomsList');list.replaceChildren();$('hubRoomsSearch').value='';
+   for(const r of result.rooms){
+    const b=document.createElement('button');b.type='button';b.className='hub-room-card';b.dataset.searchName=roomSearchKey(r.name);
+    const current=r.id===room?.id;b.setAttribute('aria-current',String(current));b.disabled=current;
+    const mark=document.createElement('span');mark.className='hub-room-card-mark';const portrait=document.createElement('canvas');portrait.width=144;portrait.height=160;portrait.setAttribute('aria-hidden','true');game?.portrait(portrait,r.appearance);mark.append(portrait);
+    const copy=document.createElement('span');copy.className='hub-room-card-copy';const name=document.createElement('strong');name.textContent=r.name;
+    const detail=document.createElement('small');detail.textContent=r.online+'/20 en la sala';copy.append(name,detail);
+    const badge=document.createElement('span');badge.className='hub-room-card-state';badge.textContent=current?'Estás acá':r.active?'En actividad':'Visitar sala';
+    b.append(mark,copy,badge);b.onclick=()=>{bridge.visit(r.id);$('hubRoomsDialog').close();};list.append(b);
+   }
+   filterRooms();$('hubRoomsDialog').showModal();$('hubRoomsSearch').focus();
+  }catch(e){status(e.message);}finally{$('hubRooms').disabled=!game;}
+ }
  $('hubRooms').onclick=rooms;$('hubHome').onclick=()=>bridge.visit(account.user.id);$('hubLogout').onclick=async()=>{stopped=true;try{await api('logout','POST');location.reload();}catch(e){status(e.message);}};
  $('hubAdmin').onclick=async()=>{try{const data=await api('admin/credit-rewards');for(const kind of ['object','character','environment'])$('hubBoxCost-'+kind).value=data.costs[kind];$('hubAdminError').textContent=data.ready?'Paquetes de créditos activos en Kick.':'Los paquetes se activarán al sincronizar.';$('hubAdminDialog').showModal();}catch(e){status(e.message);}};
  $('hubRewardForm').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{const costs=Object.fromEntries(['object','character','environment'].map(k=>[k,Number($('hubBoxCost-'+k).value)]));await api('admin/credit-rewards','POST',{costs});updateAccount(await api('state'));$('hubAdminError').textContent='Precios guardados y paquetes de créditos activos.';}catch(e){$('hubAdminError').textContent=e.message;}finally{button.disabled=false;}};

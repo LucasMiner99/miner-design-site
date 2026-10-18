@@ -16,7 +16,10 @@
 <dialog id="hubRoomsDialog" class="modal hub-rooms-modal" aria-labelledby="hubRoomsTitle">
   <button type="button" class="modal-close icon-button" data-hub-close="hubRoomsDialog" aria-label="Cerrar salas">×</button>
   <div class="eyebrow">EL BARRIO</div><h2 id="hubRoomsTitle">Elegí tu próximo rincón.</h2>
-  <div id="hubRoomsList"></div>
+  <label class="sr-only" for="hubRoomsSearch">Buscar sala por nombre</label>
+  <input id="hubRoomsSearch" class="hub-rooms-search" type="search" placeholder="Buscar por nombre…" autocomplete="off" maxlength="80" aria-controls="hubRoomsList">
+  <p id="hubRoomsCount" class="hub-rooms-count" role="status" aria-live="polite"></p>
+  <div id="hubRoomsList" aria-label="Salas disponibles"></div>
 </dialog>
 <dialog id="hubAdminDialog" class="modal hub-credit-admin"><h2>Administrar</h2><p>Créditos por Kick: 50 · 100 · 500 · 1.000 · 2.000 · 5.000. Cada punto canjeado suma un crédito.</p><form id="hubRewardForm"><label>Caja de objetos · créditos <input id="hubBoxCost-object" type="number" min="1" max="1000000" required></label><label>Caja de personaje · créditos <input id="hubBoxCost-character" type="number" min="1" max="1000000" required></label><label>Caja de ambiente · créditos <input id="hubBoxCost-environment" type="number" min="1" max="1000000" required></label><button class="primary-button" type="submit">Guardar y sincronizar Kick</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
 
