@@ -1,3 +1,4 @@
+import {coffeeAction,coffeeConfig,saveCoffeeConfig} from './hub-coffee.mjs';
 import {plantConfig,savePlantConfig,reconcilePlants,harvestPlant} from './hub-plants.mjs';
 import {handlePosters,posterList} from './hub-posters.mjs';
 import {giveaway} from './hub-giveaway.mjs';
@@ -121,6 +122,8 @@ export class HubWorld {
    const result=path==='/roulette/open'?await openRoulette(this,u,input):{receipt:await betRoulette(this,u,input)};
    return reply({...result,account:await this.state(u,auth.admin)});
   }
+  if(['/coffee/open','/coffee/start','/coffee/pour','/coffee/serve'].includes(path)&&request.method==='POST'){const result=await coffeeAction(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,account:await this.state(u,auth.admin)});}
+  if(path==='/admin/coffee'&&auth.admin){if(request.method==='GET')return reply(await coffeeConfig(this.ctx.storage));if(request.method==='PUT')return reply(await saveCoffeeConfig(this.ctx.storage,await body(request,2048)));}
   if(path==='/plants/harvest'&&request.method==='POST'){const result=await harvestPlant(this,u,await body(request,2048));return reply({...result,account:await this.state(u,auth.admin)});}
   if(path==='/admin/plants'&&auth.admin){if(request.method==='GET')return reply(await plantConfig(this.ctx.storage));if(request.method==='PUT'){const config=await savePlantConfig(this.ctx.storage,await body(request,2048));const shop=publicShop(await economy(this.ctx.storage));for(const ws of this.sockets())this.send(ws,{type:'shop',shop});return reply(config);}}
   if((path==='/exchange/open'||path==='/exchange/swap')&&request.method==='POST'){

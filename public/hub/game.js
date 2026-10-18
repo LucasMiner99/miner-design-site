@@ -240,9 +240,10 @@
   function cycleFinish(){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].finishes||movingId!==null)return;checkpoint();if(item.finish===1)delete item.finish;else item.finish=1;selectItem(item.id);save();}
   $('finishPrev').addEventListener('click',cycleFinish);$('finishNext').addEventListener('click',cycleFinish);
   function beginMove(){if(selectedId===null)return;movingId=selectedId;ghost=null;canvas.classList.add('placing');$('moveBtn').disabled=true;$('interactBtn').disabled=true;modeHint();}
-  function interactionLabel(item){if(C.TYPES[item.type].plantation)return 'Cosechar';if(C.TYPES[item.type].interaction==='exchange')return 'Cambiar repetido';if(C.TYPES[item.type].interaction==='roulette')return 'Abrir ruleta';if(window.HubMedia?.supports(item.type))return 'Abrir música';return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
+  function interactionLabel(item){if(C.TYPES[item.type].interaction==='coffee')return 'Preparar café';if(C.TYPES[item.type].plantation)return 'Cosechar';if(C.TYPES[item.type].interaction==='exchange')return 'Cambiar repetido';if(C.TYPES[item.type].interaction==='roulette')return 'Abrir ruleta';if(window.HubMedia?.supports(item.type))return 'Abrir música';return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
   function updateInteraction(item){$('interactBtn').disabled=false;$('interactBtn').hidden=!C.TYPES[item.type].interaction&&!window.HubMedia?.supports(item.type);$('interactBtn').textContent=interactionLabel(item);}
   function interact(item){
+    if(item&&C.TYPES[item.type].interaction==='coffee'){if(movingId===null&&pendingType===null)window.HubCoffee?.open(item);return;}
     if(item&&C.TYPES[item.type].plantation){if(movingId===null&&pendingType===null)window.HubPlants?.harvest(item);return;}
     if(item&&C.TYPES[item.type].interaction==='exchange'){if(movingId===null&&pendingType===null)window.HubExchange?.open(item);return;}
     if(item&&C.TYPES[item.type].interaction==='roulette'){if(movingId===null&&pendingType===null)window.HubRoulette?.open(item);return;}

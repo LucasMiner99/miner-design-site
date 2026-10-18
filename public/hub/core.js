@@ -132,7 +132,7 @@
     {name:'Cama Nube',w:1,h:1,width:52,category:'deco',sprite:74},
     {name:'Estante Vinilos',w:1,h:1,width:88,mountH:54,category:'wall',sprite:75,wall:true},
     {name:'Cuadro Lunar',w:1,h:1,width:48,mountH:48,category:'wall',sprite:76,wall:true},
-    {name:'Cafetera Crema',w:1,h:1,width:34,category:'deco',sprite:77,tabletop:true},
+    {name:'Cafetera Crema',w:1,h:1,width:34,category:'deco',sprite:77,tabletop:true,interaction:'coffee'},
     {name:'Globo Viajero',w:1,h:1,width:29,category:'deco',sprite:78,tabletop:true},
     {name:'Ruleta',w:2,h:2,width:108,category:'deco',sprite:79,interaction:'roulette'},
     {name:'Póster personal · Cuadrado',w:1,h:1,width:64,mountH:64,category:'wall',sprite:80,wall:true,poster:true,ratio:1},
