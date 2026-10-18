@@ -41,7 +41,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   assert.equal((await req('1','posters/0','PUT',jpeg)).status,429);await new Promise(r=>setTimeout(r,1550));assert.equal((await req('1','posters/0','PUT',jpeg)).status,200);
   assert.equal((await(await req('1','posters')).json()).slots[0].version,2);const bucket=await mf.getR2Bucket('STREAMBOT_MEDIA');assert.equal((await bucket.list({prefix:'hub-posters/1/'})).objects.length,5,'Replacement retains exactly five objects');
   const scene=C.initial();scene.items=[{id:1,type:80,x:0,y:0,wallSide:'left',wallU:5,wallZ:90,posterSlot:4}];assert.equal(C.restore(scene).items[0].posterSlot,4);scene.items[0].posterSlot=5;assert.equal(C.restore(scene),null);
-  assert.equal(CATALOG.filter(i=>i.kind==='object'&&i.type>=80).length,3);
+  assert.equal(CATALOG.filter(i=>i.kind==='object'&&C.TYPES[i.type].poster).length,3);
   console.log('PASS posters/media: auth, CSRF, five fixed R2 keys, replacement, isolated accounts, MIME/byte/dimension limits, visitor reads, scene validation, shared loop clock and owner-only metadata/repeat.');
  }finally{await mf.dispose();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

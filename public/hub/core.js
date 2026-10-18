@@ -138,7 +138,13 @@
     {name:'Póster personal · Cuadrado',w:1,h:1,width:64,mountH:64,category:'wall',sprite:80,wall:true,poster:true,ratio:1},
     {name:'Póster personal · Horizontal',w:1,h:1,width:88,mountH:49.5,category:'wall',sprite:81,wall:true,poster:true,ratio:16/9},
     {name:'Póster personal · Vertical',w:1,h:1,width:45,mountH:80,category:'wall',sprite:82,wall:true,poster:true,ratio:9/16},
-    {name:'Máquina de intercambio',w:1,h:1,width:62,category:'deco',sprite:83,interaction:'exchange'}
+    {name:'Máquina de intercambio',w:1,h:1,width:62,category:'deco',sprite:83,interaction:'exchange'},
+    {name:'Monitor Panorámico',w:1,h:1,width:53,category:'deco',sprite:84,tabletop:true},
+    {name:'Monitor Vertical Crema',w:1,h:1,width:30,category:'deco',sprite:85,tabletop:true},
+    {name:'Tele Cine',w:3,h:1,width:126,category:'deco',sprite:86},
+    {name:'Tele Plasma Pared',w:1,h:1,width:136,mountH:76.5,category:'wall',sprite:87,wall:true,interaction:'light'},
+    {name:'Mesa Taller',w:3,h:1,width:118,category:'tables',sprite:88,rearArtFlip:true,surface:[{u:.30,v:.23},{u:.70,v:.42}]},
+    {name:'Lámpara Luna',w:1,h:1,width:25,category:'deco',sprite:89,tabletop:true,interaction:'light',rotationLight:true}
   ];
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
@@ -189,6 +195,36 @@
   bases.push(['box',.86],['box',.91],['box',.90],['oval',.94],['wall',1],['wall',1],['box',.86],['oval',.73]);
   TYPES.forEach((t,i)=>t.base={shape:bases[i]?.[0]||'wall',span:bases[i]?.[1]||1,u:.5});
   TYPES[83].base={shape:'box',span:.94,u:.5};
+  for(const [i,shape,span] of [[84,'box',.4],[85,'box',.55],[86,'box',.94],[88,'box',.94],[89,'oval',.8]])TYPES[i].base={shape,span,u:.5};
+  // Local tabletop plane, separate from room/pathfinding cells. A quarter-tile
+  // grid spans the usable surface; legacy slots remain readable without moving saves.
+  for(const t of TYPES)if(t.surface){
+    const c={u:t.surface.reduce((n,p)=>n+p.u,0)/t.surface.length,v:t.surface.reduce((n,p)=>n+p.v,0)/t.surface.length};
+    const first=t.surface[0],last=t.surface.at(-1);
+    t.surfaceArea={c,a:t.surface.length>1?{u:(last.u-first.u)*1.65,v:(last.v-first.v)*1.65}:{u:.48,v:.19},b:{u:-.28,v:.14},nx:t.w*4,ny:t.h*4};
+  }
+  Object.assign(TYPES[2].surfaceArea,{a:{u:.62,v:.26},b:{u:-.62,v:.26}});
+  function surfaceUV(parent,child){
+    const t=TYPES[parent.type],a=t?.surfaceArea;if(!a)return null;
+    if(child.surfaceX===undefined&&child.surfaceY===undefined)return Number.isInteger(child.slot)?t.surface[child.slot]||null:null;
+    if(child.slot!==undefined||!Number.isInteger(child.surfaceX)||!Number.isInteger(child.surfaceY)||child.surfaceX<1||child.surfaceX>=a.nx||child.surfaceY<1||child.surfaceY>=a.ny)return null;
+    return {u:a.c.u+(child.surfaceX/a.nx-.5)*a.a.u+(child.surfaceY/a.ny-.5)*a.b.u,v:a.c.v+(child.surfaceX/a.nx-.5)*a.a.v+(child.surfaceY/a.ny-.5)*a.b.v};
+  }
+  function surfaceLocal(parent,child){
+    const p=surfaceUV(parent,child),a=TYPES[parent.type]?.surfaceArea;if(!p||!a)return null;
+    const u=p.u-a.c.u,v=p.v-a.c.v,d=a.a.u*a.b.v-a.a.v*a.b.u;
+    return {x:(u*a.b.v-v*a.b.u)/d*TYPES[parent.type].w,y:(a.a.u*v-a.a.v*u)/d*TYPES[parent.type].h};
+  }
+  function surfaceFits(parent,child){return !!surfaceUV(parent,child);}
+  function surfaceOccupied(parent,a,b){
+    // Existing authored slots retain their old compatibility. New placements
+    // also collide with legacy props, using each object's actual base size.
+    if(a.surfaceX===undefined&&b.surfaceX===undefined)return a.slot===b.slot;
+    const p=surfaceLocal(parent,a),q=surfaceLocal(parent,b);if(!p||!q)return true;
+    const radius=i=>Math.max(.16,Math.min(.46,TYPES[i.type].width*TYPES[i.type].base.span/110));
+    return Math.hypot(p.x-q.x,p.y-q.y)<radius(a)+radius(b)-.001;
+  }
+  function surfaceGrid(parent){const a=TYPES[parent.type]?.surfaceArea,out=[];if(a)for(let y=1;y<a.ny;y++)for(let x=1;x<a.nx;x++)out.push({surfaceX:x,surfaceY:y});return out;}
   function initial(){return {version:1,geometryVersion:2,structureVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
     {id:1,type:0,x:1,y:5,flip:false},
     {id:2,type:4,x:0,y:1,flip:false},
@@ -223,7 +259,7 @@
     }
     if(item.parentId){
       const parent=items.find(i=>i.id===item.parentId);
-      return !!(t?.tabletop&&parent&&parent.id!==item.id&&!parent.parentId&&TYPES[parent.type].surface&&Number.isInteger(item.slot)&&TYPES[parent.type].surface[item.slot]&&item.x===parent.x&&item.y===parent.y&&!items.some(i=>i.id!==item.id&&i.parentId===item.parentId&&i.slot===item.slot));
+      return !!(t?.tabletop&&parent&&parent.id!==item.id&&!parent.parentId&&TYPES[parent.type].surface&&surfaceFits(parent,item)&&item.x===parent.x&&item.y===parent.y&&!items.some(i=>i.id!==item.id&&i.parentId===item.parentId&&surfaceOccupied(parent,item,i)));
     }
     if(!t||!Number.isInteger(item.x)||!Number.isInteger(item.y)||item.x<0||item.y<0||!inside(item.x,item.y,layout)||!inside(item.x+d.w-1,item.y,layout)||!inside(item.x,item.y+d.h-1,layout)||!inside(item.x+d.w-1,item.y+d.h-1,layout))return false;
     // Check every cell, including concave cutouts and interior wall strips.
@@ -235,7 +271,7 @@
   function moveItem(items,item){
     const old=items.find(i=>i.id===item.id);
     if(!old){items.push({...item});return;}
-    delete old.parentId;delete old.slot;Object.assign(old,item);
+    delete old.parentId;delete old.slot;delete old.surfaceX;delete old.surfaceY;Object.assign(old,item);
     for(const child of items.filter(i=>i.parentId===item.id)){child.x=item.x;child.y=item.y;}
   }
   function removeItem(items,id){return items.filter(i=>i.id!==id&&i.parentId!==id);}
@@ -290,7 +326,7 @@
       if(TYPES[item.type].interaction==='curtain'&&typeof raw.closed==='boolean')item.closed=raw.closed;
       if(TYPES[item.type].wall){item.wallSide=raw.wallSide;item.wallU=raw.wallU;item.wallZ=raw.wallZ;item.x=0;item.y=0;item.flip=false;}
       if(legacy&&raw.flip&&!TYPES[item.type].wall)legacyFlips.push(raw.id);
-      if(raw.parentId!==undefined){if(!Number.isSafeInteger(raw.parentId)||raw.parentId<1)return null;item.parentId=raw.parentId;item.slot=raw.slot;}
+      if(raw.parentId!==undefined){if(!Number.isSafeInteger(raw.parentId)||raw.parentId<1)return null;item.parentId=raw.parentId;if(raw.slot!==undefined)item.slot=raw.slot;if(raw.surfaceX!==undefined)item.surfaceX=raw.surfaceX;if(raw.surfaceY!==undefined)item.surfaceY=raw.surfaceY;}
       if(item.parentId){const parent=result.items.find(p=>p.id===item.parentId);if(parent){item.x=parent.x;item.y=parent.y;}}
       // v27 allowed two props on the occupied gaming desk. Reserve the rest of
       // the saved room first, then move those props to another surface or floor.
@@ -343,10 +379,10 @@
     for(const raw of rows){const t=TYPES[raw.type],candidates=[];
       if(canPlace(out.items,raw,null,l))candidates.push(raw);
       if(raw.parentId&&out.items.some(p=>p.id===raw.parentId)){const p=out.items.find(p=>p.id===raw.parentId);candidates.push({...raw,x:p.x,y:p.y});}
-      const clean={...raw};delete clean.parentId;delete clean.slot;
+      const clean={...raw};delete clean.parentId;delete clean.slot;delete clean.surfaceX;delete clean.surfaceY;
       if(t.wall){for(const side of [raw.wallSide||'left',(raw.wallSide||'left')==='left'?'right':'left'])for(const z of [raw.wallZ||90,90,50,120])for(let u=t.width/64+.2;u<wallSpan(side,l)-t.width/64-.2;u+=.25)candidates.push({...clean,x:0,y:0,flip:false,wallSide:side,wallU:u,wallZ:z});}
       else{
-        if(t.tabletop)for(const p of out.items.filter(p=>!p.parentId&&TYPES[p.type].surface))for(let slot=0;slot<TYPES[p.type].surface.length;slot++)candidates.push({...clean,x:p.x,y:p.y,parentId:p.id,slot});
+        if(t.tabletop)for(const p of out.items.filter(p=>!p.parentId&&TYPES[p.type].surface))for(const spot of surfaceGrid(p))candidates.push({...clean,x:p.x,y:p.y,parentId:p.id,...spot});
         const floor=[];for(let y=0;y<l.h;y++)for(let x=0;x<l.w;x++)floor.push({...clean,x,y});floor.sort((a,b)=>Math.abs(a.x-raw.x)+Math.abs(a.y-raw.y)-Math.abs(b.x-raw.x)-Math.abs(b.y-raw.y));candidates.push(...floor);
       }
       const chosen=candidates.find(i=>canPlace(out.items,i,null,l)&&(keepValid&&i===raw||i.parentId||t.wall||t.flat||connected([...out.items,i])));
@@ -354,6 +390,6 @@
     }
     if(reserve.length)out.unplacedItems=reserve;return out;
   }
-  const api={SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
+  const api={surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.VeredaCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -53,11 +53,10 @@
     const types=shuffle(C.TYPES.map((t,type)=>({t,type})));
     const floor=types.filter(({t})=>!t.wall&&!t.tabletop).sort((a,b)=>Number(a.t.flat)-Number(b.t.flat)||b.t.w*b.t.h-a.t.w*a.t.h);
     for(const {type} of floor)placeFloor(type);
-    const slots=shuffle(items.flatMap(parent=>(C.TYPES[parent.type].surface||[]).map((_,slot)=>({parent,slot}))));
+    const slots=shuffle(items.flatMap(parent=>C.surfaceGrid(parent).map(spot=>({parent,spot}))));
     for(const {type} of types.filter(({t})=>t.tabletop)){
-      const place=slots.pop();
-      if(place)put({id:type+1,type,x:place.parent.x,y:place.parent.y,flip:place.parent.flip,parentId:place.parent.id,slot:place.slot});
-      else placeFloor(type);
+      const candidate=slots.map(({parent,spot})=>({id:type+1,type,x:parent.x,y:parent.y,flip:parent.flip,parentId:parent.id,...spot})).find(i=>C.canPlace(items,i,null,l));
+      if(candidate)put(candidate);else placeFloor(type);
     }
     // A failed wall placement affects only that piece, never the whole room.
     const walls=types.filter(({t})=>t.wall).sort((a,b)=>b.t.mountH*b.t.width-a.t.mountH*a.t.width);

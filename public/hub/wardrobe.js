@@ -60,7 +60,7 @@
   }
   function create(document,heads,sheets,approved,modular){
     const choices=root.VeredaPeople.choices;
-    if(!approved||approved.length!==sheets.length*4||heads.length!==choices.face.length*choices.hair.length*4||sheets.length+(modular?.tops.length||0)!==choices.top.length||sheets.some(s=>s.length!==16))throw new Error('El atlas no cumple la plantilla de personajes.');
+    if(!approved||approved.length!==sheets.length*4||heads.length!==choices.face.length*choices.hair.length*4||sheets.length+(modular?.tops.length||0)+(modular?.dresses?.length||0)!==choices.top.length||sheets.some(s=>s.length!==16))throw new Error('El atlas no cumple la plantilla de personajes.');
     if(!modular||modular.pants.length!==2||modular.shoes.length!==choices.shoes.length-3||modular.chain.length!==4||[modular.night,...modular.tops,...modular.pants,...modular.shoes].some(s=>!s||s.length!==16||s.some(p=>!p.canvas||p.width<8||p.height<8)))throw new Error('Las prendas separadas no cumplen las cuatro vistas y cuatro poses.');
     for(const sprite of [...heads,...sheets.flat(),...approved])if(!sprite.canvas||sprite.width<8||sprite.height<8)throw new Error('La plantilla contiene una pieza vacía o incompleta.');
     const frames=new Map(),prepared=new Map(),scaledIllustrations=new WeakMap();
@@ -131,7 +131,8 @@
       if(baked){const cv=document.createElement('canvas');cv.width=288;cv.height=384;if(!baked.empty)cv.getContext('2d').drawImage(modular.compiled.images[baked.sheet],baked.x,baked.y,baked.w,baked.h,baked.dx,baked.dy,baked.w,baked.h);components.set(key,cv);return cv;}
       const cv=document.createElement('canvas');cv.width=288;cv.height=384;const k=cv.getContext('2d');k.scale(4,4);
       const base=legacy(0,kind==='pants'?Math.min(index,2):0,dir,pose),cell=pose*4+dir;
-      if(kind==='top'&&index<11&&index!==6)k.drawImage(legacy(index,0,dir,pose)[0].canvas,0,0,72,96);
+      if(kind==='top'&&index>=16){const art=modular.dresses[index-16][cell],idle=modular.dresses[index-16][dir],p=art.canvas.getContext('2d').getImageData(0,0,art.width,art.height).data;let sum=0,n=0;for(let y=0;y<art.height*.055;y++)for(let x=0;x<art.width;x++)if(p[(y*art.width+x)*4+3]>128){sum+=x;n++;}const scale=40/idle.height,neck=n?sum/n:art.width/2;k.drawImage(art.canvas,36-neck*scale,CONTRACT.neckY,art.width*scale,art.height*scale);}
+      else if(kind==='top'&&index<11&&index!==6)k.drawImage(legacy(index,0,dir,pose)[0].canvas,0,0,72,96);
       else if(kind==='pants'&&index<3)k.drawImage(base[1].canvas,0,0,72,96);
       else if(kind==='shoes'&&index<3){const shoe=legacy(index===1?9:index===2?10:0,0,dir,pose)[2],b=base[2].bounds,s=shoe.bounds;k.drawImage(shoe.canvas,s.x*4,s.y*4,s.w*4,s.h*4,b.x,b.y+(index?-.7:0),b.w,b.h+(index?.7:0));}
       else if(kind==='top'){
@@ -190,20 +191,20 @@
       const s={scale:1};
       const drawBack=()=>{
         if(!a.back||!modular.back)return;const art=modular.back[(a.back-1)*4+dir];
-        const height=[0,20,30,27,28,31,34][a.back],scale=Math.min(height/art.height,25/art.width),w=art.width*scale,h=art.height*scale;
+        const height=[0,20,30,27,28,31,34,29][a.back],scale=Math.min(height/art.height,25/art.width),w=art.width*scale,h=art.height*scale;
         // The spine, not the crop rectangle, is the mount. Front views put the
         // prop behind the body; rear views expose it over the jacket and nape.
         // Rear views register the bag/body against the spine, not the midpoint
         // between a guitar neck and its body or the rifle barrel and magazine.
-        const anchors=[0,.54,.62,.56,.45,.54,.53],rear=dir>=2;
+        const anchors=[0,.54,.62,.56,.45,.54,.53,.5],rear=dir>=2;
         const anchor=rear?(dir===2?anchors[a.back]:1-anchors[a.back]):.5;
         const spine=[29,43,39.5,32.5][dir];
-        const x=spine-w*anchor,y=[0,44,41,42,42,40,39][a.back]+selected.bob;
+        const x=spine-w*anchor,y=[0,44,41,42,42,40,39,43][a.back]+selected.bob;
         k.drawImage(scaledIllustration(art,w,h),x,y,w,h);
       };
       if(dir<2)drawBack();
-      const lower=[['shoes',a.shoes],['pants',a.bottom]];
-      for(const [kind,index] of [...lower,['top',a.top],['accessory',a.accessory]])k.drawImage(component(kind,index,dir,selected.pose),0,selected.bob,72,96);
+      const lower=a.top>=16?[]:[['shoes',a.shoes],['pants',a.bottom]];
+      for(const [kind,index] of [...lower,['top',a.top],...(a.top>=16?[['shoes',a.shoes]]:[]),['accessory',a.accessory]])k.drawImage(component(kind,index,dir,selected.pose),0,selected.bob,72,96);
       const head=heads[(a.face*choices.hair.length+a.hair)*4+dir];
       // Calibrated jaw/skull registration: hair tips and ponytails do not define
       // the head center. These landmarks are shared by all faces of a hairstyle.
@@ -219,7 +220,8 @@
         {width:39,jaw:.98,x:[.51,.49,.50,.50]},
         {width:41,jaw:.98,x:[.53,.47,.50,.50]},
         {width:39,jaw:.98,x:[.51,.49,.50,.50]}
-      ],profile=profiles[a.hair],scale=Math.min(profile.width/head.width,37/head.height)*[1,1,.98,1,.96,1,.94,.96,.90,.90,.90][a.hair],w=head.width*scale,h=head.height*scale;
+        ,{width:40,jaw:.97,x:[.51,.49,.50,.50]},{width:39,jaw:.98,x:[.51,.49,.50,.50]}
+      ],profile=profiles[a.hair],scale=Math.min(profile.width/head.width,37/head.height)*[1,1,.98,1,.96,1,.94,.96,.90,.90,.90,.94,.94][a.hair],w=head.width*scale,h=head.height*scale;
       // Front views register the chin, not the lowest hair tip. The reviewed
       // face-size factors are shared by every expression and direction.
       const landmark=chinLandmark(head),front=dir<2;
