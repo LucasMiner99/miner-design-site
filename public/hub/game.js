@@ -240,9 +240,11 @@
   function cycleFinish(){const item=state.items.find(i=>i.id===selectedId);if(!item||!C.TYPES[item.type].finishes||movingId!==null)return;checkpoint();if(item.finish===1)delete item.finish;else item.finish=1;selectItem(item.id);save();}
   $('finishPrev').addEventListener('click',cycleFinish);$('finishNext').addEventListener('click',cycleFinish);
   function beginMove(){if(selectedId===null)return;movingId=selectedId;ghost=null;canvas.classList.add('placing');$('moveBtn').disabled=true;$('interactBtn').disabled=true;modeHint();}
-  function interactionLabel(item){if(C.TYPES[item.type].interaction==='coffee')return 'Preparar café';if(C.TYPES[item.type].plantation)return 'Cosechar';if(C.TYPES[item.type].interaction==='exchange')return 'Cambiar repetido';if(C.TYPES[item.type].interaction==='roulette')return 'Abrir ruleta';if(window.HubMedia?.supports(item.type))return 'Abrir música';return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
-  function updateInteraction(item){$('interactBtn').disabled=false;$('interactBtn').hidden=!C.TYPES[item.type].interaction&&!window.HubMedia?.supports(item.type);$('interactBtn').textContent=interactionLabel(item);}
+  function canInteract(item){const t=C.TYPES[item.type];return t.plantation?online.canEdit():!!(t.interaction||window.HubMedia?.supports(item.type));}
+  function interactionLabel(item){if(C.TYPES[item.type].interaction==='dj')return 'Jugar al DJ';if(C.TYPES[item.type].interaction==='coffee')return 'Preparar café';if(C.TYPES[item.type].plantation)return online.canEdit()?'Cosechar':'';if(C.TYPES[item.type].interaction==='exchange')return 'Cambiar repetido';if(C.TYPES[item.type].interaction==='roulette')return 'Abrir ruleta';if(window.HubMedia?.supports(item.type))return 'Abrir música';return C.TYPES[item.type].interaction==='curtain'?(item.closed?'Abrir cortinas':'Cerrar cortinas'):(item.on===false?'Encender':'Apagar');}
+  function updateInteraction(item){$('interactBtn').disabled=false;$('interactBtn').hidden=!canInteract(item);$('interactBtn').textContent=interactionLabel(item);}
   function interact(item){
+    if(item&&C.TYPES[item.type].interaction==='dj'){if(movingId===null&&pendingType===null)window.HubDJ?.open(item);return;}
     if(item&&C.TYPES[item.type].interaction==='coffee'){if(movingId===null&&pendingType===null)window.HubCoffee?.open(item);return;}
     if(item&&C.TYPES[item.type].plantation){if(movingId===null&&pendingType===null)window.HubPlants?.harvest(item);return;}
     if(item&&C.TYPES[item.type].interaction==='exchange'){if(movingId===null&&pendingType===null)window.HubExchange?.open(item);return;}
@@ -318,7 +320,7 @@
   }
   function tileInRoom(tile){return C.inside(tile.x,tile.y);}
   let objectClick=null,objectClickTimer=null;
-  function walkClick(world,tile,hit){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type))){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);}
+  function walkClick(world,tile,hit){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&canInteract(hit)){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);}
   $('posterImageBtn').onclick=()=>{const item=state.items.find(i=>i.id===selectedId);if(item&&C.TYPES[item.type].poster&&online.canEdit())window.HubPosters.open(item,slot=>{if(!online.canEdit()||!state.items.includes(item))return;checkpoint();item.posterSlot=slot;save();});};
   function positionMusicLabel(){const label=$('hubNowPlaying'),media=window.HubMedia?.nowPlaying(),item=media?.playing&&state.items.find(i=>i.id===media.itemId);label.hidden=!item;if(!item)return;const b=itemPosition(item);const text='♫ '+(media.title||'YouTube');if(label.textContent!==text){label.textContent=text;label.title=media.title||'YouTube';}label.style.left=Math.max(90,Math.min(view.w-90,view.x+(b.x+b.w/2)*view.s))+'px';label.style.top=Math.max(12,view.y+b.y*view.s-12)+'px';}
   function positionObjectMenu(){if(selectedId===null||$('contextBar').hidden)return;const item=state.items.find(i=>i.id===selectedId);if(!item)return cancelSelection();const b=itemPosition(item),bar=$('contextBar'),w=bar.offsetWidth||320,h=bar.offsetHeight||50;const x=view.x+(b.x+b.w/2)*view.s,y=view.y+(b.y+b.h)*view.s+10;bar.style.left=Math.max(8,Math.min(view.w-w-8,x-w/2))+'px';bar.style.top=Math.max(8,Math.min(view.h-h-8,y))+'px';}
@@ -353,7 +355,7 @@
     if(cameraDrag){if(e.pointerId!==cameraDrag.id)return;if(!(e.buttons&4)){endCameraDrag(e);return;}e.preventDefault();pan.x=cameraDrag.panX+e.clientX-cameraDrag.x;pan.y=cameraDrag.panY+e.clientY-cameraDrag.y;updateView();return;}
     if(!ready)return;const world=toWorld(e),tile=unproject(world.x,world.y);hoverTile=tileInRoom(tile)?{x:Math.floor(tile.x),y:Math.floor(tile.y)}:null;
     hoveredPartition=partitionAtPointer(world);petPointer=world;
-    const hit=mode==='walk'?hitAt(world):null,door=mode==='walk'&&doorAtPointer(world),usable=door||hit&&(C.TYPES[hit.type].interaction||window.HubMedia?.supports(hit.type));canvas.title=door?'Pasar por la puerta':usable?interactionLabel(hit):hit&&C.TYPES[hit.type].seat?'Sentarse':'';canvas.style.cursor=usable||hit&&C.TYPES[hit.type].seat?'pointer':'';
+    const hit=mode==='walk'?hitAt(world):null,door=mode==='walk'&&doorAtPointer(world),usable=door||hit&&canInteract(hit);canvas.title=door?'Pasar por la puerta':usable?interactionLabel(hit):hit&&C.TYPES[hit.type].seat?'Sentarse':'';canvas.style.cursor=usable||hit&&C.TYPES[hit.type].seat?'pointer':'';
     if(mode!=='decorate')return;
     if(pendingType!==null)ghost=candidateAt(world,{id:-1,type:pendingType,flip:false});
     else if(movingId!==null)ghost=candidateAt(world,state.items.find(i=>i.id===movingId));

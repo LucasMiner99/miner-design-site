@@ -128,7 +128,7 @@
     {name:'Mini Expendedora',w:1,h:1,width:48,category:'deco',sprite:69},
     {name:'Puf Luna',w:1,h:1,width:61,category:'seats',sprite:70,seat:{u:.46,v:.55,dir:0}},
     {name:'Pinball Órbita',w:1,h:2,width:76,category:'deco',sprite:71},
-    {name:'Mesa DJ',w:2,h:1,width:104,category:'tables',sprite:72},
+    {name:'Mesa DJ',w:2,h:1,width:104,category:'tables',sprite:72,interaction:'dj'},
     {name:'Rascador Mimo',w:1,h:1,width:60,category:'deco',sprite:73},
     {name:'Cama Nube',w:1,h:1,width:52,category:'deco',sprite:74},
     {name:'Estante Vinilos',w:1,h:1,width:88,mountH:54,category:'wall',sprite:75,wall:true},
