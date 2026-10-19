@@ -2,11 +2,11 @@ import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {coffeeDay} from './hub-coffee.mjs';
 import {COURT,trajectory,judgeShot} from '../public/hub/basket-physics.mjs';
-export const DEFAULT_BASKET={dailyLimit:400,creditsPerPoint:2};
+export const DEFAULT_BASKET={dailyLimit:400,creditsPerPoint:5};
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 const uuid=v=>typeof v==='string'&&/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(v);
-export async function basketConfig(storage){return {...DEFAULT_BASKET,...await storage.get('basket-config')};}
-export async function saveBasketConfig(storage,v){if(!v||['dailyLimit','creditsPerPoint'].some(k=>!Number.isSafeInteger(v[k])||v[k]<0||v[k]>100000))fail('Usá valores enteros de 0 a 100.000.');const c={dailyLimit:v.dailyLimit,creditsPerPoint:v.creditsPerPoint};await storage.put('basket-config',c);return c;}
+export async function basketConfig(storage){let c=await storage.get('basket-config');if(c&&c.rewardVersion!==2){c={...c,creditsPerPoint:5,rewardVersion:2};await storage.put('basket-config',c);}return {...DEFAULT_BASKET,...c};}
+export async function saveBasketConfig(storage,v){if(!v||['dailyLimit','creditsPerPoint'].some(k=>!Number.isSafeInteger(v[k])||v[k]<0||v[k]>100000))fail('Usá valores enteros de 0 a 100.000.');const c={dailyLimit:v.dailyLimit,creditsPerPoint:v.creditsPerPoint,rewardVersion:2};await storage.put('basket-config',c);return c;}
 const daily=(u,c,now)=>{const earned=u.basketDaily?.day===coffeeDay(now)?u.basketDaily.earned:0;return {earned,limit:c.dailyLimit,remaining:Math.max(0,c.dailyLimit-earned)};};
 function snapshot(s,now){if(!s||s.expiresAt<=now)return null;const {requests,...view}=s;return view;}
 async function machine(world,u,input){if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para jugar.',403);const room=await world.ctx.storage.get('room:'+input.roomId);if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='basket'))fail('La máquina de básquet ya no está colocada.',409);}
@@ -24,7 +24,7 @@ export async function basketAction(world,u,action,input,now=Date.now()){
  if(action==='shoot'){
   if(!uuid(input.requestId)||!Number.isFinite(input.dx)||!Number.isFinite(input.dy)||input.dx< -180||input.dx>180||input.dy< -360||input.dy> -60)fail('Tiro inválido.');
   if(s.requests[input.requestId]){const old=s.requests[input.requestId];if(old.dx!==input.dx||old.dy!==input.dy)fail('Ese tiro ya se registró.',409);receipt=old;return output();}
-  if(s.finished||now<s.start||now>=s.end)fail('La partida no está en juego.',409);if(s.attempts>=30||s.lastShot&&now<s.lastShot.land+120)fail('Esperá a que vuelva la pelota.',409);
+  if(s.finished||now<s.start||now>=s.end)fail('La partida no está en juego.',409);if(s.attempts>=30||s.lastShot&&now<s.lastShot.land+COURT.resetDelay)fail('Esperá a que vuelva la pelota.',409);
   const shot={...trajectory(input.dx,input.dy,now),id:input.requestId,dx:input.dx,dy:input.dy};shot.hit=judgeShot(shot,s.start,s.phase);s.streak=shot.hit?s.streak+1:0;shot.multiplier=s.streak>=6?3:s.streak>=3?2:1;shot.points=shot.hit?2*shot.multiplier:0;s.score+=shot.points;s.baskets+=Number(shot.hit);s.attempts++;s.bestStreak=Math.max(s.bestStreak,s.streak);s.version++;s.lastShot=shot;s.requests[input.requestId]=shot;receipt=shot;await storage.put(key,s);return output();
  }
  if(action!=='finish')fail('Acción inválida.');if(s.finished){receipt=s.result;return output();}

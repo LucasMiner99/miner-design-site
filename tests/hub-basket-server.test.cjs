@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require('esbuild');
 (async()=>{
- const root=path.join(__dirname,'..'),{hoopX,trajectory}=await import('../public/hub/basket-physics.mjs');await esbuild.build({entryPoints:[root+'/src/index.js'],outfile:root+'/.test-build/basket-test.mjs',bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers']});
+ const root=path.join(__dirname,'..'),{COURT,hoopX,trajectory}=await import('../public/hub/basket-physics.mjs');await esbuild.build({entryPoints:[root+'/src/index.js'],outfile:root+'/.test-build/basket-test.mjs',bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers']});
  const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'basket-test',modules:true,scriptPath:root+'/.test-build/basket-test.mjs',compatibilityDate:'2026-06-20',bindings:{HUB_ENABLED:'true',HUB_ORIGIN:'https://minerdesign.xyz'},d1Databases:['STREAMBOT_DB'],durableObjects:{HUB_WORLD:{className:'HubWorld',useSQLite:true},OVERLAY_ROOM:{className:'OverlayRoom',useSQLite:true}}}]}));let ws;
  try{
   const db=await mf.getD1Database('STREAMBOT_DB');await db.exec("CREATE TABLE streambot_settings(key TEXT PRIMARY KEY,value TEXT); INSERT INTO streambot_settings VALUES ('kick_user_id','1'),('kick_username','minerarg');");for(const sql of fs.readFileSync(root+'/hub-schema.sql','utf8').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
@@ -9,7 +9,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   const req=(id,route,method='GET',body,headers={})=>mf.dispatchFetch('https://minerdesign.xyz/api/hub/'+route,{method,headers:{Cookie:'hub_session='+sessions[id],Origin:'https://minerdesign.xyz',...headers},body:body?JSON.stringify(body):undefined}),state=async id=>await(await req(id,'state')).json(),delay=ms=>new Promise(r=>setTimeout(r,Math.max(0,ms))),table={roomId:'1',itemId:7};
   const act=async(action,input={})=>{const r=await req('2','basket/'+action,'POST',{...table,...input}),body=await r.json();assert.equal(r.status,200,JSON.stringify(body));return body;};
   assert.equal((await req(null,'basket/open','POST',table)).status,401);assert.equal((await req('2','basket/open','POST',table,{Origin:'https://evil.test'})).status,403);assert.equal((await req('2','admin/basket','PUT',{dailyLimit:9999,creditsPerPoint:9999})).status,404);
-  assert.equal((await req('1','admin/basket','PUT',{dailyLimit:25,creditsPerPoint:2})).status,200);
+  assert.equal((await req('1','admin/basket','PUT',{dailyLimit:25,creditsPerPoint:5})).status,200);
   let owner=await state('1');assert(owner.inventory.some(i=>i.id==='object:93'));owner.room.scene.items=[{id:7,type:93,x:3,y:3}];assert.equal((await req('1','room','PUT',{scene:owner.room.scene,revision:owner.room.revision})).status,200);
   const visitor=await state('2');assert(!visitor.inventory.some(i=>i.id==='object:93'),'Machine must be unlocked');assert.equal((await req('2','basket/start','POST',{...table,requestId:crypto.randomUUID()})).status,403);
   const connection=await req('2','ws','GET',null,{Upgrade:'websocket'});assert.equal(connection.status,101);ws=connection.webSocket;ws.accept();await delay(100);ws.send(JSON.stringify({type:'join',roomId:'1'}));await delay(100);
@@ -17,9 +17,9 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   let last,success=0;while(Date.now()<s.end-1800){
    const at=Date.now();let dx=0;for(let i=0;i<8;i++)dx=hoopX(trajectory(dx,-245,at).land,s.start,s.phase)-200;
    const input={sessionId:s.id,requestId:crypto.randomUUID(),dx:Math.round(dx),dy:-245,hit:true,amount:99999,at:0};last=await act('shoot',input);success+=Number(last.receipt.hit);assert.equal((await act('shoot',input)).session.attempts,last.session.attempts);
-   assert.equal((await req('2','basket/shoot','POST',{...table,...input,requestId:crypto.randomUUID()})).status,409);await delay(last.receipt.land+160-Date.now());
+   assert.equal((await req('2','basket/shoot','POST',{...table,...input,requestId:crypto.randomUUID()})).status,409);await delay(last.receipt.land+COURT.resetDelay+40-Date.now());
   }
-  assert(success>=8,'Includes stationary and moving hoop hits');assert.equal((await state('2')).credits,0);await delay(Math.max(s.end,last.receipt.land)+40-Date.now());
+  assert(success>=8,'Hits the slow hoop throughout all 30 seconds');assert.equal((await state('2')).credits,0);await delay(Math.max(s.end,last.receipt.land)+40-Date.now());
   const results=await Promise.all([req('2','basket/finish','POST',{...table,sessionId:s.id}),req('2','basket/finish','POST',{...table,sessionId:s.id})]);assert(results.every(r=>r.status===200));const result=await results[0].json();assert.equal(result.receipt.amount,25);assert.equal(result.record.name,'Visitor');assert.equal((await state('2')).credits,25);assert.equal((await state('1')).credits,0,'Room owner gets no passive credits');
   const next=await act('start',{requestId:crypto.randomUUID()});assert.equal(next.daily.remaining,0);ws.send(JSON.stringify({type:'join',roomId:'2'}));await delay(100);assert.equal((await req('2','basket/open','POST',table)).status,403);ws.send(JSON.stringify({type:'join',roomId:'1'}));await delay(100);assert.equal((await act('open')).session.id,next.session.id);
   owner=await state('1');owner.room.scene.items=[];assert.equal((await req('1','room','PUT',{scene:owner.room.scene,revision:owner.room.revision})).status,200);assert.equal((await req('2','basket/open','POST',table)).status,409);
