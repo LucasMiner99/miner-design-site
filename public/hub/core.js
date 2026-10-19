@@ -1,7 +1,8 @@
 (function(root){
   'use strict';
   const SIZE=12;
-  const ENV_COUNTS=Object.freeze({wall:16,floor:12,wallPattern:6,floorPattern:7});
+  const MAX_ITEMS=128;
+  const ENV_COUNTS=Object.freeze({wall:16,floor:12,wallPattern:11,floorPattern:12});
   const LAYOUTS=[{id:'square',name:'Cuadrada · 12 × 12',w:12,h:12},{id:'wide',name:'Ancha · 16 × 12',w:16,h:12},{id:'tall',name:'Alargada · 12 × 16',w:12,h:16},{id:'large',name:'Amplia · 16 × 16',w:16,h:16},{id:'ell',name:'En L · 16 × 16',w:16,h:16,cut:12},{id:'loft',name:'Loft · 20 × 16',w:20,h:16},{id:'hall',name:'Salón · 24 × 18',w:24,h:18},
     {id:'tee',name:'En T · 24 × 22',w:24,h:22,shape:'tee'},
     {id:'courtyard',name:'En U · 24 × 20',w:24,h:20,shape:'courtyard'},
@@ -148,6 +149,13 @@
   ];
   for(const [index,name,rarity] of [[0,'Girasol','Común'],[1,'Rosa','Rara'],[2,'Cannabis Dorada','Épica']])TYPES.push({name,w:1,h:1,width:46,category:'deco',sprite:90+index,interaction:'plant',plantation:true,rarity});
   TYPES.push({name:'Básquet Arcade',w:2,h:3,width:106,category:'deco',sprite:93,interaction:'basket',artAxes:[.63,-.65],rearAxes:[.58,-.64]});
+  TYPES.push(
+    {name:'Terrario Bosque',w:1,h:1,width:35,category:'deco',sprite:94,tabletop:true,artAxes:[.34,-.60],rearAxes:[.55,-.40]},
+    {name:'Telescopio Lunar',w:1,h:1,width:48,category:'deco',sprite:95},
+    {name:'Carrito de Té',w:2,h:1,width:82,category:'deco',sprite:96,artFlip:true,artAxes:[.63,-.39],rearAxes:[.38,-.69]},
+    {name:'Cajón de Vinilos',w:1,h:1,width:33,category:'deco',sprite:97,tabletop:true,artAxes:[.49,-.69],rearAxes:[.55,-.47]},
+    {name:'Cuadro Herbario',w:1,h:1,width:46,mountH:60,category:'wall',sprite:98,wall:true}
+  );
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -197,6 +205,7 @@
   bases.push(['box',.86],['box',.91],['box',.90],['oval',.94],['wall',1],['wall',1],['box',.86],['oval',.73]);
   TYPES.forEach((t,i)=>t.base={shape:bases[i]?.[0]||'wall',span:bases[i]?.[1]||1,u:.5});
   for(let i=90;i<=92;i++)TYPES[i].base={shape:'oval',span:.62,u:.5};
+  for(const id of [94,95,96,97,98])TYPES[id].base={shape:id===95?'oval':'box',span:id===95?.65:.85,u:.5};
   TYPES[93].base={shape:'box',span:.94,u:.5};
   TYPES[83].base={shape:'box',span:.94,u:.5};
   for(const [i,shape,span] of [[84,'box',.4],[85,'box',.55],[86,'box',.94],[88,'box',.94],[89,'oval',.8]])TYPES[i].base={shape,span,u:.5};
@@ -327,11 +336,11 @@
   function findFree(items,preferred={x:6.5,y:7.5},layout=activeLayout){if(!blocked(items,Math.floor(preferred.x),Math.floor(preferred.y),undefined,layout))return {...preferred};const l=layoutFor(layout);for(let y=l.h-1;y>=0;y--)for(let x=l.w-1;x>=0;x--)if(!blocked(items,x,y,undefined,layout))return {x:x+.5,y:y+.5};return null;}
   function cleanName(s){return String(s||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,18)||'Vecino';}
   function restore(data){
-    if(!data||data.version!==1||!Array.isArray(data.items)||data.items.length>96)return null;
+    if(!data||data.version!==1||!Array.isArray(data.items)||data.items.length>MAX_ITEMS)return null;
     const valid=(v,max)=>Number.isInteger(v)&&v>=0&&v<max?v:0;
     const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
     const ids=new Set(),legacy=data.geometryVersion!==2,legacyFlips=[],relocate=[],deskSlots=new Set();
-    if(data.unplacedItems!==undefined&&(!Array.isArray(data.unplacedItems)||data.items.length+data.unplacedItems.length>96))return null;
+    if(data.unplacedItems!==undefined&&(!Array.isArray(data.unplacedItems)||data.items.length+data.unplacedItems.length>MAX_ITEMS))return null;
     for(const raw of [...data.items].sort((a,b)=>Number(!!a?.parentId)-Number(!!b?.parentId))){
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type])return null;
       const item={id:raw.id,type:raw.type,x:raw.x,y:raw.y,flip:legacy?false:!!raw.flip};
@@ -406,6 +415,6 @@
     }
     if(reserve.length)out.unplacedItems=reserve;return out;
   }
-  const api={surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
+  const api={MAX_ITEMS,surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.VeredaCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

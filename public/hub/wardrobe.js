@@ -131,12 +131,12 @@
       if(baked){const cv=document.createElement('canvas');cv.width=288;cv.height=384;if(!baked.empty)cv.getContext('2d').drawImage(modular.compiled.images[baked.sheet],baked.x,baked.y,baked.w,baked.h,baked.dx,baked.dy,baked.w,baked.h);components.set(key,cv);return cv;}
       const cv=document.createElement('canvas');cv.width=288;cv.height=384;const k=cv.getContext('2d');k.scale(4,4);
       const base=legacy(0,kind==='pants'?Math.min(index,2):0,dir,pose),cell=pose*4+dir;
-      if(kind==='top'&&index>=16){const art=modular.dresses[index-16][cell],idle=modular.dresses[index-16][dir],p=art.canvas.getContext('2d').getImageData(0,0,art.width,art.height).data;let sum=0,n=0;for(let y=0;y<art.height*.055;y++)for(let x=0;x<art.width;x++)if(p[(y*art.width+x)*4+3]>128){sum+=x;n++;}const scale=31/idle.height,neck=n?sum/n:art.width/2;k.drawImage(art.canvas,36-neck*scale,CONTRACT.neckY,art.width*scale,art.height*scale);}
+      if(kind==='top'&&index>=16&&index<19){const art=modular.dresses[index-16][cell],idle=modular.dresses[index-16][dir],p=art.canvas.getContext('2d').getImageData(0,0,art.width,art.height).data;let sum=0,n=0;for(let y=0;y<art.height*.055;y++)for(let x=0;x<art.width;x++)if(p[(y*art.width+x)*4+3]>128){sum+=x;n++;}const scale=31/idle.height,neck=n?sum/n:art.width/2;k.drawImage(art.canvas,36-neck*scale,CONTRACT.neckY,art.width*scale,art.height*scale);}
       else if(kind==='top'&&index<11&&index!==6)k.drawImage(legacy(index,0,dir,pose)[0].canvas,0,0,72,96);
       else if(kind==='pants'&&index<3)k.drawImage(base[1].canvas,0,0,72,96);
       else if(kind==='shoes'&&index<3){const shoe=legacy(index===1?9:index===2?10:0,0,dir,pose)[2],b=base[2].bounds,s=shoe.bounds;k.drawImage(shoe.canvas,s.x*4,s.y*4,s.w*4,s.h*4,b.x,b.y+(index?-.7:0),b.w,b.h+(index?.7:0));}
       else if(kind==='top'){
-        const s=(index===6?modular.night:modular.tops[index-11])[cell],pixels=s.canvas.getContext('2d').getImageData(0,0,s.width,s.height).data;let sum=0,n=0,hem=0;
+        const s=(index===6?modular.night:modular.tops[index>=19?index-14:index-11])[cell],pixels=s.canvas.getContext('2d').getImageData(0,0,s.width,s.height).data;let sum=0,n=0,hem=0;
         for(let y=0;y<Math.max(3,s.height*.06);y++)for(let x=0;x<s.width;x++)if(pixels[(y*s.width+x)*4+3]>128){sum+=x;n++;}
         const neck=n?sum/n:s.width/2;
         for(let y=0;y<s.height;y++)for(let x=Math.floor(neck-s.width*.055);x<neck+s.width*.055;x++)if(x>=0&&x<s.width&&pixels[(y*s.width+x)*4+3]>128)hem=y;
