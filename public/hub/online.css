@@ -27,6 +27,10 @@
 #hubStatus{margin-left:auto;font-size:9px;color:var(--muted);text-align:right;overflow-wrap:anywhere}
 .hub-room-heading .zoom-tools{flex-shrink:0;background:var(--bg);border-color:var(--line);gap:4px}
 .hub-room-heading .zoom-tools button{color:var(--ink);font-size:9px}.hub-room-heading .zoom-tools button:hover{background:var(--mint)}
+.hub-room-view-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;flex-shrink:0;max-width:100%}
+.hub-room-light{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:10px;white-space:nowrap}
+.hub-room-light svg{width:16px;height:16px}.hub-room-light[aria-pressed=true] svg{fill:var(--ink);stroke:var(--paper)}
+.hub-room-light:hover:not(:disabled){background:var(--mint)}
 .hub-room-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .hub-room-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:8px 10px;border:1px solid transparent;border-radius:9px;font:inherit;font-size:10px;white-space:nowrap}
 .hub-room-actions button:not(:disabled):hover,.hub-room-actions button[aria-expanded=true]{background:var(--mint);border-color:var(--line)}

@@ -47,6 +47,7 @@
   <symbol id="i-save" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 16 12-12 4 4L8 20H4zM13 7l4 4"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M9 15c0-2-3-3-3-7a6 6 0 0 1 12 0c0 4-3 5-3 7v1H9z"/></symbol>
 </defs></svg>
 
 <div class="app">
@@ -70,12 +71,11 @@
       </div>
 
       <footer class="hub-room-footer" aria-label="Controles de la sala">
-        <div class="hub-room-heading"><span class="room-label"><span class="online-dot" aria-hidden="true"></span><span id="roomOwner">El rincón de Lucas</span></span><span id="hubStatus" role="status">Conectando…</span><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div>
+        <div class="hub-room-heading"><span class="room-label"><span class="online-dot" aria-hidden="true"></span><span id="roomOwner">El rincón de Lucas</span></span><span id="hubStatus" role="status">Conectando…</span><div class="hub-room-view-tools"><button id="hubRoomLight" class="hub-room-light" type="button" aria-label="Apagar luz de la sala" aria-pressed="true" hidden disabled><svg aria-hidden="true"><use href="#i-bulb"/></svg><span id="hubRoomLightLabel">Apagar luz</span></button><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div></div>
         <nav class="hub-room-actions" aria-label="Accesos del juego">
           <span id="hubCredits" class="hub-balance" aria-live="polite">0 créditos</span>
           <button id="hubRooms" class="hub-main-action" type="button" disabled><svg aria-hidden="true"><use href="#i-home"/></svg>Salas</button>
           <button id="hubHome" type="button" disabled>Mi sala</button>
-          <button id="hubRoomLight" type="button" aria-pressed="true" hidden disabled>Apagar luz de la sala</button>
           <button id="hubMusic" type="button" aria-controls="hubMediaDock" aria-expanded="false" hidden><svg aria-hidden="true"><use href="#i-sound"/></svg>Música</button>
           <div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="hubLook" type="button"><svg aria-hidden="true"><use href="#i-edit"/></svg>Cambiar look</button></div>
                 <div class="hub-collection-actions" role="tablist" aria-label="Mi colección">
