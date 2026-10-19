@@ -338,7 +338,7 @@
   function restore(data){
     if(!data||data.version!==1||!Array.isArray(data.items)||data.items.length>MAX_ITEMS)return null;
     const valid=(v,max)=>Number.isInteger(v)&&v>=0&&v<max?v:0;
-    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
+    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,lightsOn:data.lightsOn!==false,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
     const ids=new Set(),legacy=data.geometryVersion!==2,legacyFlips=[],relocate=[],deskSlots=new Set();
     if(data.unplacedItems!==undefined&&(!Array.isArray(data.unplacedItems)||data.items.length+data.unplacedItems.length>MAX_ITEMS))return null;
     for(const raw of [...data.items].sort((a,b)=>Number(!!a?.parentId)-Number(!!b?.parentId))){

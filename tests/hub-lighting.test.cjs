@@ -1,0 +1,31 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+(async()=>{
+ const lighting=await import('../public/hub/lighting.js').then(()=>globalThis.HubLighting);
+ const context={save(){},restore(){},setTransform(){},translate(){},scale(){},fillRect(){},drawImage(){},createRadialGradient(){return {addColorStop(){}};}};
+ const map=lighting.create(()=>({getContext:()=>context}));
+ const lamp={x:100,y:100,w:48,h:100,ground:{x:124,y:195},item:{type:5}};
+ const scene={width:900,height:640},options={enabled:true,bounds:[lamp],view:{x:0,y:0,s:1},dpr:1,width:900,height:640};
+ map.apply(context,scene,options);assert.equal(map.stats().builds,1);
+ for(let i=0;i<20;i++)map.apply(context,scene,{...options,view:{x:i*10,y:-i*3,s:1+i*.1}});
+ assert.equal(map.stats().builds,1,'Camera movement never rebuilds lighting');
+ map.apply(context,scene,{...options,bounds:[{...lamp,item:{type:5,on:false}}]});assert.equal(map.stats().builds,2);
+ map.apply(context,scene,{...options,enabled:false});assert.equal(map.stats().builds,2,'Daylight skips lighting');
+ map.apply(context,scene,{...options,width:3000,height:2000});assert.equal(map.stats().width,1536,'Large rooms cap the lighting texture, not the artwork');
+ const {C}=await import('../src/hub-rules.mjs');const initial=C.initial();assert.equal(C.restore(initial).lightsOn,true);assert.equal(C.restore({...initial,lightsOn:false}).lightsOn,false);assert.equal(C.restore({...initial,lightsOn:'false'}).lightsOn,true);
+ const client={};client.globalThis=client;vm.runInNewContext(fs.readFileSync(__dirname+'/../public/hub/core.js','utf8'),client);assert.equal(client.VeredaCore.restore({...initial,lightsOn:false}).lightsOn,false);
+ const ids=new Map();function el(){return {dataset:{},attrs:{},children:[],hidden:false,disabled:false,classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v;},appendChild(v){this.children.push(v);},addEventListener(){}};}
+ const get=id=>{if(!ids.has(id))ids.set(id,el());return ids.get(id);},sockets=[],sent=[],changes=[];
+ const room={id:'2',ownerId:'2',scene:{items:[]}},account={user:{id:'2',appearance:{},admin:true},room,inventory:[],boxes:[],credits:0};
+ const scope={document:{getElementById:get,createElement:el,body:el(),querySelectorAll:()=>[]},location:{origin:'https://minerdesign.xyz'},localStorage:{getItem(){}},setInterval(){},setTimeout(){},addEventListener(){},fetch:async()=>Response.json(account),WebSocket:class{constructor(){sockets.push(this);}send(m){sent.push(JSON.parse(m));}}};scope.window=scope;
+ vm.runInNewContext(fs.readFileSync(__dirname+'/../public/hub/online.js','utf8'),scope);await new Promise(setImmediate);
+ scope.MINER_HUB_ONLINE.ready({account(){},room(){},players(){},stop(){},lighting:on=>changes.push(on)});const ws=sockets[0],emit=m=>ws.onmessage({data:JSON.stringify(m)});ws.onopen();
+ const button=get('hubRoomLight');assert(!button.hidden);assert(!button.disabled);assert.equal(button.textContent,'Apagar luz de la sala');
+ button.onclick();assert.deepEqual(sent.at(-1),{type:'room-light',on:false});assert.equal(changes.length,0,'Wait for authoritative acknowledgement');
+ emit({type:'room-light',roomId:'2',on:false});assert.deepEqual(changes,[false]);assert.equal(button.textContent,'Prender luz de la sala');
+ const other={id:'3',ownerId:'3',scene:{items:[],lightsOn:true}};emit({type:'room',room:other,players:[]});assert(button.hidden,'Admin is still a visitor in someone else’s room');
+ const count=sent.length;button.onclick();assert.equal(sent.length,count,'Hidden button cannot send a forged local action');
+ emit({type:'room-light',roomId:'2',on:true});assert.deepEqual(changes,[false],'Ignore events for other rooms');
+ emit({type:'room-light',roomId:'3',on:false});assert.deepEqual(changes,[false,false],'Visitors receive lighting updates');
+ emit({type:'room',room,players:[]});assert(!button.hidden);ws.onclose({code:4001});assert(button.disabled);
+ console.log('PASS lightmap cache/bounds, client/server defaults, owner button, visitor/admin UI, live updates and disconnect.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

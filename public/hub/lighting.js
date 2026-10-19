@@ -1,0 +1,64 @@
+/* Soft room lighting in world coordinates. Camera motion never rebuilds the map. */
+((root)=>{
+ 'use strict';
+ const warm=[255,196,112],cool=[176,207,255];
+ const profiles={
+  5:{color:warm,y:.18,radius:150,pool:true},
+  21:{color:warm,y:.60,radius:150,pool:true},
+  53:{color:[226,238,255],y:.18,radius:135,pool:true},
+  57:{color:[172,116,255],y:.50,radius:115},
+  87:{color:cool,y:.50,radius:95},
+  89:{color:[255,223,164],y:.27,radius:105,pool:true},
+  36:{color:cool,y:.34,radius:65,power:.38},
+  43:{color:cool,y:.38,radius:65,power:.38},
+  48:{color:[151,173,255],y:.28,radius:85,power:.42},
+  50:{color:[102,224,236],y:.48,radius:45,power:.32},
+  84:{color:cool,y:.38,radius:65,power:.38},
+  85:{color:cool,y:.38,radius:65,power:.38},
+  86:{color:cool,y:.30,radius:90,power:.42}
+ };
+ function source(b){
+  const p=profiles[b.item.type];if(!p||b.item.on===false)return null;
+  return {x:b.x+b.w*.5,y:b.y+b.h*p.y,radius:p.radius,color:p.color,power:p.power??.82,
+   pool:p.pool&&b.ground?{x:b.ground.x,y:b.ground.y}:null};
+ }
+ function gradient(k,x,y,rx,ry,color,power){
+  k.save();k.translate(x,y);k.scale(rx,ry);
+  const g=k.createRadialGradient(0,0,0,0,0,1),rgb=color.join(',');
+  for(const [at,strength] of [[0,1],[.25,.82],[.65,.22],[1,0]])g.addColorStop(at,`rgba(${rgb},${power*strength})`);
+  k.fillStyle=g;k.fillRect(-1,-1,2,2);k.restore();
+ }
+ function create(makeCanvas=()=>document.createElement('canvas')){
+  const map=makeCanvas(),k=map.getContext('2d');let key='',builds=0;
+  function apply(ctx,scene,{enabled,bounds,view,dpr,width,height}){
+   if(!enabled)return;
+   const lights=bounds.map(source).filter(Boolean),next=JSON.stringify([width,height,lights]);
+   if(next!==key){
+    // A low-resolution light field is independent of sprite resolution and zoom.
+    const scale=Math.min(1,1536/Math.max(width,height));
+    map.width=Math.max(1,Math.ceil(width*scale));map.height=Math.max(1,Math.ceil(height*scale));
+    k.setTransform(scale,0,0,scale,0,0);k.globalCompositeOperation='source-over';
+    k.fillStyle='#384059';k.fillRect(0,0,width,height);k.globalCompositeOperation='lighter';
+    for(const l of lights){
+     gradient(k,l.x,l.y,l.radius,l.radius*.92,l.color,l.power);
+     if(l.pool)gradient(k,l.pool.x,l.pool.y,l.radius*1.25,l.radius*.56,l.color,.58);
+    }
+    key=next;builds++;
+   }
+   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='multiply';
+   // Cover the viewport first, so panning outside the cached room stays dark.
+   ctx.fillStyle='#384059';
+   // Draw a single opaque field, including its dark border, without multiplying twice.
+   const x=view.x*dpr,y=view.y*dpr,w=width*view.s*dpr,h=height*view.s*dpr;
+   ctx.fillRect(0,0,scene.width,Math.max(0,Math.min(scene.height,y)));
+   ctx.fillRect(0,Math.max(0,y+h),scene.width,Math.max(0,scene.height-y-h));
+   ctx.fillRect(0,Math.max(0,y),Math.max(0,x),Math.max(0,Math.min(scene.height,y+h)-Math.max(0,y)));
+   ctx.fillRect(Math.max(0,x+w),Math.max(0,y),Math.max(0,scene.width-x-w),Math.max(0,Math.min(scene.height,y+h)-Math.max(0,y)));
+   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='low';ctx.drawImage(map,x,y,w,h);
+   // Preserve the original room silhouette, pets, and soft sprite alpha edges.
+   ctx.globalCompositeOperation='destination-in';ctx.drawImage(scene,0,0);ctx.restore();
+  }
+  return {apply,stats:()=>({builds,width:map.width,height:map.height})};
+ }
+ const api={create,source};root.HubLighting=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);

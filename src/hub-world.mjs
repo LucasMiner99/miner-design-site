@@ -111,6 +111,8 @@ export class HubWorld {
   if(path==='/room'&&request.method==='PUT'){
    const b=await body(request),room=await this.room(u.id,u.name);if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
    const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);reconcilePlants(room,room.plants,await plantConfig(this.ctx.storage));
+   // General lighting has its own live action; stale decoration saves cannot undo it.
+   room.scene.lightsOn=previous.lightsOn!==false;
    // Decoration saves must not overwrite a visitor's more recent switch state.
    for(const item of room.scene.items){const old=previous.items.find(i=>i.id===item.id&&i.type===item.type);if(!old)continue;for(const key of ['on','closed'])if(typeof old[key]==='boolean')item[key]=old[key];}
    room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
@@ -197,6 +199,13 @@ export class HubWorld {
    if(b.type==='media'){try{return await handleMedia(this,ws,b);}catch(e){e.mediaAction=b.action;e.mediaRequestId=b.seekToken;throw e;}}
    if(b.type==='join')return await this.join(ws,String(b.roomId));
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
+   if(b.type==='room-light'){
+    const room=await this.ctx.storage.get('room:'+a.roomId);
+    if(!room||room.ownerId!==a.user.id)reject('Solo el dueño puede cambiar la luz de la sala.',403);
+    if(typeof b.on!=='boolean')reject('Estado de luz inválido.');
+    if(room.scene.lightsOn!==b.on){room.scene.lightsOn=b.on;await this.ctx.storage.put('room:'+room.id,room);}
+    this.broadcast(room.id,{type:'room-light',roomId:room.id,on:b.on});return;
+   }
    if(b.type==='interact'){
     const room=await this.ctx.storage.get('room:'+a.roomId),item=room?.scene.items.find(i=>i.id===b.itemId),kind=item&&C.TYPES[item.type].interaction;
     if(!['light','curtain'].includes(kind))reject('Ese objeto no se puede usar con esta acción.');
