@@ -54,7 +54,7 @@
   <header class="topbar">
     <div class="hub-brand-group"><a href="#" class="brand" aria-label="minerhub, inicio"><span class="brand-mark"><svg><use href="#i-home"/></svg></span><span>minerhub</span></a><span id="hubOnlineCount" class="hub-online-count" data-connected="false" role="status" aria-live="polite" aria-atomic="true" aria-label="Conectando al juego" title="Jugadores conectados en todas las salas"><i aria-hidden="true"></i><span id="hubOnlineText">Conectando…</span></span></div>
     
-    <div class="top-actions"><button id="themeBtn" class="secondary-button" aria-pressed="true">☀ Modo claro</button><button id="profileBtn" class="profile" title="Cambiar mi look"><canvas id="avatarThumb" width="36" height="40"></canvas><span id="profileName">Lucas</span><svg><use href="#i-edit"/></svg></button></div>
+    <div class="top-actions"><button id="hubNewsButton" class="secondary-button" type="button" disabled>Novedades</button><button id="themeBtn" class="secondary-button" aria-pressed="true">☀ Modo claro</button><button id="profileBtn" class="profile" title="Cambiar mi look"><canvas id="avatarThumb" width="36" height="40"></canvas><span id="profileName">Lucas</span><svg><use href="#i-edit"/></svg></button></div>
   </header>
 
   <main class="workspace">
@@ -63,6 +63,7 @@
       <div class="hub-game-shell">
       <div id="stage" class="stage"><div id="hubPlantLabels" aria-live="polite"></div>
         <canvas id="game" width="900" height="640" tabindex="0" aria-label="Habitación isométrica. Hacé clic en el piso para caminar. También podés usar las flechas del teclado. Mantené apretada la ruedita y arrastrá para mover la cámara."></canvas>
+        <button id="hubRoomLight" class="hub-wall-switch" type="button" aria-label="Apagar luz de la sala" aria-pressed="true" hidden disabled><svg viewBox="0 0 24 36" aria-hidden="true"><rect x="3" y="3" width="20" height="32" rx="2" fill="#4e493e"/><rect x="1" y="1" width="20" height="32" rx="2" fill="#e9e3d7" stroke="#71695c" stroke-width="1"/><rect class="switch-rocker" x="5" y="6" width="12" height="20" rx="1" fill="#fffaf0" stroke="#91897a" stroke-width=".8"/><path class="switch-edge" d="M5 22h12v4H5z" fill="#b5ac9b"/><rect x="9" y="29" width="4" height="1.5" rx=".6" fill="#8ab879"/></svg></button>
         <div id="petHoverLabel" class="hub-pet-name" hidden></div><div id="bubbleLayer" class="bubble-layer" aria-live="polite" aria-atomic="false"></div>
         <div id="loading" class="loading"><span class="loading-home"><svg><use href="#i-home"/></svg></span><b>Preparando tu rincón</b><span>Abriendo las ventanas...</span></div>
         <div id="hubNowPlaying" class="hub-now-playing" hidden></div><div id="contextBar" class="context-bar" hidden><span id="selectedName">Mueble</span><div class="context-actions"><button id="moveBtn" class="move-button" title="Mover (M)">Mover</button><button id="flipBtn" title="Girar (R)" aria-label="Girar el mueble"><svg><use href="#i-flip"/></svg></button><button id="wallUpBtn" hidden title="Subir en la pared" aria-label="Subir decoración">↑</button><button id="wallDownBtn" hidden title="Bajar en la pared" aria-label="Bajar decoración">↓</button><button id="interactBtn" class="interact-button" hidden>Usar</button><span id="finishPicker" hidden class="finish-picker"><button id="finishPrev" aria-label="Acabado anterior">‹</button><span id="finishName" aria-live="polite">Original</span><button id="finishNext" aria-label="Acabado siguiente">›</button></span><button id="posterImageBtn" hidden>Imagen</button><button id="storeBtn" title="Guardar en el inventario (Supr)" aria-label="Guardar el mueble en el inventario"><svg><use href="#i-box"/></svg></button><button id="deselectBtn" title="Deseleccionar (Escape)" aria-label="Deseleccionar"><svg><use href="#i-close"/></svg></button></div></div>
@@ -71,7 +72,7 @@
       </div>
 
       <footer class="hub-room-footer" aria-label="Controles de la sala">
-        <div class="hub-room-heading"><span class="room-label"><span class="online-dot" aria-hidden="true"></span><span id="roomOwner">El rincón de Lucas</span></span><span id="hubStatus" role="status">Conectando…</span><div class="hub-room-view-tools"><button id="hubRoomLight" class="hub-room-light" type="button" aria-label="Apagar luz de la sala" aria-pressed="true" hidden disabled><svg aria-hidden="true"><use href="#i-bulb"/></svg><span id="hubRoomLightLabel">Apagar luz</span></button><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div></div>
+        <div class="hub-room-heading"><span class="room-label"><span class="online-dot" aria-hidden="true"></span><span id="roomOwner">El rincón de Lucas</span></span><span id="hubStatus" role="status">Conectando…</span><div class="hub-room-view-tools"><div class="zoom-tools"><button id="zoomOut" title="Alejar" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoomLabel" title="Restablecer zoom" aria-label="Restablecer zoom">100%</button><button id="zoomIn" title="Acercar" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div></div>
         <nav class="hub-room-actions" aria-label="Accesos del juego">
           <span id="hubCredits" class="hub-balance" aria-live="polite">0 créditos</span>
           <button id="hubRooms" class="hub-main-action" type="button" disabled><svg aria-hidden="true"><use href="#i-home"/></svg>Salas</button>
@@ -315,6 +316,13 @@
 <script src="groups.js"></script>
 <script src="optimized-assets.js"></script>
 <script src="giveaway.js"></script>
+<dialog id="hubNewsDialog" class="modal hub-news-modal" aria-labelledby="hubNewsTitle">
+  <button type="button" class="modal-close icon-button" data-hub-close="hubNewsDialog" aria-label="Cerrar novedades">×</button>
+  <div class="eyebrow">MINERHUB</div><h2 id="hubNewsTitle">Novedades</h2>
+  <div id="hubNewsEntries"></div>
+  <button type="button" id="hubNewsPlay" class="primary-button">¡A jugar!</button>
+</dialog>
+<script src="news.js"></script>
 <script src="posters.js"></script><script src="plants.js"></script><script src="lighting.js"></script><script src="online.js"></script>
 </body>
 </html>

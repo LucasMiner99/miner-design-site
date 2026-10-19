@@ -326,6 +326,11 @@
   let objectClick=null,objectClickTimer=null;
   function walkClick(world,tile,hit){const door=doorAtPointer(world);if(door){movePlayer(doorTarget(door));return;}const person=characterAt(world,hit);if(person){if(person!=='self')openLook(person);return;}if(hit&&canInteract(hit)){interact(hit);return;}if(hit&&C.TYPES[hit.type].seat)sitOn(hit,world);else if(tileInRoom(tile))movePlayer(tile);}
   $('posterImageBtn').onclick=()=>{const item=state.items.find(i=>i.id===selectedId);if(item&&C.TYPES[item.type].poster&&online.canEdit())window.HubPosters.open(item,slot=>{if(!online.canEdit()||!state.items.includes(item))return;checkpoint();item.posterSlot=slot;save();});};
+  function positionWallSwitch(){
+    const button=$('hubRoomLight'),spot=C.wallSwitch(),p=project(0,spot.wallU,C.wallHeight('left',spot.wallU)),x=view.x+p.x*view.s,y=view.y+(p.y-spot.wallZ)*view.s;
+    button.hidden=x<-24||x>view.w+24||y<-28||y>view.h+28;
+    const left=x+'px',top=y+'px',size=view.s.toFixed(4);if(button.style.left!==left)button.style.left=left;if(button.style.top!==top)button.style.top=top;if(button.dataset.scale!==size){button.dataset.scale=size;button.style.width=Math.max(32,24*view.s)+'px';button.style.height=Math.max(40,36*view.s)+'px';const art=button.querySelector('svg');art.style.width=24*view.s+'px';art.style.height=36*view.s+'px';}
+  }
   function positionMusicLabel(){const label=$('hubNowPlaying'),media=window.HubMedia?.nowPlaying(),item=media?.playing&&state.items.find(i=>i.id===media.itemId);label.hidden=!item;if(!item)return;const b=itemPosition(item);const text='♫ '+(media.title||'YouTube');if(label.textContent!==text){label.textContent=text;label.title=media.title||'YouTube';}label.style.left=Math.max(90,Math.min(view.w-90,view.x+(b.x+b.w/2)*view.s))+'px';label.style.top=Math.max(12,view.y+b.y*view.s-12)+'px';}
   function positionObjectMenu(){if(selectedId===null||$('contextBar').hidden)return;const item=state.items.find(i=>i.id===selectedId);if(!item)return cancelSelection();const b=itemPosition(item),bar=$('contextBar'),w=bar.offsetWidth||320,h=bar.offsetHeight||50;const x=view.x+(b.x+b.w/2)*view.s,y=view.y+(b.y+b.h)*view.s+10;bar.style.left=Math.max(8,Math.min(view.w-w-8,x-w/2))+'px';bar.style.top=Math.max(8,Math.min(view.h-h-8,y))+'px';}
   function endCameraDrag(e){
@@ -604,7 +609,7 @@
     if(ghost&&mode==='decorate')drawItem(ghost,C.canPlace(state.items,ghost,player)?.75:.4,false);
     ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(scene,0,0);
     roomLighting?.apply(ctx,scene,{enabled:state.lightsOn===false,bounds:drawBounds,view,dpr,width:sceneW,height:sceneH});
-    ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);positionObjectMenu();positionMusicLabel();window.HubPlants?.paint(state.items,itemPosition,view,online.canEdit()&&mode==='walk');
+    ctx.setTransform(dpr,0,0,dpr,0,0);drawNames(now);updateBubbles(now);positionObjectMenu();positionMusicLabel();positionWallSwitch();window.HubPlants?.paint(state.items,itemPosition,view,online.canEdit()&&mode==='walk');
   }
   function drawNames(now){
     const label=$('petHoverLabel'),pet=petPointer&&petBounds.slice().reverse().find(b=>{const x=petPointer.x-b.x,y=petPointer.y-b.y;if(x<0||y<0||x>=b.w||y>=b.h||!b.pet.name)return false;return b.s.alpha[Math.floor(y/b.h*b.s.height)*b.s.width+Math.floor(x/b.w*b.s.width)]>48;});label.hidden=!pet;if(pet){label.textContent=pet.pet.name;label.style.left=(view.x+(pet.x+pet.w/2)*view.s)+'px';label.style.top=(view.y+pet.y*view.s-5)+'px';}

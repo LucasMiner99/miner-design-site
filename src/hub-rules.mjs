@@ -53,6 +53,9 @@
   function partitionAt(x,y,layout=activeLayout){return (layoutFor(layout).partitions||[]).some(b=>x>=b.x&&y>=b.y&&x<b.x+b.w&&y<b.y+b.h);}
   function wallSpan(side,layout=activeLayout){const l=layoutFor(layout),max=side==='left'?l.h:l.w;let n=0;while(n<max&&inside(side==='left'?0:n,side==='left'?n:0,l))n++;return n;}
 
+  // A small permanent service area on the front end of the left wall.
+  function wallSwitch(layout=activeLayout){return {wallSide:'left',wallU:wallSpan('left',layout)-1,wallZ:108,width:24,mountH:40};}
+  function overlapsSwitch(item,layout=activeLayout){const t=TYPES[item.type],b=wallSwitch(layout);return !!(t?.wall&&item.wallSide===b.wallSide&&Math.abs(item.wallU-b.wallU)*32<(t.width+b.width)/2+6&&Math.abs(item.wallZ-b.wallZ)<(t.mountH+b.mountH)/2+6);}
   function rotation(item){return Number.isInteger(item.rotation)&&item.rotation>=0&&item.rotation<4?item.rotation:item.flip?1:0;}
   function dimensions(item){const t=TYPES[item.type];return rotation(item)%2?{w:t.h,h:t.w}:{w:t.w,h:t.h};}
 
@@ -250,7 +253,7 @@
   TYPES[9].artAxes=[.57,-.57];
   TYPES[88].artAxes=[.52,-.56];
   TYPES[86].artAxes=[.45,-.57];
-  function initial(){return {version:1,geometryVersion:2,structureVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
+  function initial(){return {version:1,geometryVersion:2,structureVersion:1,switchVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
     {id:1,type:0,x:1,y:5,flip:false},
     {id:2,type:4,x:0,y:1,flip:false},
     {id:3,type:5,x:0,y:4,flip:false},
@@ -273,13 +276,14 @@
   function covers(item,x,y){if(TYPES[item.type].wall)return false;const t=dimensions(item);return x+1>item.x&&x<item.x+t.w&&y+1>item.y&&y<item.y+t.h;}
   function blocked(items,x,y,ignoreId,layout=activeLayout){return !inside(x,y,layout)||partitionAt(x,y,layout)||items.some(i=>i.id!==ignoreId&&!i.parentId&&!TYPES[i.type].flat&&covers(i,x,y));}
   function overlap(a,b){if(TYPES[a.type].wall||TYPES[b.type].wall)return false;const ta=dimensions(a),tb=dimensions(b);return a.x<b.x+tb.w&&a.x+ta.w>b.x&&a.y<b.y+tb.h&&a.y+ta.h>b.y;}
-  function canPlace(items,item,player,layout=activeLayout){
+  function canPlace(items,item,player,layout=activeLayout,allowSwitch=false){
     const t=TYPES[item.type],d=t&&dimensions(item);
     if(t?.wall){
       if(item.parentId||!['left','right'].includes(item.wallSide)||!Number.isFinite(item.wallU)||!Number.isFinite(item.wallZ))return false;
       const l=layoutFor(layout),span=wallSpan(item.wallSide,l)*32,u=item.wallU*32,z=item.wallZ;
       if(u-t.width/2<6||u+t.width/2>span-6||z-t.mountH/2<8||z+t.mountH/2>150)return false;
       if(wallHeight(item.wallSide,(u-t.width/2)/32,l)!==wallHeight(item.wallSide,(u+t.width/2)/32,l))return false;
+      if(!allowSwitch&&overlapsSwitch(item,l))return false;
       return !items.some(i=>i.id!==item.id&&TYPES[i.type].wall&&i.wallSide===item.wallSide&&Math.abs(i.wallU*32-u)<(TYPES[i.type].width+t.width)/2+4&&Math.abs(i.wallZ-z)<(TYPES[i.type].mountH+t.mountH)/2+4);
     }
     if(item.parentId){
@@ -339,8 +343,8 @@
   function restore(data){
     if(!data||data.version!==1||!Array.isArray(data.items)||data.items.length>MAX_ITEMS)return null;
     const valid=(v,max)=>Number.isInteger(v)&&v>=0&&v<max?v:0;
-    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,lightsOn:data.lightsOn!==false,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
-    const ids=new Set(),legacy=data.geometryVersion!==2,legacyFlips=[],relocate=[],deskSlots=new Set();
+    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,switchVersion:1,lightsOn:data.lightsOn!==false,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
+    const ids=new Set(),legacy=data.geometryVersion!==2,legacyFlips=[],relocate=[],switchRelocate=[],deskSlots=new Set();
     if(data.unplacedItems!==undefined&&(!Array.isArray(data.unplacedItems)||data.items.length+data.unplacedItems.length>MAX_ITEMS))return null;
     for(const raw of [...data.items].sort((a,b)=>Number(!!a?.parentId)-Number(!!b?.parentId))){
       if(!raw||!Number.isSafeInteger(raw.id)||raw.id<1||ids.has(raw.id)||!Number.isInteger(raw.type)||!TYPES[raw.type])return null;
@@ -361,6 +365,7 @@
         if(!TYPES[item.type].tabletop||![0,1].includes(item.slot)||deskSlots.has(key))return null;
         deskSlots.add(key);ids.add(item.id);delete item.parentId;delete item.slot;relocate.push(item);continue;
       }
+      if(data.switchVersion!==1&&overlapsSwitch(item,layout)&&canPlace(result.items,item,null,layout,true)){ids.add(item.id);switchRelocate.push(item);continue;}
       if(!canPlace(result.items,item,null,layout)){
         const d=dimensions(item),migrating=data.structureVersion!==1&&!TYPES[item.type].wall&&Number.isInteger(item.x)&&Number.isInteger(item.y)&&inside(item.x,item.y,layout)&&inside(item.x+d.w-1,item.y+d.h-1,layout);
         let touched=false;if(migrating)for(let y=item.y;y<item.y+d.h;y++)for(let x=item.x;x<item.x+d.w;x++)if(newBarrier(x,y,layout))touched=true;
@@ -392,6 +397,13 @@
       // A completely packed room keeps the original position and orientation.
     }
     if(relocate.length){const packed=reflow({...result,items:[...result.items,...relocate]},layout.id,true);result.items=packed.items;if(packed.unplacedItems?.length)result.unplacedItems=packed.unplacedItems;}
+    // Place only displaced wall art after every unaffected item is reserved.
+    for(const item of switchRelocate){
+      const t=TYPES[item.type],candidates=[];
+      for(const side of [item.wallSide,item.wallSide==='left'?'right':'left'])for(const z of [item.wallZ,90,50,120])for(let u=t.width/64+.2;u<wallSpan(side,layout)-t.width/64-.2;u+=.25)candidates.push({...item,wallSide:side,wallU:u,wallZ:z});
+      candidates.sort((a,b)=>(a.wallSide!==item.wallSide)*10000+Math.abs(a.wallU-item.wallU)*32+Math.abs(a.wallZ-item.wallZ)-((b.wallSide!==item.wallSide)*10000+Math.abs(b.wallU-item.wallU)*32+Math.abs(b.wallZ-item.wallZ)));
+      const chosen=candidates.find(i=>canPlace(result.items,i,null,layout));if(chosen)result.items.push(chosen);else (result.unplacedItems??=[]).push(item);
+    }
     if(!findFree(result.items,undefined,layout))return null;
     return result;
   }
@@ -416,7 +428,7 @@
     }
     if(reserve.length)out.unplacedItems=reserve;return out;
   }
-  const api={MAX_ITEMS,surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
+  const api={wallSwitch,overlapsSwitch,MAX_ITEMS,surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
   root.VeredaCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
 

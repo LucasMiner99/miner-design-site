@@ -28,9 +28,13 @@
 .hub-room-heading .zoom-tools{flex-shrink:0;background:var(--bg);border-color:var(--line);gap:4px}
 .hub-room-heading .zoom-tools button{color:var(--ink);font-size:9px}.hub-room-heading .zoom-tools button:hover{background:var(--mint)}
 .hub-room-view-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;flex-shrink:0;max-width:100%}
-.hub-room-light{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:10px;white-space:nowrap}
-.hub-room-light svg{width:16px;height:16px}.hub-room-light[aria-pressed=true] svg{fill:var(--ink);stroke:var(--paper)}
-.hub-room-light:hover:not(:disabled){background:var(--mint)}
+.hub-wall-switch{position:absolute;z-index:3;display:grid;place-items:center;width:32px;height:40px;padding:0;background:transparent;transform:translate(-50%,-50%) skewY(-26.565deg);touch-action:manipulation}
+.hub-wall-switch svg{width:24px;height:36px;overflow:visible;stroke:none}
+.hub-wall-switch[aria-pressed=false] svg{filter:brightness(.55)}.hub-wall-switch[aria-pressed=false] .switch-edge{transform:translateY(-16px)}
+.hub-wall-switch:disabled{opacity:1;cursor:default}.hub-wall-switch:not(:disabled):hover svg{filter:brightness(1.1);}
+.hub-news-modal{width:min(540px,calc(100vw - 24px));max-height:min(720px,85dvh);overflow:auto;border-radius:20px;padding:28px}
+.hub-news-modal h2{margin:8px 36px 20px 0}.hub-news-entry{margin:0 0 22px}.hub-news-entry h3{font-size:13px;margin:0 0 9px}.hub-news-entry p{color:var(--muted);font-size:10px;margin:0 0 10px}.hub-news-entry ul{padding-left:18px;margin:0;font-size:12px;line-height:1.7}.hub-news-entry li+li{margin-top:7px}
+.hub-news-modal details{border-top:1px solid var(--line);padding-top:14px;margin-bottom:20px}.hub-news-modal summary{cursor:pointer;font-size:12px;margin-bottom:14px}.hub-news-modal #hubNewsPlay{display:block;margin-left:auto}
 .hub-room-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .hub-room-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:8px 10px;border:1px solid transparent;border-radius:9px;font:inherit;font-size:10px;white-space:nowrap}
 .hub-room-actions button:not(:disabled):hover,.hub-room-actions button[aria-expanded=true]{background:var(--mint);border-color:var(--line)}

@@ -54,7 +54,7 @@ export class HubWorld {
   return this.ctx.blockConcurrencyWhile(async()=>{try{return await this.handle(request);}catch(e){console.error('Hub:',e.status?e.message:'operation failed');return reply({error:e.status?e.message:'No se pudo guardar. Intentá otra vez.'},e.status||500);}});
  }
  async user(id,name){let u=await this.ctx.storage.get('user:'+id);if(!u){u={id,name,appearance:P.look({}),inventory:{},collected:{},mutedUntil:0,banned:false};await this.ctx.storage.put('user:'+id,u);}else if(name&&u.name!==name){u.name=name;await this.ctx.storage.put('user:'+id,u);}if(!u.plantStarter){u.plantStarter=true;u.inventory['object:90']=(u.inventory['object:90']||0)+1;u.collected['object:90']=true;u.walletVersion=(u.walletVersion||0)+1;await this.ctx.storage.put('user:'+id,u);}return u;}
- async room(id,name){let room=await this.ctx.storage.get('room:'+id);if(!room){const scene=C.initial();scene.items=[];scene.name=name;room={id,ownerId:id,name,public:true,revision:0,scene};await this.ctx.storage.put('room:'+id,room);}return room;}
+ async room(id,name){let room=await this.ctx.storage.get('room:'+id);if(!room){const scene=C.initial();scene.items=[];scene.name=name;room={id,ownerId:id,name,public:true,revision:0,scene};await this.ctx.storage.put('room:'+id,room);}else if(room.scene.switchVersion!==1){const scene=C.restore(room.scene);if(scene){room.scene=scene;room.revision++;await this.ctx.storage.put('room:'+id,room);}}return room;}
  sockets(){return this.ctx.getWebSockets().filter(ws=>ws.readyState===1);}
  send(ws,value){try{ws.send(JSON.stringify(value));}catch{try{ws.close(1011,'Conexión cerrada');}catch{}}}
  broadcast(roomId,event,except){for(const ws of this.sockets())if(ws!==except&&ws.deserializeAttachment()?.roomId===roomId)this.send(ws,event);}
@@ -67,7 +67,7 @@ export class HubWorld {
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
  free(room,except,preferred){C.setLayout(room.scene.layout);const occupied=this.occupied(room.id,except),valid=p=>p&&!C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y))&&!occupied.has(Math.floor(p.x)+','+Math.floor(p.y));if(valid(preferred))return preferred;for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++){const p={x:x+.5,y:y+.5};if(valid(p))return p;}return null;}
  async join(ws,id){
-  const a=ws.deserializeAttachment(),room=await this.ctx.storage.get('room:'+id);if(!room||!room.public&&room.ownerId!==a.user.id&&!a.user.admin)reject('Esa sala no está disponible.',404);
+  const a=ws.deserializeAttachment(),existing=await this.ctx.storage.get('room:'+id);if(!existing||!existing.public&&existing.ownerId!==a.user.id&&!a.user.admin)reject('Esa sala no está disponible.',404);const room=await this.room(id,existing.name);
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
   const old=a.roomId;const p=this.free(room,a.user.id);
   if(!p)reject('La sala no tiene espacio para entrar.');await cancelTrade(this,a.user.id,'El intercambio se canceló al cambiar de sala.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);

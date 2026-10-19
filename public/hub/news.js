@@ -1,0 +1,29 @@
+/* Add new releases at the beginning. Plain text only; no remote HTML. */
+(()=>{'use strict';
+ const releases=[
+  {id:'2026-10-19-wall-switch',date:'19 de octubre de 2026',title:'La luz, en la pared',notes:[
+   'Todas las salas tienen una tecla de luz fija. El dueño puede tocarla para prender o apagar la luz general.',
+   'El espacio de la tecla queda reservado: los cuadros y otros objetos de pared no pueden taparla.',
+   'Ahora vas a ver las novedades al entrar. Podés volver a leerlas desde el botón Novedades.'
+  ]},
+  {id:'2026-10-19-lighting',date:'19 de octubre de 2026',title:'Salas con iluminación',notes:[
+   'Con la luz general apagada, las lámparas, faroles y neones iluminan sus alrededores.',
+   'La iluminación se guarda y todos los visitantes ven el mismo ambiente.',
+   'El contador junto al logo muestra cuántas personas están conectadas.'
+  ]},
+  {id:'recent-additions',date:'Actualizaciones anteriores',title:'Más cosas para tu rincón',notes:[
+   'Nuevos muebles, ropa, diseños de pisos y paredes, y mascotas: pollito, rana, conejo, carpincho y tortuga.',
+   'Minijuegos de café, DJ y básquet para ganar créditos, con límites diarios.',
+   'Plantaciones, intercambios entre jugadores y una máquina para canjear copias repetidas.',
+   'Pósters con tus imágenes, chat con emotes y música compartida en la sala.'
+  ]}
+ ];
+ const $=id=>document.getElementById(id),dialog=$('hubNewsDialog');let entered=false,built=false;
+ function render(){if(built)return;built=true;const list=$('hubNewsEntries');for(const [index,r] of releases.entries()){
+  const entry=document.createElement('section');entry.className='hub-news-entry';const date=document.createElement('p');date.textContent=r.date;const title=document.createElement('h3');title.textContent=r.title;const ul=document.createElement('ul');for(const text of r.notes){const li=document.createElement('li');li.textContent=text;ul.append(li);}entry.append(date,title,ul);
+  if(index===0)list.append(entry);else{const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent=r.title;details.append(summary,entry);list.append(details);}
+ }}
+ function open(){if(dialog.open)return;render();dialog.showModal();}
+ $('hubNewsButton').onclick=open;$('hubNewsPlay').onclick=()=>dialog.close();
+ window.HubNews={arrive(){if(entered)return;entered=true;$('hubNewsButton').disabled=false;const show=()=>{if(document.querySelector('dialog[open]')){setTimeout(show,500);return;}open();};show();}};
+})();

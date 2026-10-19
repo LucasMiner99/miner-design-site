@@ -19,10 +19,10 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
  const scope={document:{getElementById:get,createElement:el,body:el(),querySelectorAll:()=>[]},location:{origin:'https://minerdesign.xyz'},localStorage:{getItem(){}},setInterval(){},setTimeout(){},addEventListener(){},fetch:async()=>Response.json(account),WebSocket:class{constructor(){sockets.push(this);}send(m){sent.push(JSON.parse(m));}}};scope.window=scope;
  vm.runInNewContext(fs.readFileSync(__dirname+'/../public/hub/online.js','utf8'),scope);await new Promise(setImmediate);
  scope.MINER_HUB_ONLINE.ready({account(){},room(){},players(){},stop(){},lighting:on=>changes.push(on)});const ws=sockets[0],emit=m=>ws.onmessage({data:JSON.stringify(m)});ws.onopen();
- const button=get('hubRoomLight');assert(!button.hidden);assert(!button.disabled);assert.equal(get('hubRoomLightLabel').textContent,'Apagar luz');
+ const button=get('hubRoomLight');assert(!button.hidden);assert(!button.disabled);assert.equal(button.attrs['aria-label'],'Apagar luz de la sala');
  button.onclick();assert.deepEqual(sent.at(-1),{type:'room-light',on:false});assert.equal(changes.length,0,'Wait for authoritative acknowledgement');
- emit({type:'room-light',roomId:'2',on:false});assert.deepEqual(changes,[false]);assert.equal(get('hubRoomLightLabel').textContent,'Prender luz');
- const other={id:'3',ownerId:'3',scene:{items:[],lightsOn:true}};emit({type:'room',room:other,players:[]});assert(button.hidden,'Admin is still a visitor in someone else’s room');
+ emit({type:'room-light',roomId:'2',on:false});assert.deepEqual(changes,[false]);assert.equal(button.attrs['aria-label'],'Prender luz de la sala');
+ const other={id:'3',ownerId:'3',scene:{items:[],lightsOn:true}};emit({type:'room',room:other,players:[]});assert(button.disabled,'Admin is still a visitor in someone else’s room');
  const count=sent.length;button.onclick();assert.equal(sent.length,count,'Hidden button cannot send a forged local action');
  emit({type:'room-light',roomId:'2',on:true});assert.deepEqual(changes,[false],'Ignore events for other rooms');
  emit({type:'room-light',roomId:'3',on:false});assert.deepEqual(changes,[false,false],'Visitors receive lighting updates');
