@@ -7,7 +7,11 @@
   function tank(document,art){const cv=document.createElement('canvas'),a=1/(.478+.55),b=.5-a*.478;cv.width=art.width;cv.height=Math.ceil(a*art.height+b*art.width);const k=cv.getContext('2d');k.setTransform(1,b,0,a,0,0);k.drawImage(art.canvas,0,0);return sprite(cv);}
   // Calibrate the two horizontal axes of volumetric artwork without flattening
   // its top planes, side faces, brackets or contents onto a wall rectangle.
-  function volume(document,art,front=.32,side=-.5){const cv=document.createElement('canvas'),a=1/(front-side),b=.5-a*front;cv.width=art.width;cv.height=Math.ceil(a*art.height+b*art.width);const k=cv.getContext('2d');k.setTransform(1,b,0,a,0,0);k.drawImage(art.canvas,0,0);return sprite(cv);}
+  function volume(document,art,front=.32,side=-.5){const cv=document.createElement('canvas'),a=1/(front-side),b=.5-a*front;
+    // A negative shear extends above the source origin. Include both extrema
+    // and translate the whole image so handles, lids and feet are never clipped.
+    const top=Math.min(0,b*art.width),bottom=a*art.height+Math.max(0,b*art.width);
+    cv.width=art.width;cv.height=Math.ceil(bottom-top);const k=cv.getContext('2d');k.setTransform(1,b,0,a,0,-top);k.drawImage(art.canvas,0,0);return sprite(cv);}
   function fit(document,art,reference){const cv=document.createElement('canvas');cv.width=reference.width;cv.height=reference.height;const k=cv.getContext('2d'),s=Math.min(cv.width/art.width,cv.height/art.height),x=(cv.width-art.width*s)/2,y=cv.height-art.height*s;k.drawImage(art.canvas,x,y,art.width*s,art.height*s);const c=art.surfaceCenter;return sprite(cv,{surfaceCenter:c?{u:(x+c.u*art.width*s)/cv.width,v:(y+c.v*art.height*s)/cv.height}:reference.surfaceCenter});}
   const screens={36:[[[.36,.25],[.65,.30],[.59,.55],[.28,.49]]],48:[[[.055,.25],[.36,.075],[.36,.31],[.055,.48]],[[.42,.11],[.77,.015],[.77,.235],[.42,.33]]]};
   function screenEffects(k,b,time,opacity){const planes=screens[b.item.type];if(!planes)return;k.save();k.globalAlpha=opacity;k.translate(b.x+(b.flip?b.w:0),b.y);if(b.flip)k.scale(-1,1);
