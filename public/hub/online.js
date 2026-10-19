@@ -3,6 +3,7 @@
  const $=id=>document.getElementById(id);let account,room,game,socket,connected=false,reconnect=0,stopped=false,queue=Promise.resolve(),saving=0;
  const memory=new Map();
  function status(text){$('hubStatus').textContent=text;}
+ function onlineCount(count){const badge=$('hubOnlineCount'),known=Number.isSafeInteger(count)&&count>=0;badge.dataset.connected=String(known);$('hubOnlineText').textContent=known?count.toLocaleString('es-AR')+' online':'Sin conexión';badge.setAttribute('aria-label',known?count+' '+(count===1?'jugador conectado':'jugadores conectados')+' en minerhub':'Sin conexión al juego');}
  async function api(path,method='GET',value){const response=await fetch('/api/hub/'+path,{method,credentials:'same-origin',headers:value?{'Content-Type':'application/json'}:{},body:value?JSON.stringify(value):undefined});const data=await response.json().catch(()=>({}));if(!response.ok)throw Object.assign(Error(data.error||'No pudimos conectar.'),{status:response.status});return data;}
  function seed(){window.HubEmotes?.load();memory.set('vereda.room.v1',JSON.stringify(account.room.scene));memory.set('vereda.people.v1',JSON.stringify({version:1,actors:[],me:account.user.appearance}));}
  function canEdit(){return connected&&room?.ownerId===account.user.id;}
@@ -37,6 +38,7 @@
    else if(m.type==='posters'&&m.roomId===room?.id)window.HubPosters?.receive(m.slots);
    else if(m.type==='trade')window.HubTrade?.receive(m);
    else if(m.type==='media'&&m.roomId===room?.id)window.HubMedia?.receive(m.media);
+   else if(m.type==='online')onlineCount(m.count);
    else if(m.type==='presence')game.players(m.players);
    else if(m.type==='walk')game.walk(m.id,m.from,m.path,m.seq,m.seat);
    else if(m.type==='interaction'&&m.roomId===room?.id){const item=room.scene.items.find(i=>i.id===m.itemId);if(item)Object.assign(item,m.changes);if(account.room.id===room.id){const own=account.room.scene.items.find(i=>i.id===m.itemId);if(own)Object.assign(own,m.changes);}game.interaction(m.itemId,m.changes);}
@@ -46,7 +48,7 @@
    else if(m.type==='scene'&&m.room.id===room?.id&&room.ownerId!==account.user.id){room=m.room;window.HubPlants?.receive(room,m.serverNow);game.scene(room.scene);game.players(m.players);}
    else if(m.type==='error'){status(m.error);window.HubTrade?.error(m.error);window.HubMedia?.error(m.error,m);}
   };
-  socket.onclose=e=>{connected=false;window.HubTrade?.disconnected();window.HubMedia?.disconnected();window.HubRoulette?.close();window.HubExchange?.close();window.HubCoffee?.close();window.HubDJ?.close();window.HubBasket?.close();$('game').title='';game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
+  socket.onclose=e=>{connected=false;onlineCount(null);window.HubTrade?.disconnected();window.HubMedia?.disconnected();window.HubRoulette?.close();window.HubExchange?.close();window.HubCoffee?.close();window.HubDJ?.close();window.HubBasket?.close();$('game').title='';game?.stop();affordances();if(e.code===4001||e.code===4003){stopped=true;status(e.reason||'Sesión cerrada. Recargá para entrar.');return;}status('Conexión interrumpida. Reconectando…');setTimeout(async()=>{try{updateAccount(await api('state'));connect();}catch(err){if(err.status===401||err.status===403){stopped=true;status(err.message);}else connect();}},Math.min(15000,1000*2**Math.min(++reconnect,4)));};
  }
  setInterval(()=>{if(connected)socket.send('ping');},25000);
  window.addEventListener('beforeunload',e=>{if(saving){e.preventDefault();e.returnValue='';}});

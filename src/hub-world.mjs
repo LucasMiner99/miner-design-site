@@ -59,6 +59,8 @@ export class HubWorld {
  send(ws,value){try{ws.send(JSON.stringify(value));}catch{try{ws.close(1011,'Conexión cerrada');}catch{}}}
  broadcast(roomId,event,except){for(const ws of this.sockets())if(ws!==except&&ws.deserializeAttachment()?.roomId===roomId)this.send(ws,event);}
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
+ onlineCount(except){return new Set(this.sockets().filter(ws=>ws!==except).map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId&&a.user?.id).map(a=>a.user.id)).size;}
+ broadcastOnline(except){const event={type:'online',count:this.onlineCount(except)};for(const ws of this.sockets())if(ws!==except)this.send(ws,event);}
  async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {serverNow:Date.now(),user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
  players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,petName:a.petName||'',group:a.group||null,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
@@ -73,6 +75,7 @@ export class HubWorld {
   if(old&&old!==id)this.broadcast(old,{type:'presence',players:this.players(old)});
   this.broadcast(id,{type:'presence',players:this.players(id)},ws);
   if(a.user.admin)await this.ctx.storage.put('active-room',id);
+  this.broadcastOnline();
  }
  async handle(request){
   const path=new URL(request.url).pathname;
@@ -220,7 +223,7 @@ export class HubWorld {
    }
   }catch(e){this.send(ws,{type:'error',error:e.status?e.message:'No pudimos completar esa acción.',...(e.mediaAction?{scope:'media',action:e.mediaAction,requestId:e.mediaRequestId}:{} )});}});
  }
- async webSocketClose(ws,code,reason){return this.ctx.blockConcurrencyWhile(async()=>{const a=ws.deserializeAttachment(),room=a?.roomId;try{ws.close(code,reason);}catch{}if(a)await cancelTrade(this,a.user.id,'El intercambio se canceló porque un jugador se desconectó.');if(room)this.broadcast(room,{type:'presence',players:this.players(room)});});}
+ async webSocketClose(ws,code,reason){return this.ctx.blockConcurrencyWhile(async()=>{const a=ws.deserializeAttachment(),room=a?.roomId;try{ws.close(code,reason);}catch{}if(a)await cancelTrade(this,a.user.id,'El intercambio se canceló porque un jugador se desconectó.');if(room)this.broadcast(room,{type:'presence',players:this.players(room)});this.broadcastOnline(ws);});}
  webSocketError(ws){return this.webSocketClose(ws,1011,'Conexión interrumpida.');}
  async alarm(){await this.ctx.blockConcurrencyWhile(async()=>{const events=await this.ctx.storage.list({prefix:'chat-event:',limit:1000});const stale=[...events].filter(([,t])=>t<Date.now()-3600000).map(([key])=>key);if(stale.length)await this.ctx.storage.delete(stale);if(events.size>stale.length)await this.ctx.storage.setAlarm(Date.now()+3600000);});}
 }

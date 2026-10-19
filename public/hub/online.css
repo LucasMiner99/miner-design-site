@@ -152,3 +152,10 @@
 @media(max-width:520px){#hubPosterSlots{grid-template-columns:repeat(3,minmax(0,1fr))}.context-actions{max-width:290px}}
 #hubMediaTitle{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hub-media-dock header button{flex-shrink:0}
 .hub-exchange{width:min(800px,calc(100vw - 24px));max-height:90dvh;overflow:auto}.hub-exchange h2{margin-bottom:12px}.hub-exchange p{font-size:11px;line-height:1.6;color:var(--muted)}.hub-exchange-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:8px;max-height:32dvh;overflow:auto;padding:4px;margin:14px 0}.hub-exchange-item{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}.hub-exchange-item[aria-pressed=true]{border:2px solid var(--ink);padding:8px;background:var(--mint)}.hub-exchange-item canvas{width:100px;height:92px}.hub-exchange-item strong{font-size:10px;overflow-wrap:anywhere}.hub-exchange-item small{font-size:9px;color:var(--muted)}#hubExchangeSwap{width:100%;justify-content:center}#hubExchangeReel{display:block;width:100%;height:auto;border-radius:12px}#hubExchangeAnimation,#hubExchangeResult{text-align:center}#hubExchangeSkip{margin-top:12px}#hubExchangeResultArt{width:180px;height:164px}#hubExchangeResultName{font-size:18px}.hub-exchange-actions{display:flex;justify-content:center;gap:10px}#hubExchangeStatus{margin:12px 0 0;min-height:18px}
+
+/* Global presence stays compact next to the logo, including narrow screens. */
+.hub-brand-group{display:flex;align-items:center;gap:14px;min-width:0}
+.hub-online-count{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:10px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.hub-online-count i{width:7px;height:7px;flex:none;border-radius:50%;background:#858585}
+.hub-online-count[data-connected=true] i{background:#35c66b;box-shadow:0 0 0 3px #35c66b16}
+@media(max-width:600px){.hub-brand-group{flex-wrap:wrap;gap:4px 8px;max-width:140px}.hub-online-count{font-size:9px}.hub-expanded .topbar{height:auto}}
