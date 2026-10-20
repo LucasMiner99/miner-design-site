@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="/assets/favicon.png">
   <meta name="description" content="Un pequeño lugar para quedarte. Caminá, decorá tu habitación y expresate en minerhub.">
   <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="online.css">
+<link rel="stylesheet" href="online.css"><link rel="stylesheet" href="announcements.css">
 <link rel="stylesheet" href="coffee.css">
 <link rel="stylesheet" href="dj.css">
 <link rel="stylesheet" href="basket.css">
@@ -66,7 +66,7 @@
     <section class="room-section" aria-label="Tu habitación">
       <div class="room-heading"><h1 class="sr-only">Tu habitación</h1><div class="room-tools"><button id="revealWalls" class="secondary-button" aria-pressed="false" hidden>Ver detrás</button><button id="quickGenerate" hidden class="secondary-button" title="Abrir el generador de salas">Nueva sala</button><button id="soundBtn" class="icon-button" title="Activar sonidos" aria-label="Activar sonidos" aria-pressed="false"><svg><use href="#i-muted"/></svg></button><button id="helpBtn" class="icon-button" title="Cómo jugar" aria-label="Cómo jugar"><svg><use href="#i-help"/></svg></button></div></div>
       <div class="hub-game-shell">
-      <div id="stage" class="stage"><div id="hubPlantLabels" aria-live="polite"></div>
+      <div id="stage" class="stage"><aside id="hubAnnouncementBanner" class="hub-announcement" role="status" aria-live="polite" aria-atomic="true" hidden><small>ANUNCIO GLOBAL</small><p id="hubAnnouncementText"></p></aside><div id="hubPlantLabels" aria-live="polite"></div>
         <canvas id="game" width="900" height="640" tabindex="0" aria-label="Habitación isométrica. Hacé clic en el piso para caminar. También podés usar las flechas del teclado. Mantené apretada la ruedita y arrastrá para mover la cámara."></canvas>
         <button id="hubRoomLight" class="hub-wall-switch" type="button" aria-label="Apagar luz de la sala" aria-pressed="true" hidden disabled><svg viewBox="0 0 24 36" aria-hidden="true"><rect x="3" y="3" width="20" height="32" rx="2" fill="#4e493e"/><rect x="1" y="1" width="20" height="32" rx="2" fill="#e9e3d7" stroke="#71695c" stroke-width="1"/><rect class="switch-rocker" x="5" y="6" width="12" height="20" rx="1" fill="#fffaf0" stroke="#91897a" stroke-width=".8"/><path class="switch-edge" d="M5 22h12v4H5z" fill="#b5ac9b"/><rect x="9" y="29" width="4" height="1.5" rx=".6" fill="#8ab879"/></svg></button>
         <div id="petHoverLabel" class="hub-pet-name" hidden></div><div id="bubbleLayer" class="bubble-layer" aria-live="polite" aria-atomic="false"></div>
@@ -90,7 +90,7 @@
       </div>
           <button id="hubGroups" type="button" class="hub-main-action">Grupos</button><span class="hub-action-spacer" aria-hidden="true"></span>
           <div class="hub-session-actions">
-          <button id="hubGiveaway" type="button" hidden>Sorteos</button><button id="hubAdmin" type="button" hidden>Administrar</button>
+          <button id="hubAnnouncement" type="button" hidden>Anuncios</button><button id="hubGiveaway" type="button" hidden>Sorteos</button><button id="hubAdmin" type="button" hidden>Administrar</button>
           <button id="hubLogout" type="button">Salir</button>
           </div>
         </nav>
@@ -281,6 +281,7 @@
 </dialog>
 
 <dialog id="hubPostersDialog" class="modal hub-posters" aria-labelledby="hubPostersTitle"><button class="modal-close icon-button" type="button" data-hub-close="hubPostersDialog" aria-label="Cerrar">×</button><h2 id="hubPostersTitle">Tus imágenes</h2><p>Cinco espacios. Elegí una imagen para este póster.</p><div id="hubPosterSlots"></div><p class="hub-poster-note">Reemplazar una imagen actualiza todos los pósters que la usan. JPG, PNG o WebP · hasta 10 MB; la guardamos comprimida.</p><p id="hubPosterStatus" role="status"></p><input id="hubPosterFile" type="file" accept="image/jpeg,image/png,image/webp" hidden></dialog>
+<dialog id="hubAnnouncementDialog" class="modal hub-announcement-editor" aria-labelledby="hubAnnouncementTitle"><button class="modal-close icon-button" type="button" data-hub-close="hubAnnouncementDialog" aria-label="Cerrar">×</button><h2 id="hubAnnouncementTitle">Anuncio global</h2><p>Visible en todas las salas hasta que lo quites.</p><form id="hubAnnouncementForm"><label for="hubAnnouncementInput">Mensaje</label><input id="hubAnnouncementInput" maxlength="280" autocomplete="off" placeholder="¿Qué querés anunciar?"><small id="hubAnnouncementCount">0/280</small><div class="announcement-actions"><button id="hubAnnouncementPublish" class="primary-button" type="submit">Publicar mensaje</button><button id="hubAnnouncementRemove" type="button">Quitar anuncio</button></div><p id="hubAnnouncementStatus" role="status"></p></form></dialog>
 <dialog id="hubGiveawayDialog" class="modal hub-giveaway" aria-labelledby="hubGiveawayTitle"><button class="modal-close icon-button" type="button" data-hub-close="hubGiveawayDialog" aria-label="Cerrar">×</button><h2 id="hubGiveawayTitle">Sorteos</h2><div class="hub-giveaway-layout"><div class="hub-giveaway-wheel"><span aria-hidden="true">▼</span><canvas id="hubGiveawayWheel" width="640" height="640" aria-label="Ruleta de participantes"></canvas><p id="hubGiveawayWinner" role="status" aria-live="polite"></p></div><div><label for="hubGiveawayNames">Participantes <small>Un nombre por línea · hasta 200</small></label><textarea id="hubGiveawayNames" rows="7" maxlength="8200" placeholder="Escribí o agregá nombres"></textarea><button id="hubGiveawayOnline" class="secondary-button" type="button">Elegir conectados</button><div id="hubGiveawayPlayers" hidden></div><p id="hubGiveawayCount"></p><button id="hubGiveawaySpin" class="primary-button" type="button" disabled>Sortear</button><p id="hubGiveawayStatus" role="status"></p></div></div></dialog>
 <div id="hubYouTubeMount" class="hub-audio-engine" aria-hidden="true"></div>
 <dialog id="hubGroupsDialog" class="modal hub-groups-modal" aria-labelledby="hubGroupsTitle"><button type="button" class="modal-close icon-button" data-hub-close="hubGroupsDialog" aria-label="Cerrar">×</button><h2 id="hubGroupsTitle">Tu grupo</h2><p id="hubGroupNote"></p><form id="hubGroupForm"><label>Nombre del grupo<input id="hubGroupName" maxlength="16" required autocomplete="off"></label><label>Color del tag<input id="hubGroupColor" type="color" value="#75c9ff"></label><button class="primary-button" type="submit" id="hubGroupSave">Crear grupo</button></form><div id="hubGroupMembers"></div><div id="hubGroupInvites"></div><button id="hubGroupLeave" type="button" class="secondary-button" hidden>Salir del grupo</button><p id="hubGroupStatus" role="status"></p></dialog>
@@ -369,6 +370,6 @@
 <script src="news.js"></script>
 <dialog id="roomLedDialog" class="modal hub-led-dialog" aria-labelledby="roomLedTitle"><button type="button" class="modal-close" data-hub-close="roomLedDialog" aria-label="Cerrar iluminación">×</button><h2 id="roomLedTitle">Zócalo LED</h2><p>Una tira continua que se adapta a tu sala.</p><div class="environment-group"><h3>Iluminación</h3><div class="room-picker" role="group" aria-labelledby="roomLedLabel"><span class="room-picker-label" id="roomLedLabel">LED al pie de las paredes</span><div class="room-picker-controls"><button type="button" id="roomLedPrev" class="look-arrow" aria-label="LED: anterior">‹</button><span class="room-picker-choice"><b id="roomLed"></b><small id="roomLedCount"></small></span><button type="button" id="roomLedNext" class="look-arrow" aria-label="LED: siguiente">›</button></div></div><label class="hub-led-color">Color <input type="color" id="roomLedColor" value="#52dfff" aria-label="Color del zócalo LED"></label></div><button type="button" class="primary-button" data-hub-close="roomLedDialog">Listo</button></dialog>
 <script src="posters.js"></script><script src="plants.js"></script><script src="perimeter.js"></script><script src="lighting.js"></script>
-<script src="disco.js"></script><script src="community.js"></script><script src="online.js"></script>
+<script src="disco.js"></script><script src="community.js"></script><script src="announcements.js"></script><script src="online.js"></script>
 </body>
 </html>

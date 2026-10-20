@@ -1,3 +1,4 @@
+import {announcement,editAnnouncement} from './hub-announcements.mjs';
 import {ensureCasino,canManageRoom,CASINO_ID} from './hub-community.mjs';
 import {fishingAction,fishingConfig,saveFishingConfig} from './hub-fishing.mjs';
 import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables,closeConnect4Room} from './hub-connect4.mjs';
@@ -66,7 +67,7 @@ export class HubWorld {
  ownSockets(id){return this.sockets().filter(ws=>ws.deserializeAttachment()?.user.id===id);}
  onlineCount(except){return new Set(this.sockets().filter(ws=>ws!==except).map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId&&a.user?.id).map(a=>a.user.id)).size;}
  broadcastOnline(except){const event={type:'online',count:this.onlineCount(except)};for(const ws of this.sockets())if(ws!==except)this.send(ws,event);}
- async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {serverNow:Date.now(),user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
+ async state(user,admin){const rows=await this.ctx.storage.list({prefix:'pending:'+user.id+':',limit:100});return {announcement:await announcement(this),serverNow:Date.now(),user:{id:user.id,name:user.name,appearance:user.appearance,petName:user.petName||'',admin,...await groupState(this,user)},credits:balance(user),walletVersion:user.walletVersion||0,shop:publicShop(await economy(this.ctx.storage)),inventory:inventory(user,admin),boxes:[...rows.values()].map(b=>({id:b.id,kind:b.kind,purchaseId:b.purchaseId})),room:await this.room(user.id,user.name)};}
  async notifyUser(id){const user=await this.user(id);for(const ws of this.ownSockets(id))this.send(ws,{type:'account',...(await this.state(user,ws.deserializeAttachment().user.admin))});}
  players(roomId){return this.sockets().map(ws=>ws.deserializeAttachment()).filter(a=>a?.roomId===roomId).map(a=>{const p=currentPosition(a.position);return {id:a.user.id,name:a.user.name,appearance:a.appearance,petName:a.petName||'',group:a.group||null,x:p.point.x,y:p.point.y,path:p.path,seat:a.seat||null};});}
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
@@ -123,9 +124,10 @@ export class HubWorld {
    const previous=this.ownSockets(u.id);if(this.sockets().length-previous.length>=60)reject('La beta está llena. Intentá más tarde.',503);
    for(const old of previous)try{old.close(4001,'Abriste el juego en otra pestaña.');}catch{}
    await this.room(u.id,u.name);const pair=new WebSocketPair(),[client,server]=Object.values(pair);this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({user:auth,appearance:u.appearance,petName:u.petName||'',group:groupBadge(await userGroup(this,u)),roomId:null,position:{from:{x:1.5,y:1.5},path:[],at:Date.now()},rateAt:0,rateCount:0,lastChat:0});await this.join(server,u.id);
+   server.serializeAttachment({user:auth,appearance:u.appearance,petName:u.petName||'',group:groupBadge(await userGroup(this,u)),roomId:null,position:{from:{x:1.5,y:1.5},path:[],at:Date.now()},rateAt:0,rateCount:0,lastChat:0});await this.join(server,u.id);this.send(server,{type:'announcement',announcement:await announcement(this)});
    return new Response(null,{status:101,webSocket:client});
   }
+  if(path==='/admin/announcement'){if(!auth.admin)reject('Solo el administrador puede publicar anuncios.',403);if(request.method==='GET')return reply(await announcement(this));if(request.method==='PUT')return reply(await editAnnouncement(this,auth,await body(request,2048)));}
   if(path==='/admin/giveaway'&&['GET','POST'].includes(request.method))return reply(await giveaway(this,auth,request.method==='POST'?await body(request,16000):null));
   if(path==='/groups'){if(request.method==='GET')return reply(await groupState(this,u));if(request.method==='POST')return reply(await handleGroup(this,u,await body(request,2048)));}
   if(path==='/profile'&&request.method==='PUT'){u.petName=profileText((await body(request,2048)).petName);await this.ctx.storage.put('user:'+u.id,u);await refreshProfiles(this,[u.id]);return reply(await this.state(u,auth.admin));}
