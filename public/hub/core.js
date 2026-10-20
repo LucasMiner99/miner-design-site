@@ -161,6 +161,13 @@
   );
   TYPES.push({name:'Carreras de Caballos',w:2,h:1,width:78,category:'deco',sprite:99,interaction:'racing',artAxes:[.51,-.67],rearAxes:[.58,-.57]});
   TYPES.push({name:'Mesa Cuatro en Línea',w:2,h:1,width:86,category:'deco',sprite:100,interaction:'connect4'});
+  TYPES.push(
+    {name:'Barra LED Vertical',w:1,h:1,width:27,category:'deco',sprite:101,interaction:'light',rotationLight:true,lightAtlas:true},
+    {name:'Tira LED Pared',w:1,h:1,width:116,mountH:8,category:'wall',sprite:102,wall:true,interaction:'light',lightAtlas:true},
+    {name:'Panel LED Hexagonal',w:1,h:1,width:64,mountH:56,category:'wall',sprite:103,wall:true,interaction:'light',lightAtlas:true},
+    {name:'Arco Neón',w:1,h:1,width:30,category:'deco',sprite:104,tabletop:true,interaction:'light',rotationLight:true,lightAtlas:true},
+    {name:'Farol Moderno',w:1,h:1,width:27,category:'deco',sprite:105,tabletop:true,interaction:'light',rotationLight:true,lightAtlas:true}
+  );
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -211,6 +218,7 @@
   TYPES.forEach((t,i)=>t.base={shape:bases[i]?.[0]||'wall',span:bases[i]?.[1]||1,u:.5});
   for(let i=90;i<=92;i++)TYPES[i].base={shape:'oval',span:.62,u:.5};
   for(const id of [94,95,96,97,98])TYPES[id].base={shape:id===95?'oval':'box',span:id===95?.65:.85,u:.5};
+  for(const id of [101,104,105])TYPES[id].base={shape:'oval',span:.86,u:.5};
   TYPES[93].base={shape:'box',span:.94,u:.5};
   TYPES[83].base={shape:'box',span:.94,u:.5};
   for(const [i,shape,span] of [[84,'box',.4],[85,'box',.55],[86,'box',.94],[88,'box',.94],[89,'oval',.8]])TYPES[i].base={shape,span,u:.5};

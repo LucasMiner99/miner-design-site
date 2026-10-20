@@ -1,6 +1,12 @@
 (function(root){
   'use strict';
   function sprite(canvas,extra={}){const p=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data,alpha=new Uint8Array(canvas.width*canvas.height);for(let i=0;i<alpha.length;i++)alpha[i]=p[i*4+3];return {canvas,width:canvas.width,height:canvas.height,alpha,...extra};}
+  // Authored light atlases have two registered, equally sized cells. Preserve
+  // their complete alpha and common bounds instead of re-cropping each state.
+  function lightFrames(document,image){
+    if(image.width%2)throw Error('El atlas de iluminación necesita dos celdas iguales.');
+    return [0,1].map(i=>{const cv=document.createElement('canvas');cv.width=image.width/2;cv.height=image.height;cv.getContext('2d').drawImage(image,i*cv.width,0,cv.width,cv.height,0,0,cv.width,cv.height);return sprite(cv);});
+  }
   // Flat illustrations share the exact wall basis: (1, .5), (0, 1).
   // The same projection drives the visible alpha and pointer hit testing.
   function wall(document,art,type){const cv=document.createElement('canvas'),w=512,h=w*type.mountH/type.width;cv.width=w;cv.height=Math.ceil(h+w*.5);const k=cv.getContext('2d');k.setTransform(w/art.width,w*.5/art.width,0,h/art.height,0,0);k.drawImage(art.canvas,0,0);return sprite(cv,{wallPlane:{width:w,height:h,slope:.5}});}
@@ -72,5 +78,5 @@
     else if(index===10){for(let y=20;y<height;y+=52)for(let x=18;x<span;x+=64){const points=[[x,y],[x+19,y+9],[x+32,y-7],[x+46,y+17]];k.beginPath();points.forEach(([a,b],i)=>i?k.lineTo(a,b):k.moveTo(a,b));k.stroke();for(const [a,b] of points){k.fillStyle=w.trim;k.beginPath();k.arc(a,b,1.7,0,Math.PI*2);k.fill();}shape(k,[[x+15,y+30],[x+17,y+35],[x+22,y+37],[x+17,y+39],[x+15,y+44],[x+13,y+39],[x+8,y+37],[x+13,y+35]],w.trim+'bb');}}
     k.restore();
   }
-  const api={floorDesign,wallDesign,wall,tank,volume,fit,sprite,door,screenEffects,pulse,screens};root.VeredaScenery=api;if(typeof module!=='undefined')module.exports=api;
+  const api={floorDesign,wallDesign,wall,tank,volume,fit,sprite,lightFrames,door,screenEffects,pulse,screens};root.VeredaScenery=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

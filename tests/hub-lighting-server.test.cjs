@@ -30,6 +30,24 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   assert.equal((await state('2')).room.scene.lightsOn,true);
   await send(another,{type:'join',roomId:'3'},'room');
   assert.match((await send(another,{type:'room-light',on:false,roomId:'2'},'error')).error,/Solo el dueño/,'Cannot target another room from a forged message');
-  console.log('PASS room lighting: owner-only, visitor/admin denied, boolean validation, live broadcast, persistence, reconnect and stale-save protection.');
+  const a=await state('1'),fixtures={...a.room.scene,items:[
+   {id:101,type:101,x:1,y:4,on:false},
+   {id:102,type:102,x:0,y:0,wallSide:'right',wallU:5.5,wallZ:125,on:false},
+   {id:103,type:103,x:0,y:0,wallSide:'left',wallU:2.5,wallZ:105,on:false},
+   {id:104,type:104,x:3,y:4,on:false},
+   {id:105,type:105,x:5,y:4,rotation:2,on:false}
+  ]};
+  const placed=await req('1','room','PUT',{scene:fixtures,revision:a.room.revision});assert.equal(placed.status,200,JSON.stringify(await placed.clone().json()));
+  await send(admin,{type:'join',roomId:'1'},'room');await send(visitor,{type:'join',roomId:'1'},'room');
+  for(const item of fixtures.items){
+   await delay(370);const event=await send(visitor,{type:'interact',itemId:item.id},'interaction');assert.equal(event.changes.on,true);
+   assert.equal((await state('1')).room.scene.items.find(i=>i.id===item.id).on,true);
+   await wait(()=>admin.messages.find(m=>m.type==='interaction'&&m.itemId===item.id&&m.changes.on===true));
+  }
+  const prior=(await state('1')).room;await req('1','room','PUT',{scene:fixtures,revision:prior.revision});
+  assert((await state('1')).room.scene.items.every(i=>i.on===true),'Old decoration cannot undo live fixture switches');
+  for(const item of fixtures.items){await delay(370);const event=await send(admin,{type:'interact',itemId:item.id},'interaction');assert.equal(event.changes.on,false);}
+  const restored=await connect('1');assert(restored.messages.find(m=>m.type==='room').room.scene.items.every(i=>i.on===false));
+  console.log('PASS room lighting and five new fixtures: owner-only room switch, visitor fixture interaction, live broadcast, persisted on/off, reconnect and stale-save protection.');
  }finally{for(const c of clients)c.ws.close();await mf.dispose();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
