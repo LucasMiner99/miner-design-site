@@ -1,0 +1,36 @@
+.hub-connect4{width:min(570px,calc(100vw - 24px));padding:25px;max-height:94dvh;overflow:auto;border-radius:24px;color:inherit}
+.hub-connect4 header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding-right:22px}
+.hub-connect4 h2{font-size:25px;margin:4px 0}.hub-connect4 .c4-eyebrow{font-size:9px;letter-spacing:.12em;opacity:.6;margin:0}
+.c4-close{position:absolute;right:12px;top:12px;border:0;border-radius:50%;width:29px;height:29px;background:#8882;color:inherit;font-size:22px;line-height:1}
+.c4-pot{font-size:11px;white-space:nowrap;border-radius:20px;padding:9px 11px;background:#8882}
+.c4-status{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:18px 0 12px;font-size:14px;min-height:24px}
+.c4-status strong{overflow-wrap:anywhere}.c4-status [data-c4-clock]{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.c4-players{display:flex;gap:10px;margin:12px 0 16px;font-size:11px}
+.c4-players>span{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:9px;border:1px solid #8883;border-radius:10px;opacity:.65}
+.c4-players>span.is-turn{border-color:currentColor;opacity:1}.c4-players b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.c4-players small{font-size:9px;opacity:.65}
+.c4-disc{display:block;width:100%;height:100%;border-radius:50%;box-sizing:border-box}
+.c4-p1{background:radial-gradient(circle at 34% 25%,#ff9e83,#e9514a 65%,#ad302d);border:3px solid #c8413c;box-shadow:inset 0 0 0 2px #ffb39a60}
+.c4-p2{background:radial-gradient(circle at 34% 25%,#fff2a0,#f3bf40 65%,#ba7b18);border:3px solid #d79624;box-shadow:inset 0 0 0 2px #fff6ab80}
+.c4-players .c4-disc{width:17px;height:17px;flex-shrink:0;border-width:2px}
+.c4-board{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;max-width:360px;margin:0 auto;padding:13px;border:1px solid #5682b8;border-bottom:7px solid #172e50;border-radius:15px;background:linear-gradient(125deg,#365c91,#203d6c);box-shadow:0 9px 20px #0002;overflow:hidden}
+.c4-column{display:flex;flex-direction:column;gap:7px;padding:0;border:0;border-radius:25px;background:transparent;color:inherit;min-width:0;opacity:1!important}
+.c4-column:not(:disabled){cursor:pointer}.c4-column:not(:disabled):hover{background:#ffffff24}.c4-column:focus-visible{outline:2px solid #fff;outline-offset:4px}
+.c4-hole{display:block;width:100%;aspect-ratio:1;background:#142743;border-radius:50%;box-shadow:inset 0 3px 5px #0005}
+.c4-win{outline:3px solid white;outline-offset:-2px;filter:brightness(1.2)}
+.c4-drop{animation:c4drop .22s ease-out}@keyframes c4drop{from{transform:translateY(calc(-1 * var(--drop)));opacity:.65}to{transform:translateY(0);opacity:1}}
+.c4-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:15px}
+.c4-actions button,.c4-invite button,.c4-return{padding:10px 16px;border-radius:10px;border:1px solid #8885;font:inherit;font-size:12px;background:#8881;color:inherit;text-align:center;justify-content:center}
+.hub-connect4 .primary-button{background:var(--ink);color:var(--bg);border:0}
+.c4-actions .c4-danger{border-color:#dd6455;color:#dd6455}
+.c4-return{display:block;margin:12px auto}
+.c4-invite{display:grid;gap:14px;margin:20px 0}.c4-invite label{display:grid;gap:7px;font-size:12px}
+.c4-invite select,.c4-invite input{background:transparent;border:1px solid #8885;border-radius:10px;padding:11px;color:inherit;font:inherit;font-size:13px;width:100%;box-sizing:border-box}
+.c4-invite select option{background:#171717;color:white}
+.hub-connect4 .c4-invite p,.hub-connect4 .c4-invitation p,.hub-connect4 .c4-result{font-size:12px;line-height:1.7;margin:8px 0;text-align:center}
+.c4-invitation{padding:15px 5px}.hub-connect4 .c4-error{color:#e57968;font-size:11px;margin:10px 0;min-height:1em;text-align:center}
+.hub-connect4 footer{font-size:10px;line-height:1.7;opacity:.6;text-align:center}
+.hub-connect4-resume{position:fixed;z-index:60;right:20px;top:74px;border:1px solid #8887;border-radius:20px;padding:12px 18px;background:#171717;color:white;font:inherit;font-size:12px;box-shadow:0 4px 18px #0005}
+.hub-connect4-resume[hidden]{display:none}
+[data-theme=light] .c4-invite select option{background:white;color:#171717}
+@media(max-width:520px){.hub-connect4{padding:18px}.hub-connect4 header{display:block}.c4-pot{display:inline-block;margin-top:8px}.hub-connect4 h2{font-size:22px}.c4-board{gap:5px;padding:9px}.c4-column{gap:5px}.c4-players{font-size:10px;gap:5px}.c4-players>span{padding:7px;gap:5px}}
+@media(prefers-reduced-motion:reduce){.c4-drop{animation:none}}

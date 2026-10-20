@@ -1,6 +1,7 @@
 /* Add new releases at the beginning. Plain text only; no remote HTML. */
 (()=>{'use strict';
  const releases=[
+  {id:'2026-10-20-connect4',date:'20 de octubre de 2026',title:'Cuatro en línea, entre jugadores',notes:['Una nueva mesa para conseguir en las cajas de objetos. Colocala en tu sala e invitá a otro jugador.','Ambos apuestan el mismo monto. El ganador se lleva el pozo completo; si empatan, recuperan los créditos.','Tenés 60 segundos por turno. Podés cerrar la ventana y volver a la partida; el tiempo sigue corriendo.']},
   {id:'2026-10-20-horse-racing',date:'20 de octubre de 2026',title:'¡Llegan las carreras de caballos!',notes:[
    'Una nueva máquina para tu sala, disponible en las cajas de objetos.',
    'Elegí entre cinco caballos, apostá créditos y mirá la carrera. Los menos favoritos pagan más.',

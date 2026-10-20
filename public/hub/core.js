@@ -160,6 +160,7 @@
     {name:'Cuadro Herbario',w:1,h:1,width:46,mountH:60,category:'wall',sprite:98,wall:true}
   );
   TYPES.push({name:'Carreras de Caballos',w:2,h:1,width:78,category:'deco',sprite:99,interaction:'racing',artAxes:[.51,-.67],rearAxes:[.58,-.57]});
+  TYPES.push({name:'Mesa Cuatro en Línea',w:2,h:1,width:86,category:'deco',sprite:100,interaction:'connect4'});
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.

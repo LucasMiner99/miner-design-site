@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="dj.css">
 <link rel="stylesheet" href="basket.css">
 <link rel="stylesheet" href="racing.css">
+<link rel="stylesheet" href="connect4.css">
 </head>
 <body>
 <div id="hubLogin" class="hub-login" hidden><div><h1>minerhub</h1><p id="hubLoginStatus"></p><a id="hubLoginLink" class="primary-button" href="/api/hub/login">Entrar con Kick</a></div></div>
@@ -245,6 +246,9 @@
  <p id="hubRacingStatus" role="status" aria-live="polite"></p><p class="race-note">Los pagos incluyen tu apuesta. Créditos del juego · Máximo 10.000 por carrera.</p>
 </dialog>
 <script type="module" src="racing.js"></script>
+<dialog id="hubConnect4Dialog" class="modal hub-connect4" aria-labelledby="hubConnect4Title"></dialog>
+<button id="hubConnect4Resume" class="hub-connect4-resume" hidden>Cuatro en línea</button>
+<script type="module" src="connect4.js"></script>
 <dialog id="hubRouletteDialog" class="modal hub-roulette" aria-labelledby="hubRouletteTitle">
   <button id="hubRouletteClose" type="button" class="modal-close icon-button" aria-label="Cerrar">×</button>
   <header><h2 id="hubRouletteTitle">Ruleta</h2><p id="hubRouletteBalance"></p></header>

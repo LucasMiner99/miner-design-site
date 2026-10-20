@@ -1,3 +1,4 @@
+import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables} from './hub-connect4.mjs';
 import {openRacing,betRacing} from './hub-racing.mjs';
 import {basketAction,basketConfig,saveBasketConfig} from './hub-basket.mjs';
 import {djAction,djConfig,saveDJConfig} from './hub-dj.mjs';
@@ -111,7 +112,7 @@ export class HubWorld {
   }
   if(path==='/room'&&request.method==='PUT'){
    const b=await body(request),room=await this.room(u.id,u.name);if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
-   const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);reconcilePlants(room,room.plants,await plantConfig(this.ctx.storage));
+   const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);await expireConnect4(this);await guardConnect4Tables(this,room.id,room.scene);reconcilePlants(room,room.plants,await plantConfig(this.ctx.storage));
    // General lighting has its own live action; stale decoration saves cannot undo it.
    room.scene.lightsOn=previous.lightsOn!==false;
    // Decoration saves must not overwrite a visitor's more recent switch state.
@@ -125,6 +126,7 @@ export class HubWorld {
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',serverNow:Date.now(),room,players:this.players(u.id)});return reply({room,serverNow:Date.now()});
   }
+  if(path==='/connect4'&&request.method==='POST'){const result=await connect4Action(this,u,await body(request,2048));return reply({...result,account:await this.state(await this.user(u.id),auth.admin)});}
   if((path==='/racing/open'||path==='/racing/bet')&&request.method==='POST'){
    const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
    const result=path==='/racing/open'?await openRacing(this,u,input):{receipt:await betRacing(this,u,input),serverNow:Date.now()};
@@ -240,5 +242,5 @@ export class HubWorld {
  }
  async webSocketClose(ws,code,reason){return this.ctx.blockConcurrencyWhile(async()=>{const a=ws.deserializeAttachment(),room=a?.roomId;try{ws.close(code,reason);}catch{}if(a)await cancelTrade(this,a.user.id,'El intercambio se canceló porque un jugador se desconectó.');if(room)this.broadcast(room,{type:'presence',players:this.players(room)});this.broadcastOnline(ws);});}
  webSocketError(ws){return this.webSocketClose(ws,1011,'Conexión interrumpida.');}
- async alarm(){await this.ctx.blockConcurrencyWhile(async()=>{const events=await this.ctx.storage.list({prefix:'chat-event:',limit:1000});const stale=[...events].filter(([,t])=>t<Date.now()-3600000).map(([key])=>key);if(stale.length)await this.ctx.storage.delete(stale);if(events.size>stale.length)await this.ctx.storage.setAlarm(Date.now()+3600000);});}
+ async alarm(){await this.ctx.blockConcurrencyWhile(async()=>{await expireConnect4(this);const events=await this.ctx.storage.list({prefix:'chat-event:',limit:1000});const stale=[...events].filter(([,t])=>t<Date.now()-3600000).map(([key])=>key);if(stale.length)await this.ctx.storage.delete(stale);if(events.size>stale.length){const next=Date.now()+3600000,current=await this.ctx.storage.getAlarm();if(!current||current>next)await this.ctx.storage.setAlarm(next);}await scheduleConnect4(this);});}
 }
