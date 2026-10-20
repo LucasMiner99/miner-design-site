@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 
@@ -11,7 +12,7 @@ export function rouletteNumber(fill=a=>crypto.getRandomValues(a)){
 }
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 async function table(world,user,input){
- if(typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Ruleta inválida.');
+ if(!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Ruleta inválida.');
  if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala y tocá una ruleta colocada.',403);
  const room=await world.ctx.storage.get('room:'+input.roomId);
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='roulette'))fail('Esta ruleta ya no está colocada en la sala.',409);

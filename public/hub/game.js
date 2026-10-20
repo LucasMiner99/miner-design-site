@@ -226,7 +226,7 @@
     }
   }
   function undo(){if(!history.length)return;standUp();state=JSON.parse(history.pop());C.setLayout(state.layout);resetView();player={...player,...C.findFree(state.items,player),path:[],moving:false};rehomeActors();cancelSelection();resize();buildRoom();updateName();updateSwatches();save();$('undoBtn').disabled=!history.length;toast('Último cambio deshecho.');sfx('place');}
-  function updateName(){$('profileName').textContent=online.user.name;$('roomOwner').textContent='El rincón de '+state.name;}
+  function updateName(){$('profileName').textContent=online.user.name;$('roomOwner').textContent=online.room?.community?online.room.name:'El rincón de '+state.name;}
   function sfx(kind){
     if(!soundEnabled)return;
     try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const at=audioCtx.currentTime;const tones=kind==='chat'?[520,650]:kind==='place'?[390,490]:kind==='step'?[140]:[340];tones.forEach((freq,i)=>{let o=audioCtx.createOscillator(),v=audioCtx.createGain();o.type=kind==='step'?'triangle':'sine';o.frequency.setValueAtTime(freq,at+i*.055);o.frequency.exponentialRampToValueAtTime(freq*.8,at+i*.055+.09);v.gain.setValueAtTime(.0001,at+i*.055);v.gain.exponentialRampToValueAtTime(kind==='step'?.012:.04,at+i*.055+.01);v.gain.exponentialRampToValueAtTime(.0001,at+i*.055+.12);o.connect(v);v.connect(audioCtx.destination);o.start(at+i*.055);o.stop(at+i*.055+.13);});}catch(e){soundEnabled=false;updateSound();}
@@ -413,7 +413,11 @@
     const baseWidth=w*t.base.span,anchorY=t.flat?h*.5:h-baseWidth*.25,anchorX=w*(flip?1-t.base.u:t.base.u);
     return {x:ground.x-anchorX,y:ground.y-anchorY,w,h,sprite,item,flip,ground,baseWidth,anchorX,anchorY};
   }
-  function drawItem(item,opacity=1,record=true){const t=C.TYPES[item.type],b=itemPosition(item);if(!t.wall&&!t.flat&&!item.parentId){
+  function drawItem(item,opacity=1,record=true){const t=C.TYPES[item.type],b=itemPosition(item);
+    // Keep offscreen hit bounds and light sources. The margin includes halos;
+    // cull only here, where coordinates are world-space (not inside a sprite).
+    if((b.x+b.w+200)*view.s+view.x<0||(b.x-200)*view.s+view.x>view.w||(b.y+b.h+200)*view.s+view.y<0||(b.y-200)*view.s+view.y>view.h){if(record)drawBounds.push(b);return;}
+    if(!t.wall&&!t.flat&&!item.parentId){
     if(t.base.shape==='oval')ellipse(g,b.ground.x,b.ground.y,b.baseWidth*.5,b.baseWidth*.25,'#51482d1b');
     else{const d=C.dimensions(item),scale=b.baseWidth/(32*(d.w+d.h)),cx=item.x+d.w/2,cy=item.y+d.h/2,dx=d.w*scale/2,dy=d.h*scale/2;const z=C.tileHeight(item.x,item.y);poly(g,[project(cx-dx,cy-dy,z),project(cx+dx,cy-dy,z),project(cx+dx,cy+dy,z),project(cx-dx,cy+dy,z)],'#51482d14');}
   }
@@ -586,16 +590,17 @@
     const movingCamera=!!cameraDrag||Math.abs(targetZoom-zoom)>.0001;
     const backgroundQuality=movingCamera?'low':'high';
     const backgroundKey=[view.x,view.y,view.s,dpr,backgroundQuality].join(':');
-    if(floorViewKey!==backgroundKey){
-      floorViewContext.setTransform(1,0,0,1,0,0);floorViewContext.clearRect(0,0,floorView.width,floorView.height);
+    const floorTarget=movingCamera?g:floorViewContext;
+    if(movingCamera||floorViewKey!==backgroundKey){
+      if(!movingCamera){floorTarget.setTransform(1,0,0,1,0,0);floorTarget.clearRect(0,0,floorView.width,floorView.height);}
       const density=view.s*dpr,source=floorLevels.find(level=>level.width/sceneW>=density)||floorCache;
       // Crop to the viewport before scaling, including a pixel of sampling bleed.
       const x=Math.max(0,-view.x/view.s-1),y=Math.max(0,-view.y/view.s-1),right=Math.min(sceneW,(view.w-view.x)/view.s+1),bottom=Math.min(sceneH,(view.h-view.y)/view.s+1);
-      floorViewContext.setTransform(density,0,0,density,view.x*dpr,view.y*dpr);floorViewContext.imageSmoothingEnabled=true;floorViewContext.imageSmoothingQuality=backgroundQuality;
-      if(right>x&&bottom>y)floorViewContext.drawImage(source,x*source.width/sceneW,y*source.height/sceneH,(right-x)*source.width/sceneW,(bottom-y)*source.height/sceneH,x,y,right-x,bottom-y);
-      floorViewKey=backgroundKey;
+      floorTarget.setTransform(density,0,0,density,view.x*dpr,view.y*dpr);floorTarget.imageSmoothingEnabled=true;floorTarget.imageSmoothingQuality=backgroundQuality;
+      if(right>x&&bottom>y)floorTarget.drawImage(source,x*source.width/sceneW,y*source.height/sceneH,(right-x)*source.width/sceneW,(bottom-y)*source.height/sceneH,x,y,right-x,bottom-y);
+      floorViewKey=movingCamera?'':backgroundKey;
     }
-    g.drawImage(floorView,0,0);
+    if(!movingCamera)g.drawImage(floorView,0,0);
     g.setTransform(view.s*dpr,0,0,view.s*dpr,view.x*dpr,view.y*dpr);
     g.imageSmoothingEnabled=true;g.imageSmoothingQuality=backgroundQuality;drawBounds=[];actorBounds=[];
     state.items.filter(i=>C.TYPES[i.type].wall).forEach(i=>drawItem(i,ghost?.id===i.id ? .36 : 1));
@@ -678,7 +683,7 @@
     if(!player.path.length){player.moving=false;finishSitting();}
     if(player.moving){walkSoundTimer+=dt;if(walkSoundTimer>.22){sfx('step');walkSoundTimer=0;}}
   }
-  function tick(now){const dt=Math.min((now-latestTime)/1000||0,.05);latestTime=now;if(ready){if(animationEnabled)effectsTime+=dt*1000;if(Math.abs(targetZoom-zoom)>.0001){zoom=reduceMotion?targetZoom:zoom+(targetZoom-zoom)*(1-Math.exp(-12*dt));if(Math.abs(targetZoom-zoom)<.0001)zoom=targetZoom;updateView();if(zoom===targetZoom)zoomAnchor=null;}updatePlayer(dt,now);people.update(dt);pets.update(dt,true);rewardsUI?.tick(now);paint(now,dt);}requestAnimationFrame(tick);}
+  function tick(now){const dt=Math.min((now-latestTime)/1000||0,.05);latestTime=now;if(ready){if(animationEnabled)effectsTime+=dt*1000;if(Math.abs(targetZoom-zoom)>.0001){zoom=reduceMotion?targetZoom:zoom+(targetZoom-zoom)*(1-Math.exp(-12*dt));if(Math.abs(targetZoom-zoom)<.0001)zoom=targetZoom;updateView();if(zoom===targetZoom)zoomAnchor=null;}updatePlayer(dt,now);people.update(dt);pets.update(dt,true);rewardsUI?.tick(now);if(!document.hidden&&!document.querySelector('dialog[open]'))paint(now,dt);}requestAnimationFrame(tick);}
   function updateBubbles(now){
     const boxes=[];
     // Batch measurements before position writes to avoid per-message layout work.

@@ -25,6 +25,7 @@
 .hub-fish-result[data-caught=true] h4{font-size:21px}.hub-fish-result[data-caught=true] #hubFishingSize{margin:6px 0}
 .hub-fish-result[data-caught=true] #hubFishingPrize{margin:9px 0}.hub-fish-result[data-caught=true] #hubFishingBest{font-size:10px;line-height:1.6}
 .hub-fish-lake strong{bottom:56px}.hub-fish-lake small{left:12px;right:12px;text-align:center;line-height:1.5}
+.hub-fish-zone,.hub-fish-target{top:0;will-change:transform}.hub-fish-progress span{height:100%;transform-origin:bottom;will-change:transform}
 @media(max-width:540px){.hub-fish-result[data-caught=true]{grid-template-columns:100px 1fr;column-gap:12px}.hub-fish-result[data-caught=true] h4{font-size:17px}.hub-fish-result[data-caught=true] #hubFishingSize{font-size:28px}}
 @media(max-width:540px){.hub-fishing{padding:22px 15px!important}.hub-fishing header h2{font-size:29px}.hub-fish-round{grid-template-columns:1fr 115px;gap:12px}.hub-fish-lake,.hub-fish-gauges{min-height:250px;height:250px}.hub-fish-lake strong{font-size:12px}.hub-fish-rank-row{grid-template-columns:18px 38px 1fr auto;gap:7px;padding:10px}.hub-fish-rank-row img{width:38px}.hub-fish-rank-row>b{font-size:12px}.hub-fish-tabs small{font-size:9px}.hub-fish-collection-item strong{font-size:9px}}
 

@@ -23,7 +23,9 @@ export async function handlePosters(request,world,user,admin=false){
  if(path==='/posters'&&request.method==='GET')return Response.json({slots:await posterList(world,user.id)});
  const image=path.match(/^\/posters\/image\/(\d{1,30})\/([0-4])$/);
  if(image&&request.method==='GET'){
-  const room=await world.ctx.storage.get('room:'+image[1]);if(image[1]!==user.id&&(!room||(!room.public&&!admin)||!room.scene.items.some(i=>[80,81,82].includes(i.type)&&i.posterSlot===Number(image[2]))))fail('Imagen no disponible.',404);
+  const room=await world.ctx.storage.get('room:'+image[1]),casino=await world.ctx.storage.get('room:casino');
+  const visible=r=>r&&r.ownerId===image[1]&&(r.public||admin)&&r.scene.items.some(i=>[80,81,82].includes(i.type)&&i.posterSlot===Number(image[2]));
+  if(image[1]!==user.id&&!visible(room)&&!visible(casino))fail('Imagen no disponible.',404);
   // Authorize here, then stream R2 from the gateway without holding the room's lock.
   return Response.json({key:'hub-posters/'+image[1]+'/'+image[2]+'.jpg'});
  }
@@ -35,7 +37,7 @@ export async function handlePosters(request,world,user,admin=false){
   await world.env.STREAMBOT_MEDIA.put('hub-posters/'+user.id+'/'+slot+'.jpg',bytes,{httpMetadata:{contentType:'image/jpeg'}});
   slots[slot]={slot,version:(slots[slot]?.version||0)+1,...dimensions};
   await world.ctx.storage.put({['posters:'+user.id]:slots,['poster-upload:'+user.id]:now});
-  world.broadcast(user.id,{type:'posters',roomId:user.id,slots});return Response.json({slots});
+  world.broadcast(user.id,{type:'posters',roomId:user.id,slots});const casino=await world.ctx.storage.get('room:casino');if(casino?.ownerId===user.id)world.broadcast(casino.id,{type:'posters',roomId:casino.id,slots});return Response.json({slots});
  }
  fail('No disponible.',404);
 }

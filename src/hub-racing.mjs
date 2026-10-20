@@ -1,9 +1,10 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {RACING,racingPrize,racingWinner} from '../public/hub/racing-rules.mjs';
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 async function machine(world,user,input){
- if(typeof input?.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
+ if(!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
  if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala y tocá una máquina de carreras.',403);
  const room=await world.ctx.storage.get('room:'+input.roomId);
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='racing'))fail('Esta máquina ya no está colocada en la sala.',409);

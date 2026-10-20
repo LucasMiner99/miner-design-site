@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 
@@ -27,7 +28,7 @@ function view(session,now){
   prepareAt:session.orderAt+PREP_MS,pour:session.pour||null,total:session.total,results:session.results,rules:session.rules};
 }
 async function machine(world,user,input){
- if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Cafetera inválida.');
+ if(!input||!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Cafetera inválida.');
  if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para usar la cafetera.',403);
  const room=await world.ctx.storage.get('room:'+input.roomId);
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='coffee'))fail('Esta cafetera ya no está colocada.',409);

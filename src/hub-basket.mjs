@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {coffeeDay} from './hub-coffee.mjs';
@@ -9,7 +10,7 @@ export async function basketConfig(storage){let c=await storage.get('basket-conf
 export async function saveBasketConfig(storage,v){if(!v||['dailyLimit','creditsPerPoint'].some(k=>!Number.isSafeInteger(v[k])||v[k]<0||v[k]>100000))fail('Usá valores enteros de 0 a 100.000.');const c={dailyLimit:v.dailyLimit,creditsPerPoint:v.creditsPerPoint,rewardVersion:2};await storage.put('basket-config',c);return c;}
 const daily=(u,c,now)=>{const earned=u.basketDaily?.day===coffeeDay(now)?u.basketDaily.earned:0;return {earned,limit:c.dailyLimit,remaining:Math.max(0,c.dailyLimit-earned)};};
 function snapshot(s,now){if(!s||s.expiresAt<=now)return null;const {requests,...view}=s;return view;}
-async function machine(world,u,input){if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para jugar.',403);const room=await world.ctx.storage.get('room:'+input.roomId);if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='basket'))fail('La máquina de básquet ya no está colocada.',409);}
+async function machine(world,u,input){if(!input||!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para jugar.',403);const room=await world.ctx.storage.get('room:'+input.roomId);if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='basket'))fail('La máquina de básquet ya no está colocada.',409);}
 export async function basketAction(world,u,action,input,now=Date.now()){
  await machine(world,u,input);const storage=world.ctx.storage,key='basket-session:'+u.id,recordKey='basket-record:'+input.roomId,config=await basketConfig(storage);let s=await storage.get(key),record=await storage.get(recordKey),receipt=null;if(record?.day!==coffeeDay(now))record=null;
  const output=()=>({session:snapshot(s,now),record,daily:daily(u,config,now),rules:config,serverNow:now,receipt});

@@ -1,5 +1,6 @@
+import {ensureCasino,canManageRoom,CASINO_ID} from './hub-community.mjs';
 import {fishingAction,fishingConfig,saveFishingConfig} from './hub-fishing.mjs';
-import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables} from './hub-connect4.mjs';
+import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables,closeConnect4Room} from './hub-connect4.mjs';
 import {openRacing,betRacing} from './hub-racing.mjs';
 import {basketAction,basketConfig,saveBasketConfig} from './hub-basket.mjs';
 import {djAction,djConfig,saveDJConfig} from './hub-dj.mjs';
@@ -70,7 +71,7 @@ export class HubWorld {
  occupied(roomId,except){const cells=new Set();for(const p of this.players(roomId)){if(p.id===except)continue;for(const point of [p,...p.path])cells.add(Math.floor(point.x)+','+Math.floor(point.y));}return cells;}
  free(room,except,preferred){C.setLayout(room.scene.layout);const occupied=this.occupied(room.id,except),valid=p=>p&&!C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y))&&!occupied.has(Math.floor(p.x)+','+Math.floor(p.y));if(valid(preferred))return preferred;for(let y=C.room().h-1;y>=0;y--)for(let x=0;x<C.room().w;x++){const p={x:x+.5,y:y+.5};if(valid(p))return p;}return null;}
  async join(ws,id){
-  const a=ws.deserializeAttachment(),existing=await this.ctx.storage.get('room:'+id);if(!existing||!existing.public&&existing.ownerId!==a.user.id&&!a.user.admin)reject('Esa sala no está disponible.',404);const room=await this.room(id,existing.name);
+  const a=ws.deserializeAttachment(),existing=await this.ctx.storage.get('room:'+id);if(!existing||!existing.public&&!a.user.admin&&!canManageRoom(existing,a.user))reject('Esa sala no está disponible.',404);const room=await this.room(id,existing.name);
   if(this.players(id).filter(p=>p.id!==a.user.id).length>=20)reject('La sala está llena.');
   const old=a.roomId;const p=this.free(room,a.user.id);
   if(!p)reject('La sala no tiene espacio para entrar.');await cancelTrade(this,a.user.id,'El intercambio se canceló al cambiar de sala.');a.roomId=id;a.seat=null;a.position={from:p,path:[],at:Date.now()};ws.serializeAttachment(a);
@@ -89,12 +90,33 @@ export class HubWorld {
   const u=await this.user(auth.id,auth.name);if(u.banned)reject('Tu acceso al juego está suspendido.',403);
   if(path.startsWith('/posters'))return handlePosters(request,this,u,auth.admin);
   if(path==='/disconnect'&&request.method==='POST'){for(const ws of this.ownSockets(u.id))ws.close(4001,'Sesión cerrada.');return reply({ok:true});}
-  if(path==='/state'&&request.method==='GET')return reply(await this.state(u,auth.admin));
+  if(path==='/state'&&request.method==='GET'){await ensureCasino(this,auth);return reply(await this.state(u,auth.admin));}
   if(path==='/feedback'||path==='/admin/feedback')return await handleFeedback(request,this.ctx.storage,u,auth.admin,body)||reply({error:'No disponible.'},404);
   if(path==='/rooms'&&request.method==='GET'){
+   const casino=await ensureCasino(this,auth);
    const all=await this.ctx.storage.list({prefix:'room:',limit:100}),active=await this.ctx.storage.get('active-room');
-   const visible=[...all.values()].filter(r=>r.public||r.ownerId===u.id||auth.admin),owners=visible.length?await this.ctx.storage.get([...new Set(visible.map(r=>'user:'+r.ownerId))]):new Map();
-   return reply({rooms:visible.map(r=>({id:r.id,name:r.name,ownerId:r.ownerId,appearance:P.look(owners.get('user:'+r.ownerId)?.appearance||{}),online:this.players(r.id).length,active:r.id===active,public:r.public}))});
+   if(casino&&!all.has('room:'+casino.id))all.set('room:'+casino.id,casino);
+   const visible=[...all.values()].filter(r=>r.community||r.public||r.ownerId===u.id||auth.admin),owners=visible.length?await this.ctx.storage.get([...new Set(visible.map(r=>'user:'+r.ownerId))]):new Map();
+   return reply({rooms:visible.map(r=>({id:r.id,name:r.name,ownerId:r.ownerId,appearance:P.look(owners.get('user:'+r.ownerId)?.appearance||{}),online:this.players(r.id).length,active:r.id===active,public:r.public,community:!!r.community}))});
+  }
+  if(path==='/admin/community'&&auth.admin){
+   if(request.method==='GET')return reply({room:await ensureCasino(this,auth)});
+   if(request.method!=='PUT')return reply({error:'No disponible.'},404);
+   const b=await body(request,2048);if(b.roomId!==CASINO_ID||typeof b.public!=='boolean')reject('Sala inválida.');
+   const room=await ensureCasino(this,auth);
+   if(room.public!==b.public){
+    if(!b.public)await closeConnect4Room(this,room.id);
+    room.public=b.public;room.revision++;await this.ctx.storage.put('room:'+room.id,room);
+    for(const ws of this.sockets()){
+     const a=ws.deserializeAttachment();
+     if(a.roomId===room.id&&!a.user.admin&&!room.public){
+      await this.room(a.user.id,a.user.name);
+      try{await this.join(ws,a.user.id);this.send(ws,{type:'notice',message:'El Casino cerró. Volviste a tu sala.'});}
+      catch{ws.close(4001,'El Casino cerró. Volvé a entrar a tu sala.');}
+     }
+    }
+    for(const ws of this.sockets())this.send(ws,{type:'community',roomId:room.id,public:room.public,revision:room.revision});
+   }return reply({room});
   }
   if(path==='/ws'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket'){
    const previous=this.ownSockets(u.id);if(this.sockets().length-previous.length>=60)reject('La beta está llena. Intentá más tarde.',503);
@@ -112,20 +134,24 @@ export class HubWorld {
    return reply(await this.state(u,auth.admin));
   }
   if(path==='/room'&&request.method==='PUT'){
-   const b=await body(request),room=await this.room(u.id,u.name);if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
+   const b=await body(request),id=b.roomId||u.id;
+   if(!b.roomId&&this.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===CASINO_ID))reject('Recargá la página para guardar la sala comunitaria.',409);
+   const room=id===u.id?await this.room(u.id,u.name):await this.ctx.storage.get('room:'+id);
+   if(!canManageRoom(room,auth))reject('Solo el administrador puede decorar esa sala.',403);
+   if(b.revision!==room.revision)reject('La sala cambió en otra pestaña. Recargamos la última versión.',409);
    const previous=room.scene;room.scene=validateScene(b.scene,u,auth.admin);await expireConnect4(this);await guardConnect4Tables(this,room.id,room.scene);reconcilePlants(room,room.plants,await plantConfig(this.ctx.storage));
    // General lighting has its own live action; stale decoration saves cannot undo it.
    room.scene.lightsOn=previous.lightsOn!==false;
    // Decoration saves must not overwrite a visitor's more recent switch state.
    for(const item of room.scene.items){const old=previous.items.find(i=>i.id===item.id&&i.type===item.type);if(!old)continue;for(const key of ['on','closed'])if(typeof old[key]==='boolean')item[key]=old[key];}
-   room.revision++;room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;
+   room.revision++;if(room.community){room.scene.name=room.name;}else{room.name=u.name;if(typeof b.public==='boolean')room.public=b.public;}
    C.setLayout(room.scene.layout);if(!C.findFree(room.scene.items))reject('Dejá un espacio libre para entrar.');
    if(room.media&&!room.scene.items.some(i=>i.id===room.media.itemId&&MEDIA_TYPES.has(i.type))){room.media=null;this.broadcast(room.id,{type:'media',roomId:room.id,media:null});}
-   await this.ctx.storage.put('room:'+u.id,room);
-   for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==u.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
+   await this.ctx.storage.put('room:'+room.id,room);
+   for(const ws of this.sockets()){const a=ws.deserializeAttachment();if(a.roomId!==room.id)continue;const current=currentPosition(a.position),oldSeat=a.seat&&previous.items.find(i=>i.id===a.seat.itemId),newSeat=a.seat&&room.scene.items.find(i=>i.id===a.seat.itemId);
     const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip','rotation'].some(k=>oldSeat[k]!==newSeat[k]));
-    if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
-   this.broadcast(u.id,{type:'scene',serverNow:Date.now(),room,players:this.players(u.id)});return reply({room,serverNow:Date.now()});
+    if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(room.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
+   this.broadcast(room.id,{type:'scene',serverNow:Date.now(),room,players:this.players(room.id)});return reply({room,serverNow:Date.now()});
   }
   if(['/fishing/open','/fishing/ranking','/fishing/start','/fishing/input','/fishing/cancel'].includes(path)&&request.method==='POST'){const result=await fishingAction(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,...(result.session?.settled?{account:await this.state(u,auth.admin)}:{})});}
   if(path==='/admin/fishing'&&auth.admin){if(request.method==='GET')return reply(await fishingConfig(this.ctx.storage));if(request.method==='PUT')return reply(await saveFishingConfig(this.ctx.storage,await body(request,2048)));}
@@ -212,7 +238,7 @@ export class HubWorld {
    if(b.type==='chat'){if(user.mutedUntil>Date.now())reject('El chat está silenciado para tu cuenta.',403);return this.chat(ws,b.text);}
    if(b.type==='room-light'){
     const room=await this.ctx.storage.get('room:'+a.roomId);
-    if(!room||room.ownerId!==a.user.id)reject('Solo el dueño puede cambiar la luz de la sala.',403);
+    if(!canManageRoom(room,a.user))reject('Solo el dueño puede cambiar la luz de la sala.',403);
     if(typeof b.on!=='boolean')reject('Estado de luz inválido.');
     if(room.scene.lightsOn!==b.on){room.scene.lightsOn=b.on;await this.ctx.storage.put('room:'+room.id,room);}
     this.broadcast(room.id,{type:'room-light',roomId:room.id,on:b.on});return;

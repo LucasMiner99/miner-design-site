@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {coffeeDay} from './hub-coffee.mjs';
@@ -9,7 +10,7 @@ export async function fishingConfig(storage){return {dailyLimit:400,...await sto
 export async function saveFishingConfig(storage,v){if(!Number.isSafeInteger(v?.dailyLimit)||v.dailyLimit<0||v.dailyLimit>100000)fail('Usá un límite entero entre 0 y 100.000.');const c={dailyLimit:v.dailyLimit};await storage.put('fishing-config',c);return c;}
 const daily=(u,c,now)=>{const earned=u.fishingDaily?.day===coffeeDay(now)?u.fishingDaily.earned:0;return {earned,limit:c.dailyLimit,remaining:Math.max(0,c.dailyLimit-earned)};};
 async function machine(world,u,input){
- if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
+ if(!input||!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
  if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para pescar.',403);
  const room=await world.ctx.storage.get('room:'+input.roomId);
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='fishing'))fail('La máquina de pesca ya no está colocada.',409);

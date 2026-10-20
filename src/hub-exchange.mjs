@@ -1,10 +1,11 @@
+import {validRoomId} from './hub-community.mjs';
 import {C,CATALOG} from './hub-rules.mjs';
 import {tradeInventory} from './hub-trades.mjs';
 import {lockedCopies} from './hub-item-provenance.mjs';
 const catalog=new Map(CATALOG.map(i=>[i.id,i]));
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status});};
 async function machine(world,user,input){
- if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
+ if(!input||!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Máquina inválida.');
  if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala y tocá una máquina de intercambio.',403);
  const room=await world.ctx.storage.get('room:'+input.roomId);
  if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='exchange'))fail('La máquina ya no está colocada en esta sala.',409);

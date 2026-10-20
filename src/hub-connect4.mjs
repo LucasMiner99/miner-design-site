@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {CONNECT4,drop} from '../public/hub/connect4-rules.mjs';
@@ -6,7 +7,7 @@ const live=m=>m&&['invited','playing'].includes(m.status);
 const key=id=>'connect4:'+id,active=id=>'connect4-user:'+id,table=m=>'connect4-table:'+m.roomId+':'+m.itemId,deadline=id=>'connect4-deadline:'+id;
 const present=(w,id,room)=>w.ownSockets(id).some(ws=>ws.deserializeAttachment()?.roomId===room);
 async function machine(w,u,b){
- if(typeof b.roomId!=='string'||!/^\d+$/.test(b.roomId)||!Number.isSafeInteger(b.itemId))fail('Mesa inválida.',400);
+ if(!validRoomId(b?.roomId)||!Number.isSafeInteger(b.itemId))fail('Mesa inválida.',400);
  if(!present(w,u.id,b.roomId))fail('Entrá a la sala para jugar.',403);
  const room=await w.ctx.storage.get('room:'+b.roomId);
  if(!room?.scene.items.some(i=>i.id===b.itemId&&C.TYPES[i.type]?.interaction==='connect4'))fail('Esta mesa ya no está colocada.');
@@ -56,6 +57,12 @@ export async function guardConnect4Tables(w,roomId,scene){
  for(const [,id] of await w.ctx.storage.list({prefix:'connect4-table:'+roomId+':'})){
   const m=await w.ctx.storage.get(key(id));
   if(live(m)&&!scene.items.some(i=>i.id===m.itemId&&C.TYPES[i.type]?.interaction==='connect4'))fail('Terminá o cancelá la partida antes de guardar esa mesa.');
+ }
+}
+export async function closeConnect4Room(w,roomId){
+ for(const [,id] of await w.ctx.storage.list({prefix:'connect4-table:'+roomId+':'})){
+  const m=await w.ctx.storage.get(key(id));
+  if(live(m))await finish(w,m,m.status==='playing'?'draw':'cancelled',null,'La sala cerró. Se devuelven las apuestas.');
  }
 }
 export async function connect4Action(w,u,b){

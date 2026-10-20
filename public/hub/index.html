@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="coffee.css">
 <link rel="stylesheet" href="dj.css">
 <link rel="stylesheet" href="basket.css">
-<link rel="stylesheet" href="fishing.css">
+<link rel="stylesheet" href="fishing.css"><link rel="stylesheet" href="community.css">
 <link rel="stylesheet" href="racing.css">
 <link rel="stylesheet" href="connect4.css">
 </head>
@@ -22,10 +22,11 @@
 <dialog id="hubRoomsDialog" class="modal hub-rooms-modal" aria-labelledby="hubRoomsTitle">
   <button type="button" class="modal-close icon-button" data-hub-close="hubRoomsDialog" aria-label="Cerrar salas">×</button>
   <div class="eyebrow">EL BARRIO</div><h2 id="hubRoomsTitle">Elegí tu próximo rincón.</h2>
+  <div class="hub-room-browser"><section class="hub-community-section" aria-labelledby="hubCommunityTitle"><h3 id="hubCommunityTitle">Salas comunitarias</h3><div id="hubCommunityList"></div><p id="hubCommunityStatus" role="status"></p></section><section class="hub-private-rooms" aria-label="Salas de jugadores">
   <label class="sr-only" for="hubRoomsSearch">Buscar sala por nombre</label>
   <input id="hubRoomsSearch" class="hub-rooms-search" type="search" placeholder="Buscar por nombre…" autocomplete="off" maxlength="80" aria-controls="hubRoomsList">
   <p id="hubRoomsCount" class="hub-rooms-count" role="status" aria-live="polite"></p>
-  <div id="hubRoomsList" aria-label="Salas disponibles"></div>
+  <div id="hubRoomsList" aria-label="Salas disponibles"></div></section></div>
 </dialog>
 <dialog id="hubAdminDialog" class="modal hub-credit-admin"><h2>Administrar</h2><p>Créditos por Kick: 50 · 100 · 500 · 1.000 · 2.000 · 5.000. Cada punto canjeado suma un crédito.</p><form id="hubRewardForm"><label>Caja de objetos · créditos <input id="hubBoxCost-object" type="number" min="1" max="1000000" required></label><label>Caja de personaje · créditos <input id="hubBoxCost-character" type="number" min="1" max="1000000" required></label><label>Caja de ambiente · créditos <input id="hubBoxCost-environment" type="number" min="1" max="1000000" required></label><label>Caja de plantaciones · créditos <input id="hubBoxCost-plantation" type="number" min="1" max="1000000" required></label><button class="primary-button" type="submit">Guardar y sincronizar Kick</button></form><hr><form id="hubPlantForm"><h3>Plantaciones</h3><label>Minutos por cosecha <input id="hubPlantMinutes" type="number" min="1" max="1440" required></label><div class="hub-plant-config"><label>Común · créditos <input id="hubPlantAmount0" type="number" min="1" max="1000000" required></label><label>Común · % <input id="hubPlantWeight0" type="number" min="1" max="100" required></label><label>Rara · créditos <input id="hubPlantAmount1" type="number" min="1" max="1000000" required></label><label>Rara · % <input id="hubPlantWeight1" type="number" min="1" max="100" required></label><label>Épica · créditos <input id="hubPlantAmount2" type="number" min="1" max="1000000" required></label><label>Épica · % <input id="hubPlantWeight2" type="number" min="1" max="100" required></label></div><small>Máximo tres plantas. Las probabilidades deben sumar 100 %.</small><button type="submit">Guardar plantaciones</button></form><hr><form id="hubCoffeeForm"><h3>Cafetería</h3><div class="hub-plant-config"><label>Límite diario · créditos<input id="hubCoffeeConfig-dailyLimit" type="number" min="0" max="100000" required></label><label>Pedido correcto<input id="hubCoffeeConfig-orderReward" type="number" min="0" max="100000" required></label><label>Completar tres pedidos<input id="hubCoffeeConfig-completionReward" type="number" min="0" max="100000" required></label><label>Bonus de precisión<input id="hubCoffeeConfig-perfectReward" type="number" min="0" max="100000" required></label></div><small>Por jugador, entre todas las salas. Reinicia a las 00:00 de Argentina. Con límite 0 solo se practica.</small><button type="submit">Guardar cafetería</button></form><hr><form id="hubDJForm"><h3>Mesa DJ</h3><div class="hub-plant-config"><label>Límite diario<input id="hubDJLimit" type="number" min="0" max="100000" required></label><label>Ronda 1 · créditos<input id="hubDJReward0" type="number" min="0" max="100000" required></label><label>Ronda 2 · créditos<input id="hubDJReward1" type="number" min="0" max="100000" required></label><label>Ronda 3 · créditos<input id="hubDJReward2" type="number" min="0" max="100000" required></label></div><small>Premio con al menos 65 % de precisión. Límite por jugador entre todas las salas; reinicia a medianoche de Argentina.</small><button type="submit">Guardar DJ</button></form><hr><form id="hubBasketForm"><h3>Básquet</h3><div class="hub-plant-config"><label>Límite diario<input id="hubBasketConfig-dailyLimit" type="number" min="0" max="100000" required></label><label>Créditos por punto<input id="hubBasketConfig-creditsPerPoint" type="number" min="0" max="100000" required></label></div><small>Límite por jugador entre todas las salas. Reinicia a medianoche de Argentina.</small><button type="submit">Guardar básquet</button></form><hr><form id="hubFishingForm"><h3>Pesca</h3><label>Límite diario · créditos<input id="hubFishingLimit" type="number" min="0" max="100000" required></label><small>Por jugador entre todas las salas; reinicia a medianoche de Argentina. Al alcanzar el límite se puede seguir compitiendo en el ranking.</small><button type="submit">Guardar pesca</button></form><hr><form id="hubModerateForm"><label>ID de Kick <input id="hubModerateId" required pattern="[0-9]+"></label><select id="hubModerateAction"><option value="mute">Silenciar 1 hora</option><option value="unmute">Quitar silencio</option><option value="ban">Suspender acceso</option><option value="unban">Restaurar acceso</option></select><button>Aplicar</button></form><p id="hubAdminError" role="status"></p><button data-hub-close="hubAdminDialog">Cerrar</button></dialog>
 
@@ -79,7 +80,7 @@
         <nav class="hub-room-actions" aria-label="Accesos del juego">
           <span id="hubCredits" class="hub-balance" aria-live="polite">0 créditos</span>
           <button id="hubRooms" class="hub-main-action" type="button" disabled><svg aria-hidden="true"><use href="#i-home"/></svg>Salas</button>
-          <button id="hubHome" type="button" disabled>Mi sala</button>
+          <button id="hubHome" type="button" disabled>Mi sala</button><button id="hubCommunityToggle" type="button" hidden></button>
           <button id="hubMusic" type="button" aria-controls="hubMediaDock" aria-expanded="false" hidden><svg aria-hidden="true"><use href="#i-sound"/></svg>Música</button>
           <div class="mode-toggle" role="group" aria-label="Modo de juego"><button id="walkBtn" class="active" aria-pressed="true"><svg><use href="#i-walk"/></svg>Caminar</button><button id="hubLook" type="button"><svg aria-hidden="true"><use href="#i-edit"/></svg>Cambiar look</button></div>
                 <div class="hub-collection-actions" role="tablist" aria-label="Mi colección">
@@ -354,6 +355,6 @@
   <button type="button" id="hubNewsPlay" class="primary-button">¡A jugar!</button>
 </dialog>
 <script src="news.js"></script>
-<script src="posters.js"></script><script src="plants.js"></script><script src="lighting.js"></script><script src="online.js"></script>
+<script src="posters.js"></script><script src="plants.js"></script><script src="lighting.js"></script><script src="community.js"></script><script src="online.js"></script>
 </body>
 </html>

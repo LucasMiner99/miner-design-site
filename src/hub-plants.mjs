@@ -21,9 +21,9 @@ export function reconcilePlants(room,previous,config,now=Date.now()){
  const next={};for(const item of placed){const old=previous?.[item.id];next[item.id]=old?.type===item.type?old:cycle(item.type,config,now);}room.plants=next;
 }
 export async function harvestPlant(world,user,input,now=Date.now()){
- if(!input||input.roomId!==user.id||!Number.isSafeInteger(input.itemId)||typeof input.cycle!=='string'||input.cycle.length>50)fail('Cosecha inválida.',403);
- if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===user.id))fail('Entrá a tu sala para cosechar.',403);
- const storage=world.ctx.storage,room=await world.room(user.id,user.name),item=room.scene.items.find(i=>i.id===input.itemId),plant=room.plants?.[input.itemId];
+ if(!input||(input.roomId!==user.id&&input.roomId!=='casino')||!Number.isSafeInteger(input.itemId)||typeof input.cycle!=='string'||input.cycle.length>50)fail('Cosecha inválida.',403);
+ if(!world.ownSockets(user.id).some(ws=>{const a=ws.deserializeAttachment();return a?.roomId===input.roomId&&(input.roomId===user.id||a.user.admin);}))fail('Entrá a tu sala para cosechar.',403);
+ const storage=world.ctx.storage,room=input.roomId==='casino'?await storage.get('room:casino'):await world.room(user.id,user.name),item=room.scene.items.find(i=>i.id===input.itemId),plant=room.plants?.[input.itemId];
  if(!item||!C.TYPES[item.type]?.plantation||!plant||plant.type!==item.type)fail('La planta ya no está colocada.',409);
  if(plant.cycle!==input.cycle)fail('Esta cosecha ya fue recogida. Esperá a que crezca de nuevo.',409);
  if(now<plant.readyAt)fail('Todavía está creciendo.',409);

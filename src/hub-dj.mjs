@@ -1,3 +1,4 @@
+import {validRoomId} from './hub-community.mjs';
 import {C} from './hub-rules.mjs';
 import {balance} from './hub-economy.mjs';
 import {coffeeDay} from './hub-coffee.mjs';
@@ -11,7 +12,7 @@ const daily=(u,c,now)=>{const earned=u.djDaily?.day===coffeeDay(now)?u.djDaily.e
 export function makeDJRound(level,now){const config=DJ_LEVELS[level],random=new Uint32Array(config.count);crypto.getRandomValues(random);const start=now+4000,step=60000/config.bpm;return {level,...config,start,end:start+(config.count-1)*step+config.window+250,notes:[...random].map((n,i)=>({lane:n%4,at:start+i*step})),hits:{},presses:{},faults:0,version:0,finished:false};}
 export function djScore(r){const hits=Object.keys(r.hits).length,net=Math.max(0,hits-r.faults);return {hits,faults:r.faults,accuracy:Math.round(net/r.count*100),passed:net>=Math.ceil(r.count*.65)};}
 function publicSession(s,now){if(!s||s.expiresAt<=now)return null;const {presses,...round}=s.round;return {id:s.id,roomId:s.roomId,itemId:s.itemId,expiresAt:s.expiresAt,round,results:s.results,total:s.total,done:s.results.length===3,...djScore(s.round)};}
-async function machine(world,u,input){if(!input||typeof input.roomId!=='string'||!/^\d+$/.test(input.roomId)||!Number.isSafeInteger(input.itemId))fail('Mesa inválida.');if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para jugar.',403);const room=await world.ctx.storage.get('room:'+input.roomId);if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='dj'))fail('La mesa DJ ya no está colocada.',409);}
+async function machine(world,u,input){if(!input||!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Mesa inválida.');if(!world.ownSockets(u.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala para jugar.',403);const room=await world.ctx.storage.get('room:'+input.roomId);if(!room?.scene.items.some(i=>i.id===input.itemId&&C.TYPES[i.type]?.interaction==='dj'))fail('La mesa DJ ya no está colocada.',409);}
 export async function djAction(world,u,action,input,now=Date.now()){
  await machine(world,u,input);const storage=world.ctx.storage,key='dj-session:'+u.id,config=await djConfig(storage);let s=await storage.get(key),receipt=null;
  const output=()=>({session:publicSession(s,now),daily:daily(u,config,now),rules:config,serverNow:now,receipt});

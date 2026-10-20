@@ -1,8 +1,11 @@
-import {FISH,FISHING,fishOf,barHeight,fishPosition,stepFishing,sizeRatio,sizeLabel} from './fishing-rules.mjs';
+import {FISH,FISHING,fishOf,barHeight,fishPosition,stepFishing,fishingVisual,sizeRatio,sizeLabel} from './fishing-rules.mjs';
 (()=>{
  'use strict';
  const $=id=>document.getElementById(id),dialog=$('hubFishingDialog'),bridge=()=>window.MINER_HUB_ONLINE;
  let table=null,data=null,sim=null,held=false,queue=[],acked=0,payload=null,pending=false,busy=false,generation=0,frame=0,clock=0,local=0,lastSend=0,retryAt=0,tab='play',rankTab='size',startId=null,shownResult=null;
+ let trackHeight=300;
+ const track=$('hubFishingTrack');
+ new ResizeObserver(entries=>{for(const e of entries)if(e.contentRect.height)trackHeight=e.contentRect.height;}).observe(track);
  const now=()=>clock+performance.now()-local,text=(id,v)=>{if($(id).textContent!==v)$(id).textContent=v;},status=v=>text('hubFishingStatus',v);
  const matches=s=>s?.roomId===table?.roomId&&s?.itemId===table?.itemId;
  const playing=()=>matches(data?.session)&&!data.session.state.done;
@@ -64,10 +67,12 @@ import {FISH,FISHING,fishOf,barHeight,fishPosition,stepFishing,sizeRatio,sizeLab
  }
  function draw(){
   if(!sim)return;const p=sim.state,half=barHeight(sim)/2,at=now();
-  $('hubFishingZone').style.height=(half*200)+'%';$('hubFishingZone').style.top=((p.y-half)*100)+'%';
-  $('hubFishingTarget').style.top=(fishPosition(sim,p.tick)*100)+'%';
-  const inside=Math.abs(fishPosition(sim,p.tick)-p.y)<=half+.018;
-  $('hubFishingTrack').dataset.inside=String(inside);$('hubFishingFill').style.height=(p.progress*100)+'%';
+  const visual=fishingVisual(sim,held,at);
+  $('hubFishingZone').style.height=(half*200)+'%';
+  $('hubFishingZone').style.transform='translate3d(0,'+((visual.y-half)*trackHeight)+'px,0)';
+  $('hubFishingTarget').style.transform='translate3d(-50%,'+(visual.fish*trackHeight)+'px,0) translateY(-50%)';
+  const inside=Math.abs(visual.fish-visual.y)<=half+.018;
+  $('hubFishingTrack').dataset.inside=String(inside);$('hubFishingFill').style.transform='scaleY('+p.progress+')';
   $('hubFishingProgress').setAttribute('aria-valuenow',String(Math.round(p.progress*100)));
   text('hubFishingProgressText',Math.round(p.progress*100)+' %');
   text('hubFishingPhase',at<sim.startAt?'¡Picó! '+Math.max(1,Math.ceil((sim.startAt-at)/1000)):p.done?'Confirmando captura…':inside?'¡Mantenelo ahí!':'Seguí al pez');

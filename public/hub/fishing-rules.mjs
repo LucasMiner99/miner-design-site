@@ -33,6 +33,11 @@ export function stepFishing(s,held){
  return {tick,y,v,progress,done,won};
 }
 export function advanceFishing(s,inputs){for(const held of inputs){if(s.state.done)break;s.state=stepFishing(s,held);}return s.state;}
+// Draw between authoritative 50 ms steps, without changing inputs or rewards.
+export function fishingVisual(s,held,now){
+ const p=s.state,t=clamp((now-s.startAt)/FISHING.stepMs-p.tick,0,1),next=stepFishing(s,held);
+ return {y:p.y+(next.y-p.y)*t,fish:fishPosition(s,p.tick+(p.done?0:t))};
+}
 export function fishingReward(s){return Math.round(fishOf(s).reward*(1+sizeRatio(s)*.5));}
 export const sizeLabel=mm=>(mm/10).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+' cm';
 export const compareSize=(a,b)=>b.lengthMm-a.lengthMm||b.rank-a.rank||a.at-b.at||a.userId.localeCompare(b.userId);
