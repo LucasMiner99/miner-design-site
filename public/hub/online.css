@@ -167,3 +167,7 @@
 .hub-online-count i{width:7px;height:7px;flex:none;border-radius:50%;background:#858585}
 .hub-online-count[data-connected=true] i{background:#35c66b;box-shadow:0 0 0 3px #35c66b16}
 @media(max-width:600px){.hub-brand-group{flex-wrap:wrap;gap:4px 8px;max-width:140px}.hub-online-count{font-size:9px}.hub-expanded .topbar{height:auto}}
+
+.hub-led-dialog{width:min(440px,calc(100vw - 32px));border-radius:20px}.hub-led-dialog .environment-group{margin:20px 0}.hub-led-dialog h3{display:none}.hub-led-dialog .hub-led-color{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px}.hub-led-color input{width:76px;height:38px;padding:3px;border:1px solid var(--line);border-radius:10px;background:transparent;cursor:pointer}
+
+.hub-led-dialog>.primary-button{width:100%;margin-top:12px}.hub-led-dialog>.modal-close{border-radius:10px}

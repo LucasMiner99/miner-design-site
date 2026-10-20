@@ -2,7 +2,7 @@
   'use strict';
   const SIZE=12;
   const MAX_ITEMS=128;
-  const ENV_COUNTS=Object.freeze({wall:16,floor:13,wallPattern:12,floorPattern:13});
+  const ENV_COUNTS=Object.freeze({wall:17,floor:13,wallPattern:12,floorPattern:13,led:2});
   const LAYOUTS=[{id:'square',name:'Cuadrada · 12 × 12',w:12,h:12},{id:'wide',name:'Ancha · 16 × 12',w:16,h:12},{id:'tall',name:'Alargada · 12 × 16',w:12,h:16},{id:'large',name:'Amplia · 16 × 16',w:16,h:16},{id:'ell',name:'En L · 16 × 16',w:16,h:16,cut:12},{id:'loft',name:'Loft · 20 × 16',w:20,h:16},{id:'hall',name:'Salón · 24 × 18',w:24,h:18},
     {id:'tee',name:'En T · 24 × 22',w:24,h:22,shape:'tee'},
     {id:'courtyard',name:'En U · 24 × 20',w:24,h:20,shape:'courtyard'},
@@ -175,6 +175,13 @@
     {name:'Dados de la Fortuna',w:1,h:1,width:45,category:'deco',sprite:109,fitRotation:true,artAxes:[.57,-.54],rearAxes:[.57,-.54]},
     {name:'Cartel Casino',w:1,h:1,width:108,mountH:47,category:'wall',sprite:110,wall:true,readableWall:true,interaction:'light',lightAtlas:true}
   );
+  TYPES.push(
+    {name:'Banquito Casino',w:1,h:1,width:38,category:'seats',sprite:111,fitRotation:true,seat:{u:.55,v:.31,dir:0},rearSeats:[{u:.48,v:.26}],seatOverlay:true},
+    {name:'Sillón Casino',w:1,h:1,width:62,category:'seats',sprite:112,fitRotation:true,artAxes:[.62,-.40],rearAxes:[.50,-.61],seat:{u:.57,v:.56,dir:0},rearSeats:[{u:.55,v:.53}],seatOverlay:[[0,.32],[.13,.30],[.47,.57],[.48,1],[0,1]]},
+    {name:'Sofá Casino',w:2,h:1,width:96,category:'seats',sprite:113,fitRotation:true,artAxes:[.40,-.60],rearAxes:[.40,-.60],seat:{u:.31,v:.48,dir:1},seats:[{u:.31,v:.48,dir:1},{u:.61,v:.65,dir:1}],rearSeats:[{u:.33,v:.42},{u:.63,v:.59}],seatOverlay:[[.77,.42],[1,.35],[1,1],[.68,1],[.68,.65]]},
+    {name:'Lámpara Gala',w:1,h:1,width:28,category:'deco',sprite:114,interaction:'light',lightAtlas:true},
+    {name:'Lámpara Rubí',w:1,h:1,width:28,category:'deco',sprite:115,tabletop:true,interaction:'light',lightAtlas:true}
+  );
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -227,6 +234,7 @@
   for(const id of [94,95,96,97,98])TYPES[id].base={shape:id===95?'oval':'box',span:id===95?.65:.85,u:.5};
   for(const id of [101,104,105])TYPES[id].base={shape:'oval',span:.86,u:.5};
   for(const id of [107,108,109])TYPES[id].base={shape:'box',span:.88,u:.5};
+  for(const id of [111,112,113,114,115])TYPES[id].base={shape:[112,113].includes(id)?'box':'oval',span:.88,u:.5};
   TYPES[106].base={shape:'box',span:.88,u:.5};
   TYPES[93].base={shape:'box',span:.94,u:.5};
   TYPES[83].base={shape:'box',span:.94,u:.5};
@@ -271,7 +279,7 @@
   TYPES[9].artAxes=[.57,-.57];
   TYPES[88].artAxes=[.52,-.56];
   TYPES[86].artAxes=[.45,-.57];
-  function initial(){return {version:1,geometryVersion:2,structureVersion:1,switchVersion:1,layout:'square',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
+  function initial(){return {version:1,geometryVersion:2,structureVersion:1,switchVersion:1,layout:'square',led:0,ledColor:'#52dfff',wallPattern:0,floorPattern:0,name:'Lucas',wall:0,floor:0,items:[
     {id:1,type:0,x:1,y:5,flip:false},
     {id:2,type:4,x:0,y:1,flip:false},
     {id:3,type:5,x:0,y:4,flip:false},
@@ -361,7 +369,7 @@
   function restore(data){
     if(!data||data.version!==1||!Array.isArray(data.items)||data.items.length>MAX_ITEMS)return null;
     const valid=(v,max)=>Number.isInteger(v)&&v>=0&&v<max?v:0;
-    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,switchVersion:1,lightsOn:data.lightsOn!==false,layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
+    const layout=layoutFor(data.layout),result={version:1,geometryVersion:2,structureVersion:1,switchVersion:1,lightsOn:data.lightsOn!==false,led:valid(data.led,ENV_COUNTS.led),ledColor:typeof data.ledColor==='string'&&/^#[0-9a-f]{6}$/i.test(data.ledColor)?data.ledColor.toLowerCase():'#52dfff',layout:layout.id,wallPattern:valid(data.wallPattern,ENV_COUNTS.wallPattern),floorPattern:valid(data.floorPattern,ENV_COUNTS.floorPattern),name:cleanName(data.name),wall:valid(data.wall,ENV_COUNTS.wall),floor:valid(data.floor,ENV_COUNTS.floor),items:[]};
     const ids=new Set(),legacy=data.geometryVersion!==2,legacyFlips=[],relocate=[],switchRelocate=[],deskSlots=new Set();
     if(data.unplacedItems!==undefined&&(!Array.isArray(data.unplacedItems)||data.items.length+data.unplacedItems.length>MAX_ITEMS))return null;
     for(const raw of [...data.items].sort((a,b)=>Number(!!a?.parentId)-Number(!!b?.parentId))){

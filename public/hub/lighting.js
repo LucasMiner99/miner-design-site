@@ -3,6 +3,8 @@
  'use strict';
  const warm=[255,196,112],cool=[176,207,255];
  const profiles={
+  114:{color:[255,203,125],y:.23,radius:145,power:.88,pool:true},
+  115:{color:[255,89,134],y:.32,radius:100,power:.78,pool:true},
   110:{color:[255,198,101],y:.50,radius:125,power:.75},
   106:{color:[119,208,222],y:.37,radius:65,power:.38},
   101:{color:[129,192,255],y:.45,radius:82,power:.40,points:[[.5,.18],[.5,.43],[.5,.68]]},
@@ -54,9 +56,9 @@
    }
    ctx.save();ctx.globalAlpha=opacity;ctx.drawImage(halo,b.x-margin,b.y-margin);ctx.restore();
   }
-  function apply(ctx,scene,{enabled,bounds,view,dpr,width,height}){
+  function apply(ctx,scene,{enabled,bounds,extraLights=[],view,dpr,width,height}){
    if(!enabled)return;
-   const lights=bounds.flatMap(sources),next=JSON.stringify([width,height,lights]);
+   const lights=[...bounds.flatMap(sources),...extraLights],next=JSON.stringify([width,height,lights]);
    if(next!==key){
     // A low-resolution light field is independent of sprite resolution and zoom.
     const scale=Math.min(1,1536/Math.max(width,height));
