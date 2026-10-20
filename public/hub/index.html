@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="basket.css">
 <link rel="stylesheet" href="fishing.css"><link rel="stylesheet" href="community.css">
 <link rel="stylesheet" href="racing.css">
+<link rel="stylesheet" href="slots.css">
 <link rel="stylesheet" href="connect4.css">
 </head>
 <body>
@@ -239,6 +240,16 @@
 <p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
 </dialog>
 
+<dialog id="hubSlotsDialog" class="modal hub-slots" aria-labelledby="hubSlotsTitle">
+ <button id="hubSlotsClose" type="button" class="modal-close icon-button" aria-label="Cerrar tragamonedas">×</button>
+ <div class="slot-heading"><div><h2 id="hubSlotsTitle">Tragamonedas</h2><p>Tres rodillos · Una línea</p></div><span id="hubSlotsBalance" class="slot-balance"></span></div>
+ <div class="slot-machine"><div class="slot-marquee"><span>✦</span> 7 · 7 · 7 <span>✦</span></div><canvas id="hubSlotsReels" width="900" height="420" role="img" aria-label="Tres rodillos. La línea central determina el premio."></canvas></div>
+ <p class="slot-payline">Solo paga la línea central</p><p id="hubSlotsStatus" class="slot-status" role="status" aria-live="polite"></p>
+ <form id="hubSlotsForm" class="slot-wager"><label for="hubSlotsAmount">Tu apuesta · 1 a 100<input id="hubSlotsAmount" type="number" min="1" max="100" step="1" value="10" required inputmode="numeric"></label><button id="hubSlotsBet" class="primary-button" type="submit">Girar</button></form>
+ <div class="slot-presets" role="group" aria-label="Apuestas rápidas"><button type="button" data-slot-bet="1">1</button><button type="button" data-slot-bet="10">10</button><button type="button" data-slot-bet="25">25</button><button type="button" data-slot-bet="50">50</button><button type="button" data-slot-bet="100">100</button></div>
+ <details class="slot-paytable"><summary>Ver premios</summary><div class="slot-pays"><div><span>7 · 7 · 7</span><b>×100</b></div><div><span>3 BAR</span><b>×50</b></div><div><span>3 campanas</span><b>×20</b></div><div><span>3 uvas</span><b>×15</b></div><div><span>3 limones</span><b>×10</b></div><div><span>3 cerezas</span><b>×6</b></div><div><span>2 cerezas, donde sea</span><b>×2</b></div></div><p>Un premio por giro. Los pagos incluyen la apuesta. Las dos cerezas también deben estar en la línea central. Retorno teórico: 90,25% a largo plazo; cada giro es independiente. El 7-7-7 tiene una probabilidad de 1 en 8.000. Créditos del juego.</p></details>
+</dialog>
+<script type="module" src="slots.js"></script>
 <dialog id="hubRacingDialog" class="modal hub-racing" aria-labelledby="hubRacingTitle">
  <button id="hubRacingClose" type="button" class="modal-close icon-button" aria-label="Cerrar carreras">×</button>
  <header><div><p class="race-eyebrow">HIPÓDROMO · MINERHUB</p><h2 id="hubRacingTitle">Carreras de caballos</h2></div><span id="hubRacingBalance"></span></header>
