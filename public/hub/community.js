@@ -18,7 +18,6 @@
   for(const r of rooms){
    const card=document.createElement('article');card.className='hub-community-card';card.dataset.roomId=r.id;
    const artwork=document.createElement('div');artwork.className='hub-community-art';artwork.setAttribute('aria-hidden','true');
-   for(const src of ['assets/v59-horse-racing.webp','assets/v62-fishing-machine.webp']){const img=document.createElement('img');img.src=src;img.alt='';artwork.append(img);}
    const title=document.createElement('h4');title.textContent=r.name;
    const state=document.createElement('span');state.className='hub-community-state';state.dataset.open=String(r.public);state.textContent=r.public?'Abierto · '+r.online+'/20':'Cerrado';
    const description=document.createElement('p');description.textContent='Todos los minijuegos, un lugar para encontrarse.';
