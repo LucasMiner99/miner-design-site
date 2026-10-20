@@ -177,11 +177,12 @@
   );
   TYPES.push(
     {name:'Banquito Casino',w:1,h:1,width:38,category:'seats',sprite:111,fitRotation:true,seat:{u:.55,v:.31,dir:0},rearSeats:[{u:.48,v:.26}],seatOverlay:true},
-    {name:'Sillón Casino',w:1,h:1,width:62,category:'seats',sprite:112,fitRotation:true,artAxes:[.62,-.40],rearAxes:[.50,-.61],seat:{u:.57,v:.56,dir:0},rearSeats:[{u:.55,v:.53}],seatOverlay:[[0,.32],[.13,.30],[.47,.57],[.48,1],[0,1]]},
+    {name:'Sillón Casino',w:1,h:1,width:62,category:'seats',sprite:112,fitRotation:true,artAxes:[.62,-.40],rearAxes:[.50,-.61],seat:{u:.57,v:.56,dir:0},rearSeats:[{u:.55,v:.53,dir:3}],seatOverlay:[[0,.32],[.13,.30],[.47,.57],[.48,1],[0,1]]},
     {name:'Sofá Casino',w:2,h:1,width:96,category:'seats',sprite:113,fitRotation:true,artAxes:[.40,-.60],rearAxes:[.40,-.60],seat:{u:.31,v:.48,dir:1},seats:[{u:.31,v:.48,dir:1},{u:.61,v:.65,dir:1}],rearSeats:[{u:.33,v:.42},{u:.63,v:.59}],seatOverlay:[[.77,.42],[1,.35],[1,1],[.68,1],[.68,.65]]},
     {name:'Lámpara Gala',w:1,h:1,width:28,category:'deco',sprite:114,interaction:'light',lightAtlas:true},
     {name:'Lámpara Rubí',w:1,h:1,width:28,category:'deco',sprite:115,tabletop:true,interaction:'light',lightAtlas:true}
   );
+  TYPES.push({name:'Bola Disco',w:1,h:1,width:38,category:'deco',sprite:116,ceiling:true,ceilingHeight:155,interaction:'light',disco:true});
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -299,9 +300,9 @@
     {id:17,type:20,x:9,y:1,flip:false,parentId:13,slot:0},
     {id:18,type:21,x:1,y:10,flip:false,parentId:16,slot:0}
   ]};}
-  function covers(item,x,y){if(TYPES[item.type].wall)return false;const t=dimensions(item);return x+1>item.x&&x<item.x+t.w&&y+1>item.y&&y<item.y+t.h;}
+  function covers(item,x,y){if(TYPES[item.type].wall||TYPES[item.type].ceiling)return false;const t=dimensions(item);return x+1>item.x&&x<item.x+t.w&&y+1>item.y&&y<item.y+t.h;}
   function blocked(items,x,y,ignoreId,layout=activeLayout){return !inside(x,y,layout)||partitionAt(x,y,layout)||items.some(i=>i.id!==ignoreId&&!i.parentId&&!TYPES[i.type].flat&&covers(i,x,y));}
-  function overlap(a,b){if(TYPES[a.type].wall||TYPES[b.type].wall)return false;const ta=dimensions(a),tb=dimensions(b);return a.x<b.x+tb.w&&a.x+ta.w>b.x&&a.y<b.y+tb.h&&a.y+ta.h>b.y;}
+  function overlap(a,b){if(TYPES[a.type].wall||TYPES[b.type].wall||!!TYPES[a.type].ceiling!==!!TYPES[b.type].ceiling)return false;const ta=dimensions(a),tb=dimensions(b);return a.x<b.x+tb.w&&a.x+ta.w>b.x&&a.y<b.y+tb.h&&a.y+ta.h>b.y;}
   function canPlace(items,item,player,layout=activeLayout,allowSwitch=false){
     const t=TYPES[item.type],d=t&&dimensions(item);
     if(t?.wall){
@@ -317,9 +318,14 @@
       return !!(t?.tabletop&&parent&&parent.id!==item.id&&!parent.parentId&&TYPES[parent.type].surface&&surfaceFits(parent,item)&&item.x===parent.x&&item.y===parent.y&&!items.some(i=>i.id!==item.id&&i.parentId===item.parentId&&surfaceOccupied(parent,item,i)));
     }
     if(!t||!Number.isFinite(item.x)||!Number.isFinite(item.y)||!Number.isSafeInteger(item.x*2)||!Number.isSafeInteger(item.y*2)||item.x<0||item.y<0||!inside(item.x,item.y,layout)||!inside(Math.ceil(item.x+d.w)-1,item.y,layout)||!inside(item.x,Math.ceil(item.y+d.h)-1,layout)||!inside(Math.ceil(item.x+d.w)-1,Math.ceil(item.y+d.h)-1,layout))return false;
+    if(t.ceiling){
+      if(item.parentId)return false;
+      for(let y=Math.floor(item.y);y<Math.ceil(item.y+d.h);y++)for(let x=Math.floor(item.x);x<Math.ceil(item.x+d.w);x++)if(!inside(x,y,layout)||partitionAt(x,y,layout)||tileHeight(x,y,layout)!==tileHeight(item.x,item.y,layout))return false;
+      return !items.some(i=>i.id!==item.id&&TYPES[i.type].ceiling&&overlap(i,item));
+    }
     // Check every cell, including concave cutouts and interior wall strips.
     for(let y=Math.floor(item.y);y<Math.ceil(item.y+d.h);y++)for(let x=Math.floor(item.x);x<Math.ceil(item.x+d.w);x++)if(!inside(x,y,layout)||partitionAt(x,y,layout)||stairAccess(x,y,layout)||doorAccess(x,y,layout)||tileHeight(x,y,layout)!==tileHeight(item.x,item.y,layout))return false;
-    if(items.some(i=>i.id!==item.id&&!i.parentId&&TYPES[i.type].flat===t.flat&&overlap(i,item)))return false;
+    if(items.some(i=>i.id!==item.id&&!i.parentId&&!TYPES[i.type].ceiling&&TYPES[i.type].flat===t.flat&&overlap(i,item)))return false;
     if(!t.flat&&player&&covers(item,Math.floor(player.x),Math.floor(player.y)))return false;
     return true;
   }

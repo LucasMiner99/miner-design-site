@@ -45,14 +45,14 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
    await wait(()=>admin.messages.find(m=>m.type==='interaction'&&m.itemId===item.id&&m.changes.on===true));
   }
   const current=(await state('1')).room;
-  const lounge={...current.scene,wall:16,led:1,ledColor:'#FF2288',items:[{id:111,type:111,x:2,y:2},{id:112,type:112,x:4,y:2},{id:113,type:113,x:6,y:2},{id:114,type:114,x:2,y:5,on:false},{id:115,type:115,x:5,y:5,on:false}],unplacedItems:[]};
+  const lounge={...current.scene,wall:16,led:1,ledColor:'#FF2288',items:[{id:111,type:111,x:2,y:2},{id:112,type:112,x:4,y:2},{id:113,type:113,x:6,y:2},{id:116,type:116,x:4,y:2,on:false},{id:114,type:114,x:2,y:5,on:false},{id:115,type:115,x:5,y:5,on:false}],unplacedItems:[]};
   const response=await req('1','room','PUT',{scene:lounge,revision:current.revision});assert.equal(response.status,200);assert.equal((await response.json()).room.scene.ledColor,'#ff2288');
   await wait(()=>visitor.messages.some(m=>m.type==='scene'&&m.room.scene.led===1&&m.room.scene.wall===16));
   const fresh=(await state('1')).room;assert.equal(fresh.scene.led,1);assert.equal(fresh.scene.ledColor,'#ff2288');
   assert.equal((await req('3','room','PUT',{roomId:'1',scene:{...lounge,ledColor:'#000000'},revision:fresh.revision})).status,403);
   const v=(await state('3')).room;assert.equal((await req('3','room','PUT',{scene:{...v.scene,led:1},revision:v.revision})).status,403,'Cannot unlock LED by altering a request');
   await send(visitor,{type:'join',roomId:'1'},'room');
-  for(const id of [114,115]){await delay(380);assert.equal((await send(visitor,{type:'interact',itemId:id},'interaction')).changes.on,true);}
+  for(const id of [114,115,116]){await delay(380);assert.equal((await send(visitor,{type:'interact',itemId:id},'interaction')).changes.on,true);}
   await send(admin,{type:'join',roomId:'1'},'room');
   const sit=await send(admin,{type:'sit',itemId:113,slot:0,seq:1},'walk');assert.equal(sit.seat.itemId,113);
   const sit2=await send(visitor,{type:'sit',itemId:113,slot:1,seq:1},'walk');assert.equal(sit2.seat.slot,1);
