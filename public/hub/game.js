@@ -193,7 +193,7 @@
       if(state.wallPattern===4)for(let y=8;y<145;y+=24)for(let x=12;x<span;x+=24)poly(k,[{x,y:y-5},{x:x+3,y},{x,y:y+5},{x:x-3,y}],w.trim+'55');
       if(state.wallPattern===5){rect(k,0,83,span,65,w.panel);rect(k,0,82,span,2,w.trim);}
       if(!state.wallPattern){rect(k,0,112,span,43,w.panel);rect(k,0,111,span,4,w.trim);for(let x=0;x<span;x+=20){rect(k,x,116,1,31,'#ffffff25');rect(k,x+2,116,1,31,'#6b755f25');}}
-      rect(k,0,148,span,7,w.trim);rect(k,0,-3,span,5,side<0?'#e7dfbf':'#f2e8cc');
+      rect(k,0,148,span,7,w.trim);rect(k,0,-3,span,5,side<0?w.trim:w.panel);
       k.restore();const end=start+span;line(k,ox+side*end,baseY()-155+end/2-height,ox+side*end,baseY()+end/2-height,w.trim,2);
     }
     for(const [side,name] of [[-1,'left'],[1,'right']]){const count=C.wallSpan(name);let start=0;while(start<count){const z=C.wallHeight(name,start+.5);let end=start+1;while(end<count&&C.wallHeight(name,end+.5)===z)end++;wall(side,start*32,(end-start)*32,z);start=end;}}
@@ -520,7 +520,7 @@
         const a=near(start,5),b=near(end,5);line(k,a.x,a.y,b.x,b.y,w.trim,4);if(state.led===1)window.HubPerimeter.draw(k,a,b,state.ledColor);k.restore();
         // Only physical end faces are shaded. No tile boundaries are painted.
         poly(k,[far(end),near(end),near(end,155),far(end,155)],axis==='x'?w.light:w.dark);
-        poly(k,[far(start,155),far(end,155),near(end,155),near(start,155)],'#eee4cd');
+        poly(k,[far(start,155),far(end,155),near(end,155),near(start,155)],w.panel);
         const ta=near(start,155),tb=near(end,155);line(k,ta.x,ta.y,tb.x,tb.y,w.trim,1);
         for(const d of holes){const a=near(d.start,112),b=near(d.end,112);line(k,a.x,a.y,b.x,b.y,'#b5844d',5);}
         const indices=run.segments.filter(s=>s.index>=0).map(s=>s.index),tiles=[];

@@ -92,14 +92,26 @@
     else if(index===9){for(let x=0;x<span;x+=10){const g=k.createLinearGradient(x,0,x+10,0);g.addColorStop(0,w.trim+'99');g.addColorStop(.3,'#ffffff16');g.addColorStop(1,'#00000020');k.fillStyle=g;k.fillRect(x,0,10,height);}}
     else if(index===10){for(let y=20;y<height;y+=52)for(let x=18;x<span;x+=64){const points=[[x,y],[x+19,y+9],[x+32,y-7],[x+46,y+17]];k.beginPath();points.forEach(([a,b],i)=>i?k.lineTo(a,b):k.moveTo(a,b));k.stroke();for(const [a,b] of points){k.fillStyle=w.trim;k.beginPath();k.arc(a,b,1.7,0,Math.PI*2);k.fill();}shape(k,[[x+15,y+30],[x+17,y+35],[x+22,y+37],[x+17,y+39],[x+15,y+44],[x+13,y+39],[x+8,y+37],[x+13,y+35]],w.trim+'bb');}}
     else if(index===11){
-      const split=height*.68;k.fillStyle=w.dark;k.fillRect(0,0,span,split);k.fillStyle='#00000024';k.fillRect(0,0,span,split);
-      k.fillStyle=w.trim;k.fillRect(0,split,span,height-split);k.fillStyle='#0000003d';k.fillRect(0,split,span,height-split);
-      k.strokeStyle='#d2ad68';k.lineWidth=1.2;
-      for(let x=0;x<span;x+=64){
-        k.strokeRect(x+8,12,48,split-23);k.strokeRect(x+8,split+10,48,height-split-19);
-        casinoSuit(k,Math.floor(x/64)%4,x+32,split*.48,7,'#d2ad68');
+      // Velvet panels and dark fluted wainscoting, drawn in the wall's own plane.
+      const split=height*.73;k.fillStyle=w.dark;k.fillRect(0,0,span,height);
+      for(let x=0;x<span;x+=96){
+        const velvet=k.createLinearGradient(x,0,x+96,0);
+        velvet.addColorStop(0,'#00000030');velvet.addColorStop(.16,'#ffffff08');velvet.addColorStop(.65,'#ffffff03');velvet.addColorStop(1,'#00000030');
+        k.fillStyle=velvet;k.fillRect(x,0,96,split);
+        k.fillStyle='#a98a524d';k.fillRect(x,0,.7,split);
+        // Restrained Art Deco crown: no repeated card symbols or bright boxes.
+        k.strokeStyle='#b89a605c';k.lineWidth=.7;k.beginPath();
+        for(const inset of [0,7]){k.moveTo(x+10+inset,0);k.lineTo(x+10+inset,17);k.lineTo(x+48,36-inset);k.lineTo(x+86-inset,17);k.lineTo(x+86-inset,0);}k.stroke();
       }
-      k.fillStyle='#b88b47';k.fillRect(0,split-2,span,3);k.fillRect(0,height-5,span,2);k.fillStyle='#ead3a0';k.fillRect(0,split-3,span,1);
+      k.fillStyle=w.trim;k.fillRect(0,split,span,height-split);
+      for(let x=0;x<span;x+=6){
+        const flute=k.createLinearGradient(x,0,x+6,0);flute.addColorStop(0,'#00000050');flute.addColorStop(.35,'#ffffff0b');flute.addColorStop(1,'#00000025');
+        k.fillStyle=flute;k.fillRect(x,split,6,height-split);
+      }
+      k.fillStyle='#00000055';k.fillRect(0,split-2,span,5);
+      k.fillStyle='#967747';k.fillRect(0,split-1,span,1.4);
+      k.fillStyle='#c6a56a88';k.fillRect(0,split-1,span,.5);
+      k.fillStyle=w.trim;k.fillRect(0,height-5,span,5);
     }
     k.restore();
   }
