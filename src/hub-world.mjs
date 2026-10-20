@@ -1,3 +1,4 @@
+import {openRacing,betRacing} from './hub-racing.mjs';
 import {basketAction,basketConfig,saveBasketConfig} from './hub-basket.mjs';
 import {djAction,djConfig,saveDJConfig} from './hub-dj.mjs';
 import {coffeeAction,coffeeConfig,saveCoffeeConfig} from './hub-coffee.mjs';
@@ -123,6 +124,11 @@ export class HubWorld {
     const seatChanged=a.seat&&(!oldSeat||!newSeat||['type','x','y','flip','rotation'].some(k=>oldSeat[k]!==newSeat[k]));
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',serverNow:Date.now(),room,players:this.players(u.id)});return reply({room,serverNow:Date.now()});
+  }
+  if((path==='/racing/open'||path==='/racing/bet')&&request.method==='POST'){
+   const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
+   const result=path==='/racing/open'?await openRacing(this,u,input):{receipt:await betRacing(this,u,input),serverNow:Date.now()};
+   return reply({...result,account:await this.state(u,auth.admin)});
   }
   if((path==='/roulette/open'||path==='/roulette/bet')&&request.method==='POST'){
    const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');

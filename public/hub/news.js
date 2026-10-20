@@ -1,6 +1,11 @@
 /* Add new releases at the beginning. Plain text only; no remote HTML. */
 (()=>{'use strict';
  const releases=[
+  {id:'2026-10-20-horse-racing',date:'20 de octubre de 2026',title:'¡Llegan las carreras de caballos!',notes:[
+   'Una nueva máquina para tu sala, disponible en las cajas de objetos.',
+   'Elegí entre cinco caballos, apostá créditos y mirá la carrera. Los menos favoritos pagan más.',
+   'Podés jugar en la máquina de cualquier sala. Las probabilidades y el pago se muestran antes de apostar.'
+  ]},
   {id:'2026-10-19-wall-switch',date:'19 de octubre de 2026',title:'La luz, en la pared',notes:[
    'Todas las salas tienen una tecla de luz fija. El dueño puede tocarla para prender o apagar la luz general.',
    'El espacio de la tecla queda reservado: los cuadros y otros objetos de pared no pueden taparla.',

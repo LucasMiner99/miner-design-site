@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="coffee.css">
 <link rel="stylesheet" href="dj.css">
 <link rel="stylesheet" href="basket.css">
+<link rel="stylesheet" href="racing.css">
 </head>
 <body>
 <div id="hubLogin" class="hub-login" hidden><div><h1>minerhub</h1><p id="hubLoginStatus"></p><a id="hubLoginLink" class="primary-button" href="/api/hub/login">Entrar con Kick</a></div></div>
@@ -234,6 +235,16 @@
 <p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
 </dialog>
 
+<dialog id="hubRacingDialog" class="modal hub-racing" aria-labelledby="hubRacingTitle">
+ <button id="hubRacingClose" type="button" class="modal-close icon-button" aria-label="Cerrar carreras">×</button>
+ <header><div><p class="race-eyebrow">HIPÓDROMO · MINERHUB</p><h2 id="hubRacingTitle">Carreras de caballos</h2></div><span id="hubRacingBalance"></span></header>
+ <div class="race-screen"><canvas id="hubRacingTrack" width="1440" height="350" role="img" aria-label="Pista con cinco caballos. El ganador se anuncia al terminar."></canvas><div class="race-screen-footer"><span id="hubRacingPhase">Cinco caballos · Un ganador</span><span id="hubRacingClock">12 segundos</span></div></div>
+ <form id="hubRacingForm"><div id="hubRacingHorses" class="race-horses" role="group" aria-label="Elegí un caballo"></div>
+ <div class="race-wager"><label for="hubRacingAmount">Tu apuesta<input id="hubRacingAmount" type="number" min="5" max="10000" step="5" value="100" required inputmode="numeric"></label><button id="hubRacingBet" class="primary-button" type="submit">Apostar</button></div>
+ <p id="hubRacingReturn"></p></form>
+ <p id="hubRacingStatus" role="status" aria-live="polite"></p><p class="race-note">Los pagos incluyen tu apuesta. Créditos del juego · Máximo 10.000 por carrera.</p>
+</dialog>
+<script type="module" src="racing.js"></script>
 <dialog id="hubRouletteDialog" class="modal hub-roulette" aria-labelledby="hubRouletteTitle">
   <button id="hubRouletteClose" type="button" class="modal-close icon-button" aria-label="Cerrar">×</button>
   <header><h2 id="hubRouletteTitle">Ruleta</h2><p id="hubRouletteBalance"></p></header>
