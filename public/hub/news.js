@@ -1,6 +1,7 @@
 /* Add new releases at the beginning. Plain text only; no remote HTML. */
 (()=>{'use strict';
  const releases=[
+  {id:'2026-10-20-fishing',date:'20 de octubre de 2026',title:'La laguna: pesca y récords',notes:['Conseguí Pesca Arcade en las cajas de objetos y jugá en la máquina de cualquier sala.','Mantené al pez dentro de la barra. Hay cinco especies y tamaños en centímetros: los más raros y grandes dan más pelea.','Cada captura suma créditos hasta el límite diario. Tus mejores peces compiten en los rankings globales de tamaño y rareza, incluso después de alcanzar el límite.']},
   {id:'2026-10-20-led-lights',date:'20 de octubre de 2026',title:'Más luces para tu rincón',notes:['Llegaron la barra LED vertical, la tira LED de pared, el panel hexagonal, el arco neón y el farol moderno.','Todos tienen imagen prendida y apagada. Tocá cada luz para cambiar su estado; el cambio se ve para todos.','Con la luz general apagada, iluminan la sala en celeste, turquesa, violeta, rosa o ámbar. Disponibles en las cajas de objetos.']},
   {id:'2026-10-20-connect4',date:'20 de octubre de 2026',title:'Cuatro en línea, entre jugadores',notes:['Una nueva mesa para conseguir en las cajas de objetos. Colocala en tu sala e invitá a otro jugador.','Ambos apuestan el mismo monto. El ganador se lleva el pozo completo; si empatan, recuperan los créditos.','Tenés 60 segundos por turno. Podés cerrar la ventana y volver a la partida; el tiempo sigue corriendo.']},
   {id:'2026-10-20-horse-racing',date:'20 de octubre de 2026',title:'¡Llegan las carreras de caballos!',notes:[

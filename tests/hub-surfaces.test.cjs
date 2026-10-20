@@ -19,12 +19,12 @@ const scope={};vm.createContext(scope);for(const name of ['core','people','gener
  assert(C.restore(C.reflow(scene,'square')),'Reflow preserves valid surface placements');
  assert.equal(C.MAX_ITEMS,128);assert.equal(C.restore({...C.initial(),items:Array.from({length:129},(_,n)=>({id:n+1,type:0,x:0,y:0}))}),null,'Oversized rooms remain bounded');
  for(let i=0;i<5;i++){const room=C.restore({...C.initial(),wallPattern:6+i,floorPattern:7+i});assert.equal(room.wallPattern,6+i);assert.equal(room.floorPattern,7+i);}
- assert.equal(C.TYPES.length,99);assert.equal(shared.CATALOG.filter(i=>i.kind==='object').length,99);
+ assert.equal(C.TYPES.length,scope.VeredaCore.TYPES.length);assert.equal(shared.CATALOG.filter(i=>i.kind==='object').length,C.TYPES.length);
  }
  assert.equal(shared.P.choices.pet.length,12);assert.equal(new Set(shared.CATALOG.map(i=>i.id)).size,shared.CATALOG.length);
  for(let i=0;i<5;i++)for(const id of ['object:'+(94+i),'look:top:'+(19+i),'look:pet:'+(7+i),'environment:wallPattern:'+(6+i),'environment:floorPattern:'+(7+i)])assert(shared.CATALOG.some(i=>i.id===id&&!i.starter),'New content unlocks through inventory: '+id);
  assert.equal(shared.P.choices.top.length,24);assert.equal(shared.P.choices.hair.length,13);assert.equal(shared.P.choices.back.length,8);
  for(const id of ['look:top:16','look:top:17','look:top:18','look:hair:11','look:hair:12','look:back:7','object:84','object:89'])assert(shared.CATALOG.find(i=>i.id===id&&!i.starter));
- for(const layout of ['square','grand']){const room=scope.VeredaGenerator.generate(scope.VeredaCore,{seed:45,layout});assert(scope.VeredaCore.restore(room));assert.equal(room.items.length+(room.unplacedItems?.length||0),99,'Generation keeps every object, placed or reserved');}
+ for(const layout of ['square','grand']){const room=scope.VeredaGenerator.generate(scope.VeredaCore,{seed:45,layout});assert(scope.VeredaCore.restore(room));assert.equal(room.items.length+(room.unplacedItems?.length||0),scope.VeredaCore.TYPES.length,'Generation keeps every object, placed or reserved');}
  console.log('Fine surfaces: center, boundaries, collisions, legacy saves, rotations, reflow, authoritative catalog OK.');
 })();

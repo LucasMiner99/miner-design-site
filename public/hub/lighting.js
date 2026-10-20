@@ -3,6 +3,7 @@
  'use strict';
  const warm=[255,196,112],cool=[176,207,255];
  const profiles={
+  106:{color:[119,208,222],y:.37,radius:65,power:.38},
   101:{color:[129,192,255],y:.45,radius:82,power:.40,points:[[.5,.18],[.5,.43],[.5,.68]]},
   102:{color:[96,230,235],y:.50,radius:90,power:.43,points:[[.12,.17],[.5,.5],[.88,.83]]},
   103:{color:[199,143,255],y:.50,radius:135,power:.85},

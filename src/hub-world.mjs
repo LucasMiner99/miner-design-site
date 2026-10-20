@@ -1,3 +1,4 @@
+import {fishingAction,fishingConfig,saveFishingConfig} from './hub-fishing.mjs';
 import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables} from './hub-connect4.mjs';
 import {openRacing,betRacing} from './hub-racing.mjs';
 import {basketAction,basketConfig,saveBasketConfig} from './hub-basket.mjs';
@@ -126,6 +127,8 @@ export class HubWorld {
     if(seatChanged||C.blocked(room.scene.items,Math.floor(current.point.x),Math.floor(current.point.y))||current.path.some(p=>C.blocked(room.scene.items,Math.floor(p.x),Math.floor(p.y)))){a.seat=null;a.position={from:this.free(room,a.user.id,current.point)||current.point,path:[],at:Date.now()};ws.serializeAttachment(a);this.broadcast(u.id,{type:'walk',id:a.user.id,from:a.position.from,path:[]});}}
    this.broadcast(u.id,{type:'scene',serverNow:Date.now(),room,players:this.players(u.id)});return reply({room,serverNow:Date.now()});
   }
+  if(['/fishing/open','/fishing/ranking','/fishing/start','/fishing/input','/fishing/cancel'].includes(path)&&request.method==='POST'){const result=await fishingAction(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,...(result.session?.settled?{account:await this.state(u,auth.admin)}:{})});}
+  if(path==='/admin/fishing'&&auth.admin){if(request.method==='GET')return reply(await fishingConfig(this.ctx.storage));if(request.method==='PUT')return reply(await saveFishingConfig(this.ctx.storage,await body(request,2048)));}
   if(path==='/connect4'&&request.method==='POST'){const result=await connect4Action(this,u,await body(request,2048));return reply({...result,account:await this.state(await this.user(u.id),auth.admin)});}
   if((path==='/racing/open'||path==='/racing/bet')&&request.method==='POST'){
    const input=await body(request,2048);if(!input||typeof input!=='object')reject('Solicitud inválida.');
