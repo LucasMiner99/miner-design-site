@@ -9,7 +9,7 @@
   }
   // Flat illustrations share the exact wall basis: (1, .5), (0, 1).
   // The same projection drives the visible alpha and pointer hit testing.
-  function wall(document,art,type){const cv=document.createElement('canvas'),w=512,h=w*type.mountH/type.width;cv.width=w;cv.height=Math.ceil(h+w*.5);const k=cv.getContext('2d');k.setTransform(w/art.width,w*.5/art.width,0,h/art.height,0,0);k.drawImage(art.canvas,0,0);return sprite(cv,{wallPlane:{width:w,height:h,slope:.5}});}
+  function wall(document,art,type,side=1){const cv=document.createElement('canvas'),w=512,h=w*type.mountH/type.width;cv.width=w;cv.height=Math.ceil(h+w*.5);const k=cv.getContext('2d');k.setTransform(w/art.width,side*w*.5/art.width,0,h/art.height,0,side<0?w*.5:0);k.drawImage(art.canvas,0,0);return sprite(cv,{wallPlane:{width:w,height:h,slope:side*.5}});}
   function tank(document,art){const cv=document.createElement('canvas'),a=1/(.478+.55),b=.5-a*.478;cv.width=art.width;cv.height=Math.ceil(a*art.height+b*art.width);const k=cv.getContext('2d');k.setTransform(1,b,0,a,0,0);k.drawImage(art.canvas,0,0);return sprite(cv);}
   // Calibrate the two horizontal axes of volumetric artwork without flattening
   // its top planes, side faces, brackets or contents onto a wall rectangle.
@@ -49,6 +49,14 @@
   // Decorative designs are drawn in local surface coordinates, then projected
   // by the same basis as the floor/wall. These run only when caches rebuild.
   function shape(k,points,fill,stroke,width=1){k.beginPath();points.forEach(([x,y],i)=>i?k.lineTo(x,y):k.moveTo(x,y));k.closePath();if(fill){k.fillStyle=fill;k.fill();}if(stroke){k.strokeStyle=stroke;k.lineWidth=width;k.stroke();}}
+  function casinoSuit(k,kind,x,y,size,color){
+    k.save();k.translate(x,y);k.scale(size,size);k.fillStyle=color;k.beginPath();
+    if(kind%4===0){k.moveTo(0,-1);k.lineTo(.65,0);k.lineTo(0,1);k.lineTo(-.65,0);}
+    else if(kind%4===1){k.moveTo(0,.85);k.bezierCurveTo(-1.5,-.1,-.75,-1.4,0,-.55);k.bezierCurveTo(.75,-1.4,1.5,-.1,0,.85);}
+    else if(kind%4===2){k.moveTo(0,-1);k.bezierCurveTo(-1.5,.1,-.75,1.2,0,.35);k.bezierCurveTo(.75,1.2,1.5,.1,0,-1);}
+    else {for(const [u,v] of [[0,-.5],[-.45,.15],[.45,.15]]){k.moveTo(u+.48,v);k.arc(u,v,.48,0,Math.PI*2);}}
+    k.closePath();k.fill();if(kind%4>=2)shape(k,[[-.15,.25],[.15,.25],[.3,1],[-.3,1]],color);k.restore();
+  }
   function floorDesign(k,index,f,project,x,y){
     const a=project(x,y),b=project(x+1,y),c=project(x,y+1);k.save();k.transform(b.x-a.x,b.y-a.y,c.x-a.x,c.y-a.y,a.x,a.y);k.beginPath();k.rect(0,0,1,1);k.clip();
     const polygon=(p,fill,stroke=f.dark+'88')=>shape(k,p,fill,stroke,.014),noise=n=>{const q=Math.sin((x*37+y*91+n*17)*12.9898)*43758.5453;return q-Math.floor(q);};
@@ -67,6 +75,13 @@
       k.fillStyle=f.base;k.fillRect(0,0,1,1);for(let n=0;n<35;n++){const u=noise(n),v=noise(n+40),r=.015+noise(n+90)*.035;polygon([[u,v],[u+r,v-.02],[u+r*1.3,v+r],[u-.01,v+r*.6]],n%3?f.light+'99':f.dark+'88',null);}
     }else if(index===11){
       k.fillStyle=f.dark;k.fillRect(0,0,1,1);const stones=[[[.02,.02],[.49,.02],[.43,.36],[.02,.44]],[[.52,.02],[.98,.02],[.98,.42],[.46,.35]],[[.02,.47],[.42,.39],[.60,.66],[.46,.98],[.02,.98]],[[.46,.39],[.98,.46],[.98,.98],[.50,.98],[.64,.65]]];stones.forEach((p,i)=>polygon(p,(x+y+i)%3?f.light:f.base,null));
+    }else if(index===12){
+      k.fillStyle=f.base;k.fillRect(0,0,1,1);
+      // Sparse woven motifs, anchored to world tiles so adjoining pieces align.
+      if((x+y)%2===0){
+        const gold='#c8a76b';polygon([[.5,.16],[.84,.5],[.5,.84],[.16,.5]],null,gold+'66');
+        casinoSuit(k,(Math.floor(x/2)+y)%4,.5,.5,.14,gold);
+      }else {polygon([[.5,.47],[.53,.5],[.5,.53],[.47,.5]],'#c8a76b77',null);}
     }k.restore();
   }
   function wallDesign(k,index,w,span,height){
@@ -76,6 +91,16 @@
     else if(index===8){for(let y=8;y<height;y+=44)for(let x=10;x<span;x+=38){k.save();k.translate(x+(Math.floor(y/44)%2)*19,y);k.rotate(-.28);k.beginPath();k.moveTo(0,0);k.quadraticCurveTo(-4,16,0,34);k.stroke();for(let j=0;j<4;j++){k.beginPath();const s=j%2?1:-1;k.ellipse(s*4,5+j*7,5,2.4,s*.55,0,Math.PI*2);k.fill();}k.restore();}}
     else if(index===9){for(let x=0;x<span;x+=10){const g=k.createLinearGradient(x,0,x+10,0);g.addColorStop(0,w.trim+'99');g.addColorStop(.3,'#ffffff16');g.addColorStop(1,'#00000020');k.fillStyle=g;k.fillRect(x,0,10,height);}}
     else if(index===10){for(let y=20;y<height;y+=52)for(let x=18;x<span;x+=64){const points=[[x,y],[x+19,y+9],[x+32,y-7],[x+46,y+17]];k.beginPath();points.forEach(([a,b],i)=>i?k.lineTo(a,b):k.moveTo(a,b));k.stroke();for(const [a,b] of points){k.fillStyle=w.trim;k.beginPath();k.arc(a,b,1.7,0,Math.PI*2);k.fill();}shape(k,[[x+15,y+30],[x+17,y+35],[x+22,y+37],[x+17,y+39],[x+15,y+44],[x+13,y+39],[x+8,y+37],[x+13,y+35]],w.trim+'bb');}}
+    else if(index===11){
+      const split=height*.68;k.fillStyle=w.dark;k.fillRect(0,0,span,split);k.fillStyle='#00000024';k.fillRect(0,0,span,split);
+      k.fillStyle=w.trim;k.fillRect(0,split,span,height-split);k.fillStyle='#0000003d';k.fillRect(0,split,span,height-split);
+      k.strokeStyle='#d2ad68';k.lineWidth=1.2;
+      for(let x=0;x<span;x+=64){
+        k.strokeRect(x+8,12,48,split-23);k.strokeRect(x+8,split+10,48,height-split-19);
+        casinoSuit(k,Math.floor(x/64)%4,x+32,split*.48,7,'#d2ad68');
+      }
+      k.fillStyle='#b88b47';k.fillRect(0,split-2,span,3);k.fillRect(0,height-5,span,2);k.fillStyle='#ead3a0';k.fillRect(0,split-3,span,1);
+    }
     k.restore();
   }
   const api={floorDesign,wallDesign,wall,tank,volume,fit,sprite,lightFrames,door,screenEffects,pulse,screens};root.VeredaScenery=api;if(typeof module!=='undefined')module.exports=api;

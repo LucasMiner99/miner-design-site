@@ -2,7 +2,7 @@
   'use strict';
   const SIZE=12;
   const MAX_ITEMS=128;
-  const ENV_COUNTS=Object.freeze({wall:16,floor:12,wallPattern:11,floorPattern:12});
+  const ENV_COUNTS=Object.freeze({wall:16,floor:13,wallPattern:12,floorPattern:13});
   const LAYOUTS=[{id:'square',name:'Cuadrada · 12 × 12',w:12,h:12},{id:'wide',name:'Ancha · 16 × 12',w:16,h:12},{id:'tall',name:'Alargada · 12 × 16',w:12,h:16},{id:'large',name:'Amplia · 16 × 16',w:16,h:16},{id:'ell',name:'En L · 16 × 16',w:16,h:16,cut:12},{id:'loft',name:'Loft · 20 × 16',w:20,h:16},{id:'hall',name:'Salón · 24 × 18',w:24,h:18},
     {id:'tee',name:'En T · 24 × 22',w:24,h:22,shape:'tee'},
     {id:'courtyard',name:'En U · 24 × 20',w:24,h:20,shape:'courtyard'},
@@ -169,6 +169,12 @@
     {name:'Farol Moderno',w:1,h:1,width:27,category:'deco',sprite:105,tabletop:true,interaction:'light',rotationLight:true,lightAtlas:true}
   );
   TYPES.push({name:'Pesca Arcade',w:2,h:1,width:78,category:'deco',sprite:106,interaction:'fishing',fitRotation:true,artAxes:[.55,-.54],rearAxes:[.65,-.49]});
+  TYPES.push(
+    {name:'Valla Terciopelo',w:2,h:1,width:96,category:'deco',sprite:107,artFlip:true,fitRotation:true},
+    {name:'Bandeja de Fichas',w:1,h:1,width:38,category:'deco',sprite:108,tabletop:true,fitRotation:true,artAxes:[.47,-.64],rearAxes:[.48,-.67]},
+    {name:'Dados de la Fortuna',w:1,h:1,width:45,category:'deco',sprite:109,fitRotation:true,artAxes:[.57,-.54],rearAxes:[.57,-.54]},
+    {name:'Cartel Casino',w:1,h:1,width:108,mountH:47,category:'wall',sprite:110,wall:true,readableWall:true,interaction:'light',lightAtlas:true}
+  );
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -220,6 +226,7 @@
   for(let i=90;i<=92;i++)TYPES[i].base={shape:'oval',span:.62,u:.5};
   for(const id of [94,95,96,97,98])TYPES[id].base={shape:id===95?'oval':'box',span:id===95?.65:.85,u:.5};
   for(const id of [101,104,105])TYPES[id].base={shape:'oval',span:.86,u:.5};
+  for(const id of [107,108,109])TYPES[id].base={shape:'box',span:.88,u:.5};
   TYPES[106].base={shape:'box',span:.88,u:.5};
   TYPES[93].base={shape:'box',span:.94,u:.5};
   TYPES[83].base={shape:'box',span:.94,u:.5};
