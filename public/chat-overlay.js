@@ -23,10 +23,10 @@
   function currentLimits() {
     return {
       max: finiteParam('max', config.chat_max_messages || 5, 1, 10),
-      font: finiteParam('font', config.chat_font_size || 21, 11, 38),
+      font: finiteParam('font', config.chat_font_size || 32, 11, 38),
       seconds: finiteParam('duration', config.chat_message_seconds ?? 35, 0, 180),
       speed: finiteParam('speed', config.chat_animation_ms || 195, 100, 450),
-      gap: finiteParam('gap', config.chat_gap ?? 2, 0, 24),
+      gap: finiteParam('gap', config.chat_gap ?? 3, 0, 24),
       width: finiteParam('width', 480, 180, 1920),
     };
   }

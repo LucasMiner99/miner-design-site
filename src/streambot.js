@@ -62,10 +62,10 @@ const DEFAULT_CONFIG = {
   // Chat OBS (V16). Cada fuente de OBS ajusta su ancho de forma independiente.
   chat_overlay_enabled: true,
   chat_max_messages: 5,
-  chat_font_size: 21,
+  chat_font_size: 32,
   chat_message_seconds: 35,
   chat_animation_ms: 195,
-  chat_gap: 2,
+  chat_gap: 3,
   chat_badges_enabled: true,
   chat_badge_image_map: "",
   chat_7tv_enabled: true,

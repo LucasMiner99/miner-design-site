@@ -1,8 +1,8 @@
 /* Compact transparent OBS chat. Font is served locally, including Spanish accents. */
 @font-face{font-family:'DM Sans';src:url('/assets/fonts/dm-sans-600-latin.woff2') format('woff2');font-style:normal;font-weight:600;font-display:swap}
 :root{
-  --font:21px;
-  --gap:2px;
+  --font:32px;
+  --gap:3px;
   --scale:1;
   --chat-width:480px;
   --enter:195ms;
@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;color:#fff}
 body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothing:antialiased}
-#chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:min(100%,var(--chat-width));padding:2px 3px 3px 2px;overflow:hidden}
+#chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:min(100%,var(--chat-width));padding:calc(var(--font)*.08) calc(var(--font)*.15) calc(var(--font)*.15) calc(var(--font)*.08);overflow:hidden}
 .message{
   position:relative;
   flex:0 0 auto;
@@ -26,7 +26,7 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
   font-size:var(--font);
   font-weight:600;
   line-height:1.22;
-  text-shadow:calc(1.5px * var(--scale)) calc(1.5px * var(--scale)) calc(.5px * var(--scale)) rgba(0,0,0,.9);
+  text-shadow:0.072em 0.072em 0.024em rgba(0,0,0,.9);
   overflow-wrap:anywhere;
   word-break:normal;
   transition:opacity .14s ease,transform .14s ease;
@@ -36,8 +36,8 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
 .message.leaving{opacity:0;transform:translateX(-8px) translateY(-5px);pointer-events:none}
 @keyframes mb-chat-enter{0%{opacity:0;transform:translate3d(-8px,13px,0) scale(.962)}70%{opacity:1}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 /* Todo el contenido fluye en un solo renglón y continúa abajo si no entra. */
-.username{display:inline;font:inherit;letter-spacing:0;overflow-wrap:anywhere;margin-right:calc(5px * var(--scale))}
-.badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:calc(4px * var(--scale))}
+.username{display:inline;font:inherit;letter-spacing:0;overflow-wrap:anywhere;margin-right:.24em}
+.badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:.19em}
 .badge{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:calc(var(--font)*.73);padding:1px 4px;background:#5b4a91;border:0;border-radius:3px;color:#fff;font:600 calc(var(--font)*.47)/1.1 'DM Sans',Arial,sans-serif;letter-spacing:.02em;white-space:nowrap}
 .badge.moderator{background:#31577e}.badge.vip{background:#74489e}.badge.subscriber{background:#483e86}.badge.verified{background:#256ab0}.badge.og{background:#b18441}.badge.broadcaster{background:#6051b1}.badge.sub-gifter{background:#735493}
 .badge.badge-image{padding:0;border:0;background:transparent;min-height:0;line-height:1;flex:0 0 auto}
