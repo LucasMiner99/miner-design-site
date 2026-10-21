@@ -2,6 +2,7 @@ import {announcement,editAnnouncement} from './hub-announcements.mjs';
 import {ensureCasino,canManageRoom,CASINO_ID} from './hub-community.mjs';
 import {fishingAction,fishingConfig,saveFishingConfig} from './hub-fishing.mjs';
 import {connect4Action,expireConnect4,scheduleConnect4,guardConnect4Tables,closeConnect4Room} from './hub-connect4.mjs';
+import {scratch} from './hub-scratch.mjs';
 import {blackjack} from './hub-blackjack.mjs';
 import {openSlots,betSlots} from './hub-slots.mjs';
 import {openRacing,betRacing} from './hub-racing.mjs';
@@ -160,6 +161,9 @@ export class HubWorld {
   if(['/fishing/open','/fishing/ranking','/fishing/start','/fishing/input','/fishing/cancel'].includes(path)&&request.method==='POST'){const result=await fishingAction(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,...(result.session?.settled?{account:await this.state(u,auth.admin)}:{})});}
   if(path==='/admin/fishing'&&auth.admin){if(request.method==='GET')return reply(await fishingConfig(this.ctx.storage));if(request.method==='PUT')return reply(await saveFishingConfig(this.ctx.storage,await body(request,2048)));}
   if(path==='/connect4'&&request.method==='POST'){const result=await connect4Action(this,u,await body(request,2048));return reply({...result,account:await this.state(await this.user(u.id),auth.admin)});}
+  if(['/scratch/open','/scratch/buy','/scratch/claim'].includes(path)&&request.method==='POST'){
+   const result=await scratch(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,account:await this.state(u,auth.admin)});
+  }
   if(['/blackjack/open','/blackjack/start','/blackjack/play'].includes(path)&&request.method==='POST'){
    const result=await blackjack(this,u,path.split('/').pop(),await body(request,2048));return reply({...result,account:await this.state(u,auth.admin)});
   }

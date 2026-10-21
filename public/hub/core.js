@@ -213,6 +213,7 @@
   TYPES.push({name:'Bola Disco',w:1,h:1,width:38,category:'deco',sprite:116,ceiling:true,ceilingHeight:155,interaction:'light',disco:true});
   TYPES.push({name:'Tragamonedas 777',w:1,h:1,width:56,category:'deco',sprite:117,interaction:'slots',artAxes:[.52,-.55],rearAxes:[.52,-.50],fitRotation:true});
   TYPES.push({name:'Mesa de Blackjack',w:2,h:1,width:104,category:'deco',sprite:118,interaction:'blackjack',artAxes:[.5,-.5],rearAxes:[.5,-.5],fitRotation:true});
+  TYPES.push({name:'Mesa de Raspaditas',w:2,h:1,width:104,category:'deco',sprite:119,interaction:'scratch',artAxes:[.5,-.5],rearAxes:[.5,-.5],fitRotation:true});
   const DARK_TYPES=[0,1,2,4,6,7,9,11,12,13,16,17,18,19,20,22,23,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,55,60,61];
   DARK_TYPES.forEach(i=>TYPES[i].finishes=['Original','Nogal y negro']);
   // Only a display width: height always comes from the original sprite's proportions.
@@ -266,6 +267,7 @@
   for(const id of [101,104,105])TYPES[id].base={shape:'oval',span:.86,u:.5};
   for(const id of [107,108,109])TYPES[id].base={shape:'box',span:.88,u:.5};
   for(const id of [111,112,113,114,115])TYPES[id].base={shape:[112,113].includes(id)?'box':'oval',span:.88,u:.5};
+  TYPES[119].base={shape:'box',span:.85,u:.5};
   TYPES[118].base={shape:'box',span:.85,u:.5};
   TYPES[117].base={shape:'box',span:.82,u:.5};
   TYPES[106].base={shape:'box',span:.88,u:.5};

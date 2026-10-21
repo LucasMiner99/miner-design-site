@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto'),{createCanvas}=require('@napi-rs/canvas');
+(async()=>{
+ const rules=await import('../public/hub/scratch-rules.mjs'),nodes=new Map();
+ function element(tag){const e=tag==='canvas'?createCanvas(220,150):{};return Object.assign(e,{value:'10',textContent:'',children:[],dataset:{},classList:{add(){}},setAttribute(k,v){this[k]=v;},append(...items){this.children.push(...items);},replaceChildren(){this.children=[];},addEventListener(k,fn){this[k==='close'?'closeEvent':k]=fn;},showModal(){this.open=true;},close(){this.open=false;this.closeEvent?.();},setPointerCapture(){},releasePointerCapture(){},getBoundingClientRect:()=>({left:0,top:0,width:220,height:150})});}
+ const get=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
+ const memory=new Map(),sessionStorage={getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},calls=[];
+ let ticket=null,balance=100,fail=false,delay=false,resolveAction;
+ const bridge={user:{id:'2'},room:{id:'1'},ledger:{credits:()=>balance},async scratch(route,input){calls.push({route,input});if(route==='open')return {ticket};if(fail){fail=false;throw Error('Sin conexión');}if(delay)await new Promise(r=>resolveAction=r);
+  if(route==='buy'){ticket={id:input.requestId,amount:10,symbols:[0,0,0,1,1,2,2,3,4],status:'pending'};balance-=10;}else{ticket={...ticket,status:'claimed',prize:20,multiplier:2};balance+=20;}return {ticket};}};
+ const window={MINER_HUB_ONLINE:bridge},scope={...rules,window,document:{getElementById:get,createElement:element},sessionStorage,crypto};vm.runInNewContext(fs.readFileSync('public/hub/scratch.js','utf8').replace(/^import .*?;\r?\n/,''),scope);
+ const submit=()=>get('hubScratchForm').onsubmit({preventDefault(){}}),canvases=()=>get('hubScratchGrid').children.map(c=>c.children.at(-1));
+ await window.HubScratch.open({id:5});assert.equal(get('hubScratchPrizes').children.length,5);assert(!get('hubScratchBuy').disabled);
+ fail=true;await submit();assert.equal(get('hubScratchBuy').textContent,'Recuperar boleto');const oldId=calls.at(-1).input.requestId;await submit();assert.equal(calls.at(-1).input.requestId,oldId);assert.equal(balance,90);assert(get('hubScratchBuy').hidden);assert.equal(canvases().filter(c=>c.hidden).length,0);
+ const cv=canvases()[0],event=(x,y)=>({button:0,pointerId:1,clientX:x,clientY:y,preventDefault(){}});cv.onpointerdown(event(8,10));for(let y=10;y<150;y+=20){cv.onpointermove(event(8,y));cv.onpointermove(event(210,y));}cv.onpointerup(event(210,140));assert(cv.hidden,'Real eraser coverage reveals one cell');assert(get('hubScratchProgress').textContent.includes('1/9'));
+ window.HubScratch.close();await window.HubScratch.open({id:6});assert.equal(canvases().filter(c=>c.hidden).length,1,'Reopen preserves scratched cells');canvases()[1].onkeydown({key:'Enter',preventDefault(){}});assert(canvases()[1].hidden);
+ delay=true;const claim=get('hubScratchReveal').onclick(),count=calls.length;get('hubScratchReveal').onclick();assert.equal(calls.length,count,'No double claims while awaiting server');resolveAction();await claim;delay=false;assert.equal(balance,110);assert.equal(canvases().filter(c=>c.hidden).length,9);assert(get('hubScratchStatus').textContent.includes('Premio: 20'));assert(get('hubScratchStatus').textContent.includes('Ganancia +10'));
+ window.HubScratch.close();await window.HubScratch.open({id:5});assert(get('hubScratchStatus').textContent.includes('Premio: 20'));assert(!get('hubScratchBuy').hidden);
+ // Lost response after purchase: opening retrieves the paid ticket, not another debit.
+ fail=true;await submit();ticket={id:calls.at(-1).input.requestId,amount:10,symbols:[0,0,1,1,2,2,3,3,4],status:'pending'};balance-=10;window.HubScratch.close();await window.HubScratch.open({id:5});assert(get('hubScratchBuy').hidden);assert.equal(get('hubScratchBuy').textContent,'Comprar otro');assert.equal(balance,100);
+ window.HubScratch.close();console.log('PASS scratch UI: real canvas erasing, keyboard, progress persistence, safe request recovery, no double submit, correct win/net display and paid ticket recovery.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

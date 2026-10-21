@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="basket.css">
 <link rel="stylesheet" href="fishing.css"><link rel="stylesheet" href="community.css">
 <link rel="stylesheet" href="racing.css">
-<link rel="stylesheet" href="slots.css"><link rel="stylesheet" href="blackjack.css">
+<link rel="stylesheet" href="slots.css"><link rel="stylesheet" href="blackjack.css"><link rel="stylesheet" href="scratch.css">
 <link rel="stylesheet" href="connect4.css">
 </head>
 <body>
@@ -240,6 +240,16 @@
 <p id="hubTradeStatus" role="status"></p><div class="people-actions"><button id="hubTradeCancel" type="button" class="secondary-button">Cancelar</button><button id="hubTradeAccept" type="button" class="primary-button">Aceptar</button></div>
 </dialog>
 
+<dialog id="hubScratchDialog" class="modal hub-scratch" aria-labelledby="hubScratchTitle">
+ <button id="hubScratchClose" class="modal-close icon-button" type="button" aria-label="Cerrar raspaditas">×</button>
+ <header class="sc-heading"><h2 id="hubScratchTitle">Raspaditas</h2><small id="hubScratchBalance"></small></header>
+ <div class="sc-ticket"><div class="sc-ticket-title">RASPÁ &amp; GANÁ</div><div id="hubScratchGrid" class="sc-grid" aria-label="Boleto de nueve casillas"></div><p id="hubScratchProgress" class="sc-progress"></p></div>
+ <p id="hubScratchStatus" class="sc-status" role="status" aria-live="polite"></p>
+ <button id="hubScratchReveal" class="sc-reveal primary-button" type="button" hidden>Rascar todo</button>
+ <form id="hubScratchForm" class="sc-form"><label for="hubScratchPrice">Valor del boleto<select id="hubScratchPrice"><option value="10">10 créditos</option><option value="25">25 créditos</option><option value="50">50 créditos</option><option value="100">100 créditos</option></select></label><button id="hubScratchBuy" class="primary-button" type="submit">Comprar boleto</button></form>
+ <section class="sc-prizes" aria-label="Premios y probabilidades"><strong>Tres iguales o más, en cualquier posición</strong><table><thead><tr><th>Símbolos</th><th>Premio</th><th>Probabilidad</th></tr></thead><tbody id="hubScratchPrizes"></tbody></table><p>El premio multiplica el valor del boleto e incluye lo apostado. Se paga solo la coincidencia mayor. El 70% de los boletos no tiene premio.</p></section>
+ <p class="sc-resume">Tu boleto queda guardado al salir. Retomalo en cualquier mesa de raspaditas.</p>
+</dialog><script type="module" src="scratch.js"></script>
 <dialog id="hubBlackjackDialog" class="modal hub-blackjack" aria-labelledby="hubBlackjackTitle">
  <button id="hubBlackjackClose" class="modal-close icon-button" type="button" aria-label="Cerrar blackjack">×</button>
  <header class="bj-heading"><h2 id="hubBlackjackTitle">Blackjack</h2><small id="hubBlackjackBalance"></small></header>
