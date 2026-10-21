@@ -56,8 +56,8 @@ export async function storeChatMessage(env, message) {
 export async function recentChatMessages(env) {
   await ensureChatTable(env);
   const result = await env.STREAMBOT_DB.prepare(
-    'SELECT payload FROM streambot_chat_overlay_messages WHERE created_at_ms >= ? ORDER BY created_at_ms DESC LIMIT 20'
-  ).bind(Date.now() - 180_000).all();
+    'SELECT payload FROM streambot_chat_overlay_messages WHERE created_at_ms >= ? ORDER BY created_at_ms DESC LIMIT 120'
+  ).bind(Date.now() - 3600_000).all();
   return (result.results || []).reverse().map(row => {
     try { return JSON.parse(row.payload); } catch { return null; }
   }).filter(Boolean);

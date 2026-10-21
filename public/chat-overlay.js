@@ -22,7 +22,6 @@
   }
   function currentLimits() {
     return {
-      max: finiteParam('max', config.chat_max_messages || 5, 1, 10),
       font: finiteParam('font', config.chat_font_size || 32, 11, 38),
       seconds: finiteParam('duration', config.chat_message_seconds ?? 35, 0, 180),
       speed: finiteParam('speed', config.chat_animation_ms || 195, 100, 450),
@@ -164,11 +163,12 @@
     el.append(name,body);
     return el;
   }
-  function deleteEntry(id) {
+  function deleteEntry(id, immediate = false) {
     const el = entries.get(id);
     if (!el) return;
     entries.delete(id);
     messageData.delete(id);
+    if(immediate){el.remove();return;}
     el.classList.add('leaving');
     setTimeout(() => el.remove(), 160);
   }
@@ -180,7 +180,13 @@
         if(Date.now()-Number(el.dataset.time || 0)>=lim.seconds*1000) deleteEntry(id);
       }
     }
-    while(entries.size>lim.max) deleteEntry(entries.keys().next().value);
+    // No message-count cap: discard only rows that have scrolled fully above the source.
+    if(root.clientHeight > 0){
+      for(const [id,el] of entries){
+        if(entries.size <= 1 || el.offsetTop + el.offsetHeight > 0) break;
+        deleteEntry(id,true);
+      }
+    }
   }
   function addMessage(m, animate=true) {
     if (!m || !m.id || seen.has(m.id) || !config.chat_overlay_enabled) return;
@@ -209,7 +215,7 @@
       root.hidden=!data.enabled;
       styleConfig();
       if(!data.enabled){for(const id of [...entries.keys()])deleteEntry(id);return;}
-      for(const m of (data.messages||[]).slice(-currentLimits().max))addMessage(m,!first);
+      for(const m of (data.messages||[]))addMessage(m,!first);
       prune();
     }catch(err){console.warn('MinerBot Chat state',err.message)}
   }
@@ -244,7 +250,7 @@
   }
   if(!key){console.warn('Falta key en URL del chat de MinerBot');return;}
   refreshState(true).then(loadEmotes);
-  window.addEventListener('resize', styleConfig, {passive:true});
+  window.addEventListener('resize', () => {styleConfig();prune();}, {passive:true});
   connect();
   // Fallback and emote updates. WebSocket is the normal low-latency path.
   setInterval(prune,1000);

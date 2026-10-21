@@ -321,7 +321,6 @@
           <div class="card-head"><div><h2>Chat OBS · compacto y transparente</h2><p>DM Sans seminegrita, sin recuadro y con sombra corta. El nombre y el mensaje tienen el mismo tamaño, juntos y sin dos puntos. Conserva las insignias de Kick y los emotes.</p></div></div>
           <label class="toggle-row"><span><b>Chat overlay activo</b><small>Recibe mensajes desde los webhooks oficiales de Kick.</small></span><input id="chat_overlay_enabled" type="checkbox"><i></i></label>
           <div class="two-cols">
-            <label class="field"><span>Máximo de mensajes visibles</span><input id="chat_max_messages" type="number" min="1" max="10" step="1"></label>
             <label class="field"><span>Duración de cada mensaje (seg, 0 = sin caducar)</span><input id="chat_message_seconds" type="number" min="0" max="180" step="1"></label>
             <label class="field"><span>Tamaño del texto (px)</span><input id="chat_font_size" type="number" min="11" max="38" step="1"></label>
             <label class="field"><span>Separación entre mensajes (px)</span><input id="chat_gap" type="number" min="0" max="24" step="1"></label>
@@ -335,12 +334,12 @@
           <p class="hint">Guardá con «Guardar cambios» arriba a la derecha. Estos ajustes son globales; cada fuente de OBS también puede llevar valores propios en su URL.</p>
         </div>
         <div class="card">
-          <div class="card-head"><div><h2>Tu chat en OBS</h2><p>Usá la misma URL que ya tenés. El chat ocupa todo el ancho de la fuente de navegador de OBS; la letra conserva el tamaño elegido.</p></div></div>
+          <div class="card-head"><div><h2>Tu chat en OBS</h2><p>Usá la misma URL que ya tenés. El chat ocupa todo el ancho y la altura de la fuente de OBS, sin un máximo de mensajes. La letra conserva el tamaño elegido.</p></div></div>
           <div class="card-subsection overlay-link-card">
             <div class="card-subsection-title"><b>Chat OBS — sin fondo</b><small>Elegí el ancho y el alto en las propiedades de la fuente de navegador de OBS. El texto se acomoda automáticamente al espacio disponible.</small></div>
             <div class="copy-row"><input id="chatOverlayUrl" type="text" readonly><button id="copyChatOverlay" class="secondary-button">Copiar URL</button></div>
           </div>
-          <p class="hint">Los controles del dashboard son globales. Podés ajustar una fuente por separado agregando <code>&amp;max=4&amp;font=32&amp;duration=30&amp;gap=3</code> a su URL. Para renderizar al doble de resolución, usá <code>&amp;scale=2</code>, una fuente de 960 × 1300 px y mostrala a la mitad de tamaño en OBS.</p>
+          <p class="hint">Los controles del dashboard son globales. Podés ajustar una fuente por separado agregando <code>&amp;font=32&amp;duration=30&amp;gap=3</code> a su URL. Para renderizar al doble de resolución, usá <code>&amp;scale=2</code>, una fuente de 960 × 1300 px y mostrala a la mitad de tamaño en OBS.</p>
           <div class="button-row" style="margin-top:16px">
             <button id="chatTestMessage" class="primary-button">Probar mensaje en OBS 💬</button>
             <button id="chatTest7tv" class="secondary-button">Probar texto con 7TV</button>
@@ -467,6 +466,6 @@
     </div>
   </div>
 
-  <script src="streambot.js"></script>
+  <script src="streambot.js?v=26"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;color:#fff}
 body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothing:antialiased}
-#chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:100%;padding:calc(var(--font)*.08) calc(var(--font)*.15) calc(var(--font)*.15) calc(var(--font)*.08);overflow:hidden}
+#chat{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:100%;padding:calc(var(--font)*.08) calc(var(--font)*.15) calc(var(--font)*.15) calc(var(--font)*.08);overflow:hidden}
 .message{
   position:relative;
   flex:0 0 auto;
