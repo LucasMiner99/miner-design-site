@@ -7,7 +7,9 @@
   const card=document.getElementById('miner-alert');
   const label=document.getElementById('alert-label');
   const username=document.getElementById('alert-username');
-  const description=document.getElementById('alert-description');
+  const mark=document.getElementById('alert-icon');
+  const copy=card.querySelector('.copy');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const queue=[];
   const seen=new Set();
   const sound=new Audio('/assets/alerts/notification_sound.mp3');
@@ -15,31 +17,33 @@
   let settings={alerts_enabled:true,alerts_sound_enabled:true,alerts_volume:.75,alerts_duration_seconds:5,alerts_scale_percent:100};
   let cursor=0;
   let demoAlert={type:'follow',username:'lucasfan'};
-  const designDefaults={
-    alerts_bg_color:'#101116',alerts_gradient_percent:25,alerts_logo_size:68,
-    alerts_gap:12,alerts_padding_x:17,alerts_padding_y:12,
-    alerts_card_width:560,alerts_name_size:29,alerts_label_size:11,alerts_message_size:14
-  };
   const bounded=(value,min,max,fallback)=>{
     const n=Number(value);
     return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
   };
   function applyDesign(){
-    const css=card.style;
-    const bg=String(settings.alerts_bg_color||designDefaults.alerts_bg_color);
-    css.setProperty('--alert-bg',/^#[0-9a-f]{6}$/i.test(bg)?bg:'#101116');
-    css.setProperty('--alert-gradient-opacity',String(bounded(settings.alerts_gradient_percent,0,100,25)/100));
     for(const [key,min,max,def,variable] of [
-      ['alerts_logo_size',35,120,68,'--alert-logo-size'],
-      ['alerts_gap',0,40,12,'--alert-gap'],
-      ['alerts_padding_x',4,40,17,'--alert-padding-x'],
-      ['alerts_padding_y',4,32,12,'--alert-padding-y'],
-      ['alerts_card_width',300,820,560,'--alert-card-width'],
-      ['alerts_name_size',16,48,29,'--alert-name-size'],
-      ['alerts_label_size',8,22,11,'--alert-label-size'],
-      ['alerts_message_size',10,28,14,'--alert-message-size'],
-    ])css.setProperty(variable,`${bounded(settings[key],min,max,def)}px`);
+      ['alerts_gap',0,40,21,'--alert-gap'],
+      ['alerts_card_width',300,820,580,'--alert-card-width'],
+      ['alerts_name_size',16,60,44,'--alert-name-size'],
+      ['alerts_label_size',8,32,23,'--alert-label-size'],
+    ])card.style.setProperty(variable,`${bounded(settings[key],min,max,def)}px`);
+    fit();
   }
+  function fit(){
+    if(card.hidden)return;
+    const factor=Number(stage.style.getPropertyValue('--s'))||1;
+    const size=bounded(settings.alerts_name_size,16,60,44)*factor;
+    const ctx=document.createElement('canvas').getContext('2d');
+    ctx.font=`600 ${size}px AlertDM`;
+    const measured=ctx.measureText(username.textContent).width;
+    for(let pass=0;pass<4;pass++){
+      username.style.fontSize=size+'px';
+      if(measured>username.clientWidth)username.style.fontSize=Math.max(16*factor,size*username.clientWidth/measured)+'px';
+      card.style.setProperty('--icon-size',(copy.offsetHeight/1.114416)+'px');
+    }
+  }
+  document.fonts.ready.then(fit);
 
   let initialized=false;
   let playing=false;
@@ -49,13 +53,13 @@
   let disconnecting=false;
 
   const templates={
-    follow:['NUEVO SEGUIDOR','¡Gracias por seguir el canal!'],
-    sub:['NUEVO SUSCRIPTOR','¡Gracias por suscribirte!'],
-    renewal:['SUSCRIPCIÓN RENOVADA','¡Gracias por renovar tu sub!'],
-    gift:['SUBS REGALADAS',a=>`Regaló ${a.count||1} ${Number(a.count)===1?'suscripción':'suscripciones'}`],
-    kicks:['KICKS RECIBIDOS',a=>`Envió ${Number(a.count||1).toLocaleString('es-AR')} KICKs${a.giftName?' · '+a.giftName:''}`],
-    raid:['RAID RECIBIDA',a=>`¡Nos trajo ${a.count||1} viewers!`],
-    host:['NUEVO HOST','¡Está hosteando el canal!'],
+    follow:['Nuevo seguidor','follow','person'],
+    sub:['Nueva suscripción','subscription','star'],
+    renewal:['Suscripción renovada','subscription','star'],
+    gift:[a=>`${a.count||1} ${Number(a.count)===1?'sub regalada':'subs regaladas'}`,'subscription','star'],
+    kicks:[a=>`${Number(a.count||1).toLocaleString('es-AR')} KICKs recibidos`,'subscription','star'],
+    raid:['Nueva raid','raid','flag'],
+    host:['Nuevo hosteo','raid','flag'],
   };
 
   function scale(){
@@ -64,7 +68,7 @@
     const factor=Math.max(.6,Math.min(1.7,Number(settings.alerts_scale_percent||100)/100));
     stage.style.setProperty('--s',String(Math.max(.40,Math.min(2,auto*factor))));
   }
-  window.addEventListener('resize',scale);
+  window.addEventListener('resize',()=>{scale();fit()});
   function duration(){return Math.max(2,Math.min(15,Number(settings.alerts_duration_seconds)||5))*1000}
   function enabled(a){return settings.alerts_enabled !== false && settings[`alerts_${a.type}`] !== false}
   function accept(a){
@@ -86,43 +90,75 @@
     sound.volume=Math.max(0,Math.min(1,Number(settings.alerts_volume)||0));
     sound.play().catch(()=>{}); // algunos navegadores requieren interacción; OBS permite audio en fuente de navegador.
   }
+  const effects=[];
+  const fx=document.createElement('div');fx.className='fx';fx.setAttribute('aria-hidden','true');
+  const light=document.createElement('div');light.className='light';fx.append(light);
+  const sparks=Array.from({length:18},(_,i)=>{
+    const el=document.createElement('span');el.className='spark'+(i%5===1||i%5===3?' dot':i%5===4?' shard':'');fx.append(el);return el;
+  });
+  card.prepend(fx);
+    function burst(){
+      fx.style.setProperty('--origin-x',(mark.offsetLeft+mark.offsetWidth/2)+'px');
+      fx.style.setProperty('--origin-y',(mark.offsetTop+mark.offsetHeight/2)+'px');
+      effects.push(light.animate([{opacity:0,transform:'scale(.6)'},{opacity:.95,transform:'scale(1)',offset:.07},{opacity:.42,transform:'scale(.92)',offset:.24},{opacity:.42,transform:'scale(.92)',offset:.95},{opacity:0,transform:'scale(.85)'}],{duration:Math.max(1000,duration()-200),delay:90,easing:'ease-out'}));
+      const radius=Math.min(88,card.offsetLeft+mark.offsetLeft+mark.offsetWidth/2-8);
+      sparks.forEach((el,i)=>{
+        const angle=(i/sparks.length)*Math.PI*2+(Math.random()-.5)*.25;
+        const distance=radius*(.64+Math.random()*.33),start=mark.offsetWidth*.24;
+        const peak=.65+Math.random()*.35,spin=el.classList.contains('shard')?.78:0;
+        el.style.setProperty('--trail-length',(6+Math.random()*11)+'px');
+        el.style.setProperty('--grain-size',(2.5+Math.random()*3)+'px');
+        const pose=(r,scale)=>`translate(${Math.cos(angle)*r}px,${Math.sin(angle)*r}px) translate(-50%,-50%) rotate(${angle+spin*r/distance}rad) scale(${scale})`;
+        effects.push(el.animate([
+          {opacity:0,transform:pose(start,.7),offset:0,easing:'cubic-bezier(.16,.65,.3,1)'},
+          {opacity:peak,transform:pose(distance*.7,1),offset:.28,easing:'ease-out'},
+          {opacity:peak*.7,transform:pose(distance*.9,.8),offset:.58,easing:'ease-out'},
+          {opacity:0,transform:pose(distance,.25),offset:1}
+        ],{duration:540+Math.random()*330,delay:105+Math.random()*85,easing:'linear'}));
+      });
+    }
   function populate(a){
     const template=templates[a.type]||templates.follow;
-    label.textContent=template[0];
+    label.textContent=typeof template[0]==='function'?template[0](a):template[0];
     username.textContent=String(a.username||'Anónimo').slice(0,85);
-    description.textContent=typeof template[1]==='function'?template[1](a):template[1];
-    card.style.setProperty('--duration',`${duration()}ms`);
+    card.dataset.theme=template[1];
+    for(const icon of mark.children)icon.toggleAttribute('hidden',icon.dataset.icon!==template[2]);
     applyDesign();
   }
   function staticPreview(){
-    populate(demoAlert);
     card.hidden=false;
-    card.className='alert';
+    populate(demoAlert);
   }
   function playNext(){
     if(playing||!queue.length||!settings.alerts_enabled)return;
-    playing=true;
     const a=queue.shift();
-    populate(a);
+    if(!enabled(a)){playNext();return;}
+    playing=true;
     card.hidden=false;
-    card.style.setProperty('--duration',`${duration()}ms`);
-    card.className='alert';
-    // Forzar el reinicio de las animaciones incluso cuando llegan avisos seguidos.
-    void card.offsetWidth;
-    card.classList.add('enter','running');
+    populate(a);
     if(!previewMode)playSound();
     const wait=duration();
-    setTimeout(()=>{
-      card.classList.remove('enter','running');
-      card.classList.add('leave');
-      setTimeout(()=>{
-        card.hidden=true;
-        card.className='alert';
-        playing=false;
-        if(previewMode && !queue.length)staticPreview();
-        else playNext();
-      },210);
-    },Math.max(800,wait-210));
+    const finish=()=>{
+      card.hidden=true;
+      effects.splice(0).forEach(effect=>effect.cancel());
+      playing=false;
+      if(previewMode && !queue.length)staticPreview();
+      else playNext();
+    };
+    if(reduced.matches){setTimeout(finish,wait);return;}
+    burst();
+    const entry=300/wait;
+    const animation=card.animate([
+      {opacity:0,transform:'translateY(18px) scale(.9)',offset:0,easing:'cubic-bezier(.22,.65,.25,1)'},
+      {opacity:1,offset:entry*.2},
+      {opacity:1,transform:'translateY(-3px) scale(1.025)',offset:entry*.58,easing:'ease-out'},
+      {opacity:1,transform:'translateY(1px) scale(.995)',offset:entry*.82,easing:'ease-out'},
+      {opacity:1,transform:'translateY(0) scale(1)',offset:entry},
+      {opacity:1,transform:'translateY(0) scale(1)',offset:1-500/wait,easing:'cubic-bezier(.4,0,.6,1)'},
+      {opacity:0,transform:'translateY(12px) scale(1)',offset:1}
+    ],{duration:wait,easing:'linear'});
+    effects.push(animation);
+    animation.onfinish=finish;
   }
   async function poll(first=false){
     if(pendingPoll)return pendingPoll;
@@ -178,7 +214,7 @@
         if(!templates[type])return;
         demoAlert={type,username:({follow:'lucasfan',sub:'Sofi',renewal:'Sofi',gift:'Dasher',kicks:'Dasher',raid:'StreamerAmigo',host:'StreamerAmigo'})[type],count:({gift:5,kicks:500,raid:120})[type],giftName:'Rage Quit'};
         queue.length=0;
-        if(!playing)queue.push(demoAlert),playNext();
+        queue.push(demoAlert);playNext();
       }
     });
     window.parent.postMessage({source:'minerbot-alert-preview',kind:'ready'},location.origin);

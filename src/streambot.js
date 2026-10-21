@@ -1,3 +1,4 @@
+import { radialAlertRows, alertStyleDefaults } from './alert-style.mjs';
 import { hubRewardAdmin, ensureCreditRewards } from './hub-reward-admin.js';
 import { enqueueHubEvent, drainHubInbox } from './hub-gateway.js';
 import { alertFromKick, manualAlert, publicAlertConfig, allowedAlert, publishAlert, readAlertState } from "./alerts.js";
@@ -97,6 +98,7 @@ const DEFAULT_CONFIG = {
   alerts_name_size: 29,
   alerts_label_size: 11,
   alerts_message_size: 14,
+  ...alertStyleDefaults,
 
   // Limpiando: minijuego persistente, con overlay OBS independiente.
   cleaning_enabled: false,
@@ -441,7 +443,7 @@ function publicChatConfig(config) {
 
 async function getConfig(env) {
   const result = await env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings").all();
-  return ensureOverlayKey(env, parseConfigRows(await compactChatRows(env.STREAMBOT_DB,result.results || [])));
+  return ensureOverlayKey(env, parseConfigRows(await radialAlertRows(env.STREAMBOT_DB,await compactChatRows(env.STREAMBOT_DB,result.results || []))));
 }
 
 async function updateConfig(request, env) {
@@ -513,7 +515,7 @@ async function updateConfig(request, env) {
     if (key === "alerts_volume") value = Math.min(1, Math.max(0, Number(value) || 0));
     if (key === "alerts_duration_seconds") value = Math.min(15, Math.max(2, Number(value) || 5));
     if (key === "alerts_scale_percent") value = Math.min(170, Math.max(60, Math.round(Number(value) || 100)));
-    const alertRanges={alerts_gradient_percent:[0,100],alerts_logo_size:[35,120],alerts_gap:[0,40],alerts_padding_x:[4,40],alerts_padding_y:[4,32],alerts_card_width:[300,820],alerts_name_size:[16,48],alerts_label_size:[8,22],alerts_message_size:[10,28]};
+    const alertRanges={alerts_gradient_percent:[0,100],alerts_logo_size:[35,120],alerts_gap:[0,40],alerts_padding_x:[4,40],alerts_padding_y:[4,32],alerts_card_width:[300,820],alerts_name_size:[16,60],alerts_label_size:[8,32],alerts_message_size:[10,28]};
     if(key in alertRanges){
       const [min,max]=alertRanges[key];
       const candidate=Number(value);

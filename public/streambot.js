@@ -19,8 +19,8 @@ const fields = [
   "chat_badges_enabled","chat_badge_image_map","chat_7tv_enabled","chat_kick_emotes_enabled","chat_hide_commands",
   "alerts_enabled","alerts_follow","alerts_sub","alerts_renewal","alerts_gift","alerts_kicks","alerts_raid","alerts_host",
   "alerts_sound_enabled","alerts_volume","alerts_duration_seconds","alerts_scale_percent",
-  "alerts_bg_color","alerts_gradient_percent","alerts_logo_size","alerts_gap","alerts_padding_x","alerts_padding_y",
-  "alerts_card_width","alerts_name_size","alerts_label_size","alerts_message_size",
+  "alerts_gap",
+  "alerts_card_width","alerts_name_size","alerts_label_size",
   "tts_enabled","tts_max_chars","tts_daily_chars","tts_volume",
   "tts_voice_1_enabled","tts_reward_title","tts_reward_cost","tts_voice_id",
   "tts_voice_2_enabled","tts_voice_2_title","tts_voice_2_cost","tts_voice_2_voice_id",
@@ -538,8 +538,8 @@ for(const [id,target] of [['copyChatOverlay','chatOverlayUrl']]) {
 
 // Vista previa local: iframe sin clave OBS, sin websocket y sin escritura a la API.
 const alertEditorIds=[
-  'alerts_bg_color','alerts_gradient_percent','alerts_logo_size','alerts_gap','alerts_padding_x',
-  'alerts_padding_y','alerts_card_width','alerts_name_size','alerts_label_size','alerts_message_size',
+  'alerts_gap',
+  'alerts_card_width','alerts_name_size','alerts_label_size',
   'alerts_scale_percent','alerts_duration_seconds'
 ];
 function previewAlertConfig(){
@@ -550,9 +550,8 @@ function updateAlertsPreview(){
   if(!frame)return;
   for(const id of alertEditorIds){
     const out=document.querySelector(`[data-alert-value="${id}"]`);
-    if(out)out.textContent=String($(id)?.value||'0')+(id==='alerts_gradient_percent'?'%':' px');
+    if(out)out.textContent=String($(id)?.value||'0')+' px';
   }
-  if($('alertsBgHex'))$('alertsBgHex').textContent=$('alerts_bg_color')?.value||'#101116';
   frame.contentWindow?.postMessage({source:'minerbot-alert-editor',kind:'config',settings:previewAlertConfig()},location.origin);
 }
 const alertsPreviewFrame=$('alertsPreviewFrame');

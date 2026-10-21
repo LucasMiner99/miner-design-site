@@ -367,22 +367,16 @@
           <div class="card-subsection">
             <div class="card-subsection-title"><b>Diseño y proporciones</b><small>Los cambios se ven al instante arriba.</small></div>
             <div class="alerts-style-grid">
-              <label class="alerts-style-control"><span>Tamaño del logo <output for="alerts_logo_size" data-alert-value="alerts_logo_size"></output></span><input id="alerts_logo_size" type="range" min="35" max="120" step="1"></label>
-              <label class="alerts-style-control"><span>Separación logo / texto <output for="alerts_gap" data-alert-value="alerts_gap"></output></span><input id="alerts_gap" type="range" min="0" max="40" step="1"></label>
-              <label class="alerts-style-control"><span>Máximo ancho del cartel <output for="alerts_card_width" data-alert-value="alerts_card_width"></output></span><input id="alerts_card_width" type="range" min="300" max="820" step="10"></label>
-              <label class="alerts-style-control"><span>Espaciado horizontal <output for="alerts_padding_x" data-alert-value="alerts_padding_x"></output></span><input id="alerts_padding_x" type="range" min="4" max="40" step="1"></label>
-              <label class="alerts-style-control"><span>Espaciado vertical <output for="alerts_padding_y" data-alert-value="alerts_padding_y"></output></span><input id="alerts_padding_y" type="range" min="4" max="32" step="1"></label>
-              <label class="alerts-style-control"><span>Tamaño del usuario <output for="alerts_name_size" data-alert-value="alerts_name_size"></output></span><input id="alerts_name_size" type="range" min="16" max="48" step="1"></label>
-              <label class="alerts-style-control"><span>Tamaño del título <output for="alerts_label_size" data-alert-value="alerts_label_size"></output></span><input id="alerts_label_size" type="range" min="8" max="22" step="1"></label>
-              <label class="alerts-style-control"><span>Tamaño del mensaje <output for="alerts_message_size" data-alert-value="alerts_message_size"></output></span><input id="alerts_message_size" type="range" min="10" max="28" step="1"></label>
-              <label class="alerts-style-control"><span>Intensidad del violeta <output for="alerts_gradient_percent" data-alert-value="alerts_gradient_percent"></output></span><input id="alerts_gradient_percent" type="range" min="0" max="100" step="5"></label>
-              <label class="alerts-style-control alerts-color-control"><span>Color de fondo</span><input id="alerts_bg_color" type="color" value="#101116" aria-label="Color de fondo de alertas"><span id="alertsBgHex" class="alerts-color-hex">#101116</span></label>
+              <label class="alerts-style-control"><span>Separación icono / texto <output for="alerts_gap" data-alert-value="alerts_gap"></output></span><input id="alerts_gap" type="range" min="0" max="40" step="1"></label>
+              <label class="alerts-style-control"><span>Ancho de la alerta <output for="alerts_card_width" data-alert-value="alerts_card_width"></output></span><input id="alerts_card_width" type="range" min="300" max="820" step="10"></label>
+              <label class="alerts-style-control"><span>Tamaño del usuario <output for="alerts_name_size" data-alert-value="alerts_name_size"></output></span><input id="alerts_name_size" type="range" min="16" max="60" step="1"></label>
+              <label class="alerts-style-control"><span>Tamaño del título <output for="alerts_label_size" data-alert-value="alerts_label_size"></output></span><input id="alerts_label_size" type="range" min="8" max="32" step="1"></label>
             </div>
           </div>
-          <p class="hint">Consejo: el cartel ahora se ajusta al contenido y el ancho configurado es un máximo, así no deja un bloque vacío a la derecha.</p>
+          <p class="hint">El icono se ajusta a la altura del texto. Fondo transparente, partículas radiales y salida suave hacia abajo.</p>
         </div>
         <div class="card">
-          <div class="card-head"><div><h2>🔔 Alertas OBS · MinerBot</h2><p>Logo y sonido propios · borde fino · Zalando Expanded · estilo editable. Una fuente de navegador independiente en OBS.</p></div></div>
+          <div class="card-head"><div><h2>🔔 Alertas OBS · MinerBot</h2><p>Seguidores en violeta · suscripciones en dorado · raid y hosteo en verde. DM Sans y sonido propio. Una fuente de navegador independiente en OBS.</p></div></div>
           <label class="toggle-row"><span><b>Activar alertas en OBS</b><small>Funciona aunque desactives los mensajes del bot en el chat.</small></span><input id="alerts_enabled" type="checkbox"><i></i></label>
           <div class="two-cols">
             <label class="field"><span>Duración de cada alerta (segundos)</span><input id="alerts_duration_seconds" type="number" min="2" max="15" step="1"></label>
@@ -466,6 +460,6 @@
     </div>
   </div>
 
-  <script src="streambot.js?v=26"></script>
+  <script src="streambot.js?v=27"></script>
 </body>
 </html>
