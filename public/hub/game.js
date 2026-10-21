@@ -147,7 +147,7 @@
       for(const [a,b,nx,ny] of [[1,2,tx+1,ty],[2,3,tx,ty+1]]){const drop=C.inside(nx,ny)?z-C.tileHeight(nx,ny):z+15;if(drop>0&&insidePolygon({x,y},[p[a],p[b],{x:p[b].x,y:p[b].y+drop},{x:p[a].x,y:p[a].y+drop}]))return {x:-1,y:-1};}
     }return {x:-1,y:-1};
   }
-  function footprint(item){if(C.TYPES[item.type].wall){const t=C.TYPES[item.type],left=item.wallSide==='left',p=project(left?0:item.wallU,left?item.wallU:0,C.wallHeight(item.wallSide,item.wallU)),sign=left?-1:1,w=t.width/2,h=t.mountH/2;return [{x:p.x-w,y:p.y-item.wallZ-sign*w*.5-h},{x:p.x+w,y:p.y-item.wallZ+sign*w*.5-h},{x:p.x+w,y:p.y-item.wallZ+sign*w*.5+h},{x:p.x-w,y:p.y-item.wallZ-sign*w*.5+h}];}const t=C.dimensions(item);const z=C.tileHeight(item.x,item.y);return [project(item.x,item.y,z),project(item.x+t.w,item.y,z),project(item.x+t.w,item.y+t.h,z),project(item.x,item.y+t.h,z)];}
+  function footprint(item){if(C.TYPES[item.type].wall){const t=C.TYPES[item.type],a=C.wallAnchor(item),left=a.side==='left',p=project(a.x,a.y,a.z),sign=left?-1:1,w=t.width/2,h=t.mountH/2;return [{x:p.x-w,y:p.y-item.wallZ-sign*w*.5-h},{x:p.x+w,y:p.y-item.wallZ+sign*w*.5-h},{x:p.x+w,y:p.y-item.wallZ+sign*w*.5+h},{x:p.x-w,y:p.y-item.wallZ-sign*w*.5+h}];}const t=C.dimensions(item);const z=C.tileHeight(item.x,item.y);return [project(item.x,item.y,z),project(item.x+t.w,item.y,z),project(item.x+t.w,item.y+t.h,z),project(item.x,item.y+t.h,z)];}
   function poly(k,points,fill,stroke){k.beginPath();k.moveTo(points[0].x,points[0].y);points.slice(1).forEach(p=>k.lineTo(p.x,p.y));k.closePath();if(fill){k.fillStyle=fill;k.fill();}if(stroke){k.strokeStyle=stroke;k.lineWidth=1;k.stroke();}}
   function line(k,x1,y1,x2,y2,color,width=1){k.strokeStyle=color;k.lineWidth=width;k.beginPath();k.moveTo(x1,y1);k.lineTo(x2,y2);k.stroke();}
   function rect(k,x,y,w,h,color){k.fillStyle=color;k.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
@@ -276,7 +276,7 @@
   function removeSelected(){const item=state.items.find(i=>i.id===selectedId);if(!item)return;const children=state.items.filter(i=>i.parentId===item.id).length;checkpoint();state.items=C.removeItem(state.items,selectedId);cancelSelection();save();sfx('place');toast(children?'Guardamos el mueble y sus objetos. Siguen disponibles en el catálogo.':'Mueble guardado. Podés colocarlo de nuevo desde el inventario.');}
   async function flipSelected(){
     const item=state.items.find(i=>i.id===selectedId);if(!item||movingId!==null)return;
-    const rotated=C.TYPES[item.type].wall?{...item,wallSide:item.wallSide==='left'?'right':'left'}:{...item,rotation:(C.rotation(item)+1)%4,flip:!((C.rotation(item)+1)%2===0)};
+    const rotated=C.TYPES[item.type].wall?{...item,wallSide:C.wallSurface(item.wallSide)?.side==='left'?'right':'left'}:{...item,rotation:(C.rotation(item)+1)%4,flip:!((C.rotation(item)+1)%2===0)};
     if(!C.canPlace(state.items,rotated,player)||(!item.parentId&&!C.TYPES[item.type].flat&&[...people.actors.values()].some(a=>C.covers(rotated,Math.floor(a.x),Math.floor(a.y))))){toast('No hay espacio para girarlo. Movelo a un lugar libre.');return;}
     if(!C.TYPES[item.type].wall){try{await loadRotation(item.type);}catch{toast('No se pudo cargar esa vista. Probá de nuevo.');return;}if(state.items.find(i=>i.id===item.id)!==item||!online.canEdit())return;}
     if(!C.canPlace(state.items,rotated,player)||(!item.parentId&&!C.TYPES[item.type].flat&&[...people.actors.values()].some(a=>C.covers(rotated,Math.floor(a.x),Math.floor(a.y))))){toast('No hay espacio para girarlo. Movelo a un lugar libre.');return;}checkpoint();C.moveItem(state.items,rotated);save();sfx('place');
@@ -320,7 +320,7 @@
   }
   function candidateAt(world,base){
     const tile=unproject(world.x,world.y),clean={...base};delete clean.parentId;delete clean.slot;delete clean.surfaceX;delete clean.surfaceY;
-    if(C.TYPES[base.type].wall){const u=Math.abs(world.x-origin())/32;return {...clean,x:0,y:0,flip:false,wallSide:world.x<origin()?'left':'right',wallU:Math.round(u*4)/4,wallZ:Math.round((baseY()+u*16-C.wallHeight(world.x<origin()?'left':'right',u)-world.y)/4)*4};}
+    if(C.TYPES[base.type].wall)return {...clean,x:0,y:0,flip:false,...C.wallPick(world,origin(),baseY(),C.room(),!revealPartitions)};
     if(C.TYPES[base.type].tabletop){
       const targets=drawBounds.filter(b=>b.item.id!==base.id&&!b.item.parentId&&C.TYPES[b.item.type].surface).reverse();
       for(const b of targets){
@@ -412,8 +412,8 @@
   }
   function loadRotation(type){if(C.TYPES[type].wall||C.TYPES[type].flat||symmetricRotation.has(type))return Promise.resolve();if(rotationLoads.has(type))return rotationLoads.get(type);const load=loadImage(ASSETS['rotation'+type]||'assets/rotations/'+type+'.webp').then(img=>{const frames=(C.TYPES[type].lightAtlas?S.lightFrames(document,img):extractAtlas(img,false,C.TYPES[type].finishes||C.TYPES[type].rotationLight?2:1,1)).map(art=>{const view=C.TYPES[type].rearAxes?S.volume(document,art,...C.TYPES[type].rearAxes):art;return C.TYPES[type].fitRotation?S.fit(document,view,furniture[type]):view;});rotationArt.set(type,frames);return frames;}).catch(e=>{setTimeout(()=>rotationLoads.delete(type),10000);throw e;});rotationLoads.set(type,load);return load;}
   function itemPosition(item){
-    const t=C.TYPES[item.type],rot=C.rotation(item),rear=rot>=2&&!t.wall&&!t.flat&&!symmetricRotation.has(item.type),views=rotationArt.get(item.type);if(rear&&!views)loadRotation(item.type).catch(()=>{});const sprite=t.readableWall&&item.wallSide==='left'?leftWallStates.get(item.type)[item.on===false?0:1]:t.plantation?plantArt.get(item.type)[window.HubPlants?.stage(item)||0]:t.poster?window.HubPosters.sprite(item,t):rear&&views?views[t.rotationLight?(item.on===false?0:1):item.finish===1&&t.finishes?1:0]:lightStates.has(item.type)?lightStates.get(item.type)[item.on===false?0:1]:windowStates.has(item.type)?windowStates.get(item.type)[item.closed?1:0]:item.finish===1&&darkFurniture.has(item.type)?darkFurniture.get(item.type):furniture[t.sprite],w=t.width,h=w*sprite.height/sprite.width,flip=rear&&views?(rot===3)!==!!t.rearArtFlip:!!item.flip!==!!t.artFlip;
-    if(t.wall){const left=item.wallSide==='left',p=project(left?0:item.wallU,left?item.wallU:0,C.wallHeight(item.wallSide,item.wallU));return {x:p.x-w/2,y:p.y-item.wallZ-h/2,w,h,sprite,item,flip:left&&!t.readableWall,ground:p,baseWidth:0,anchorX:w/2,anchorY:h/2};}
+    const t=C.TYPES[item.type],rot=C.rotation(item),rear=rot>=2&&!t.wall&&!t.flat&&!symmetricRotation.has(item.type),views=rotationArt.get(item.type);if(rear&&!views)loadRotation(item.type).catch(()=>{});const sprite=t.readableWall&&C.wallSurface(item.wallSide)?.side==='left'?leftWallStates.get(item.type)[item.on===false?0:1]:t.plantation?plantArt.get(item.type)[window.HubPlants?.stage(item)||0]:t.poster?window.HubPosters.sprite(item,t):rear&&views?views[t.rotationLight?(item.on===false?0:1):item.finish===1&&t.finishes?1:0]:lightStates.has(item.type)?lightStates.get(item.type)[item.on===false?0:1]:windowStates.has(item.type)?windowStates.get(item.type)[item.closed?1:0]:item.finish===1&&darkFurniture.has(item.type)?darkFurniture.get(item.type):furniture[t.sprite],w=t.width,h=w*sprite.height/sprite.width,flip=rear&&views?(rot===3)!==!!t.rearArtFlip:!!item.flip!==!!t.artFlip;
+    if(t.wall){const a=C.wallAnchor(item),left=a.side==='left',p=project(a.x,a.y,a.z);return {x:p.x-w/2,y:p.y-item.wallZ-h/2,w,h,sprite,item,flip:left&&!t.readableWall,ground:p,baseWidth:0,anchorX:w/2,anchorY:h/2};}
     const d=C.dimensions(item);let ground=project(item.x+d.w/2,item.y+d.h/2,C.tileHeight(item.x,item.y));
     if(item.parentId){const parent=state.items.find(i=>i.id===item.parentId);if(parent)ground=surfacePoint(parent,item);}
     if(t.ceiling)return {x:ground.x-w/2,y:ground.y-t.ceilingHeight-h*.07,w,h,sprite,item,flip:false,ground,baseWidth:0,anchorX:w/2,anchorY:t.ceilingHeight+h*.07};
@@ -474,6 +474,8 @@
     const v=playerVisual();if(!v.seat)ellipse(g,v.p.x,v.p.y,11,4.5,'#51482d36');spriteAt(v.sprite,g,v.x,v.y,v.w,false);actorBounds.push({...v,id:'self',depth:player.x+player.y});
   }
   function drawGrid(){for(let y=0;y<C.room().h;y++)for(let x=0;x<C.room().w;x++)if(C.inside(x,y)&&!C.partitionAt(x,y))poly(g,tilePoints(x,y),null,C.stairAccess(x,y)?'#ffffffbb':'#ffffff66');}
+  let interiorWallBounds=[];const interiorWallRecorded=new Set();
+  function editingWall(){return mode==='decorate'&&C.TYPES[pendingType??ghost?.type??state.items.find(i=>i.id===selectedId)?.type]?.wall;}
   const PARTITION_HEIGHT=155,partitionOpacity=new Map(),partitionGeometryCache=new Map();let hoveredPartition=-1,revealPartitions=false,partitionStripCache=null;
   $('revealWalls').addEventListener('click',()=>{revealPartitions=!revealPartitions;$('revealWalls').setAttribute('aria-pressed',String(revealPartitions));$('revealWalls').textContent=revealPartitions?'Mostrar paredes':'Ver detrás';});
   function partitionGeometry(cell){
@@ -544,10 +546,18 @@
   }
   function drawPartitionStrip(key){
     const s=partitionStrips().get(key);if(!s)return;
-    g.save();g.setTransform(1,0,0,1,0,0);g.globalAlpha=revealPartitions?.16:Math.min(1,...s.indices.map(i=>partitionOpacity.get(i)??1));
+    g.save();g.setTransform(1,0,0,1,0,0);const opacity=revealPartitions?.16:editingWall()?1:Math.min(1,...s.indices.map(i=>partitionOpacity.get(i)??1));g.globalAlpha=opacity;
     const scale=view.s*Math.min(window.devicePixelRatio||1,3)/renderDensity,dx=view.x*Math.min(window.devicePixelRatio||1,3),dy=view.y*Math.min(window.devicePixelRatio||1,3);
     const x=Math.round(s.x0*scale+dx),y=Math.round(s.sliceY*scale+dy),right=Math.round(s.x1*scale+dx),bottom=Math.round((s.sliceY+s.slice.height)*scale+dy);
     g.drawImage(s.slice,x,y,right-x,bottom-y);g.restore();
+    // Match the same disjoint pixel columns as the wall, so decorations span
+    // multiple tiles without being painted over by the next wall slice.
+    const dpr=Math.min(window.devicePixelRatio||1,3),clipX=(x/dpr-view.x)/view.s,clipRight=(right/dpr-view.x)/view.s;
+    for(const b of interiorWallBounds){
+      if(!s.indices.includes(C.wallSurface(b.item.wallSide).index)||b.x+b.w<clipX||b.x>clipRight)continue;
+      g.save();g.beginPath();g.rect(clipX,-10000,clipRight-clipX,20000);g.clip();drawItem(b.item,opacity*(ghost?.id===b.item.id ? .36 : 1),false);g.restore();
+      if(!interiorWallRecorded.has(b.item.id)){drawBounds.push(b);interiorWallRecorded.add(b.item.id);}
+    }
   }
   const doorOpenness=new Map(),doorRasterCache=new Map();
   function doorGeometry(d){
@@ -593,7 +603,7 @@
   }
   function paint(now,dt=1/60){
     $('revealWalls').hidden=!(C.room().partitions||[]).length;
-    for(let i=0;i<(C.room().partitions||[]).length;i++){const target=(revealPartitions||hoveredPartition===i)? .16 : 1,current=partitionOpacity.get(i)??1;partitionOpacity.set(i,animationEnabled?current+(target-current)*.22:target);}
+    for(let i=0;i<(C.room().partitions||[]).length;i++){const target=(revealPartitions||!editingWall()&&hoveredPartition===i)? .16 : 1,current=partitionOpacity.get(i)??1;partitionOpacity.set(i,animationEnabled?current+(target-current)*.22:target);}
     const dpr=Math.min(window.devicePixelRatio||1,3);
     g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,scene.width,scene.height);
     // Bilinear sampling during motion; refine once the camera settles.
@@ -613,7 +623,8 @@
     if(!movingCamera)g.drawImage(floorView,0,0);
     g.setTransform(view.s*dpr,0,0,view.s*dpr,view.x*dpr,view.y*dpr);
     g.imageSmoothingEnabled=true;g.imageSmoothingQuality=backgroundQuality;drawBounds=[];actorBounds=[];
-    state.items.filter(i=>C.TYPES[i.type].wall).forEach(i=>drawItem(i,ghost?.id===i.id ? .36 : 1));
+    interiorWallBounds=state.items.filter(i=>C.TYPES[i.type].wall&&C.wallSurface(i.wallSide)?.index>=0).map(itemPosition);interiorWallRecorded.clear();
+    state.items.filter(i=>C.TYPES[i.type].wall&&C.wallSurface(i.wallSide)?.index<0).forEach(i=>drawItem(i,ghost?.id===i.id ? .36 : 1));
     const flat=state.items.filter(i=>C.TYPES[i.type].flat).sort((a,b)=>a.x+a.y-b.x-b.y);flat.forEach(i=>drawItem(i,selectedId===i.id&&ghost?.id===i.id ? .5 : 1));
     window.HubDisco?.floor(g,state.items,C,project,reduceMotion?0:Date.now(),state.lightsOn===false);
     if(movingId!==null||pendingType!==null)drawGrid();

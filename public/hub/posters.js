@@ -8,7 +8,7 @@
  function loadImage(image,key,current,loaded,failed){let attempt=0;image.onload=()=>{if(current())loaded?.();};image.onerror=()=>{if(!current())return;if(attempt<3){const delay=[1500,5000,15000][attempt++];setTimeout(()=>{if(current())image.src=key+'&retry='+attempt;},delay);}else failed?.();};image.src=key;}
  function art(entry){if(!entry||!room)return null;const key=url(room.ownerId,entry);if(!images.has(key)){const image=new Image();images.set(key,image);loadImage(image,key,()=>images.get(key)===image,()=>sprites.clear());}const image=images.get(key);return image.complete&&image.naturalWidth?image:null;}
  function sprite(item,type){
-  const entry=Number.isInteger(item.posterSlot)?slots[item.posterSlot]:null,image=art(entry),left=item.wallSide==='left',key=type.sprite+':'+(entry?.slot??'-')+':'+(entry?.version||0)+':'+!!image+':'+left;
+  const entry=Number.isInteger(item.posterSlot)?slots[item.posterSlot]:null,image=art(entry),left=window.VeredaCore.wallSurface(item.wallSide)?.side==='left',key=type.sprite+':'+(entry?.slot??'-')+':'+(entry?.version||0)+':'+!!image+':'+left;
   if(sprites.has(key))return sprites.get(key);
   const S=window.VeredaScenery,cv=document.createElement('canvas');cv.width=512;cv.height=Math.round(512/type.ratio);const k=cv.getContext('2d');
   k.fillStyle='#292827';k.fillRect(0,0,cv.width,cv.height);k.fillStyle='#ddd7cb';k.fillRect(7,7,cv.width-14,cv.height-14);k.fillStyle='#f8f5ef';k.fillRect(12,12,cv.width-24,cv.height-24);

@@ -52,6 +52,34 @@
   function partitionAt(x,y,layout=activeLayout){return (layoutFor(layout).partitions||[]).some(b=>x>=b.x&&y>=b.y&&x<b.x+b.w&&y<b.y+b.h);}
   function wallSpan(side,layout=activeLayout){const l=layoutFor(layout),max=side==='left'?l.h:l.w;let n=0;while(n<max&&inside(side==='left'?0:n,side==='left'?n:0,l))n++;return n;}
 
+  // Mount coordinates share the exact visible face used by the partition renderer.
+  // Interior IDs refer to solid wall segments, never door openings.
+  function wallSurface(id,layout=activeLayout){
+    const l=layoutFor(layout);
+    if(id==='left'||id==='right')return {id,side:id,start:0,end:wallSpan(id,l),fixed:0,index:-1};
+    if(typeof id!=='string'||!/^inner:(0|[1-9]\d*)$/.test(id))return null;
+    const index=Number(id.slice(6)),b=l.partitions?.[index];if(!b)return null;
+    const vertical=b.h>1,side=vertical?'left':'right',z=tileHeight(b.x,b.y,l),edge=z>tileHeight(b.x+(vertical?1:0),b.y+(vertical?0:1),l);
+    return {id,side,index,start:vertical?b.y:b.x,end:vertical?b.y+b.h:b.x+b.w,fixed:(vertical?b.x:b.y)+(edge?1:.62),z};
+  }
+  function wallSurfaces(layout=activeLayout){return ['left','right',...(layoutFor(layout).partitions||[]).map((_,i)=>'inner:'+i)].map(id=>wallSurface(id,layout));}
+  function wallAnchor(item,layout=activeLayout){
+    const s=wallSurface(item.wallSide,layout);if(!s)return null;
+    return {x:s.side==='left'?s.fixed:item.wallU,y:s.side==='left'?item.wallU:s.fixed,z:s.index<0?wallHeight(s.side,item.wallU,layout):s.z,side:s.side};
+  }
+  function wallPick(point,origin,baseY,layout=activeLayout,interior=true){
+    const hits=[];
+    for(const s of wallSurfaces(layout)){
+      if(s.index<0||!interior)continue;
+      const u=s.side==='left'?s.fixed-(point.x-origin)/32:s.fixed+(point.x-origin)/32;
+      const z=baseY+(s.fixed+u)*16-s.z-point.y;
+      if(u>=s.start&&u<=s.end&&z>=0&&z<=155)hits.push({wallSide:s.id,wallU:Math.round(u*4)/4,wallZ:Math.round(z/4)*4,depth:s.fixed+u});
+    }
+    if(hits.length){hits.sort((a,b)=>b.depth-a.depth);const {depth,...hit}=hits[0];return hit;}
+    const side=point.x<origin?'left':'right',u=Math.abs(point.x-origin)/32;
+    return {wallSide:side,wallU:Math.round(u*4)/4,wallZ:Math.round((baseY+u*16-wallHeight(side,u,layout)-point.y)/4)*4};
+  }
+
   // A small permanent service area on the front end of the left wall.
   function wallSwitch(layout=activeLayout){return {wallSide:'left',wallU:wallSpan('left',layout)-1,wallZ:108,width:24,mountH:40};}
   function overlapsSwitch(item,layout=activeLayout){const t=TYPES[item.type],b=wallSwitch(layout);return !!(t?.wall&&item.wallSide===b.wallSide&&Math.abs(item.wallU-b.wallU)*32<(t.width+b.width)/2+6&&Math.abs(item.wallZ-b.wallZ)<(t.mountH+b.mountH)/2+6);}
@@ -308,10 +336,11 @@
   function canPlace(items,item,player,layout=activeLayout,allowSwitch=false){
     const t=TYPES[item.type],d=t&&dimensions(item);
     if(t?.wall){
-      if(item.parentId||!['left','right'].includes(item.wallSide)||!Number.isFinite(item.wallU)||!Number.isFinite(item.wallZ))return false;
-      const l=layoutFor(layout),span=wallSpan(item.wallSide,l)*32,u=item.wallU*32,z=item.wallZ;
-      if(u-t.width/2<6||u+t.width/2>span-6||z-t.mountH/2<8||z+t.mountH/2>150)return false;
-      if(wallHeight(item.wallSide,(u-t.width/2)/32,l)!==wallHeight(item.wallSide,(u+t.width/2)/32,l))return false;
+      const s=wallSurface(item.wallSide,layout);
+      if(item.parentId||!s||!Number.isFinite(item.wallU)||!Number.isFinite(item.wallZ))return false;
+      const l=layoutFor(layout),u=item.wallU*32,z=item.wallZ;
+      if(u-t.width/2<s.start*32+6||u+t.width/2>s.end*32-6||z-t.mountH/2<8||z+t.mountH/2>150)return false;
+      if(s.index<0&&wallHeight(item.wallSide,(u-t.width/2)/32,l)!==wallHeight(item.wallSide,(u+t.width/2)/32,l))return false;
       if(!allowSwitch&&overlapsSwitch(item,l))return false;
       return !items.some(i=>i.id!==item.id&&TYPES[i.type].wall&&i.wallSide===item.wallSide&&Math.abs(i.wallU*32-u)<(TYPES[i.type].width+t.width)/2+4&&Math.abs(i.wallZ-z)<(TYPES[i.type].mountH+t.mountH)/2+4);
     }
@@ -452,7 +481,7 @@
       if(canPlace(out.items,raw,null,l))candidates.push(raw);
       if(raw.parentId&&out.items.some(p=>p.id===raw.parentId)){const p=out.items.find(p=>p.id===raw.parentId);candidates.push({...raw,x:p.x,y:p.y});}
       const clean={...raw};delete clean.parentId;delete clean.slot;delete clean.surfaceX;delete clean.surfaceY;
-      if(t.wall){for(const side of [raw.wallSide||'left',(raw.wallSide||'left')==='left'?'right':'left'])for(const z of [raw.wallZ||90,90,50,120])for(let u=t.width/64+.2;u<wallSpan(side,l)-t.width/64-.2;u+=.25)candidates.push({...clean,x:0,y:0,flip:false,wallSide:side,wallU:u,wallZ:z});}
+      if(t.wall){const surfaces=wallSurfaces(l).sort((a,b)=>Number(b.id===raw.wallSide)-Number(a.id===raw.wallSide));for(const s of surfaces)for(const z of [raw.wallZ||90,90,50,120])for(let u=s.start+t.width/64+.2;u<s.end-t.width/64-.2;u+=.25)candidates.push({...clean,x:0,y:0,flip:false,wallSide:s.id,wallU:u,wallZ:z});}
       else{
         if(t.tabletop)for(const p of out.items.filter(p=>!p.parentId&&TYPES[p.type].surface))for(const spot of surfaceGrid(p))candidates.push({...clean,x:p.x,y:p.y,parentId:p.id,...spot});
         const floor=[];for(let y=0;y<l.h;y++)for(let x=0;x<l.w;x++)floor.push({...clean,x,y});floor.sort((a,b)=>Math.abs(a.x-raw.x)+Math.abs(a.y-raw.y)-Math.abs(b.x-raw.x)-Math.abs(b.y-raw.y));candidates.push(...floor);
@@ -462,6 +491,6 @@
     }
     if(reserve.length)out.unplacedItems=reserve;return out;
   }
-  const api={wallSwitch,overlapsSwitch,MAX_ITEMS,surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
+  const api={wallSurface,wallSurfaces,wallAnchor,wallPick,wallSwitch,overlapsSwitch,MAX_ITEMS,surfaceOffset,surfaceUV,surfaceGrid,surfaceLocal,surfaceOccupied,SIZE,ENV_COUNTS,LAYOUTS,layoutFor,setLayout,room,inside,stairAt,stairAccess,doorAccess,reflow,tileHeight,walkHeight,wallHeight,maxHeight,canStep,partitionCells,partitionAt,wallSpan,rotation,dimensions,TYPES,initial,covers,blocked,overlap,canPlace,pathfind,route,seatPlaces,nearestSeat,seatApproach,moveItem,removeItem,findFree,cleanName,restore};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.VeredaCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
