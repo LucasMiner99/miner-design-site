@@ -64,7 +64,7 @@ const DEFAULT_CONFIG = {
   chat_max_messages: 5,
   chat_font_size: 32,
   chat_message_seconds: 35,
-  chat_animation_ms: 195,
+  chat_animation_ms: 300,
   chat_gap: 3,
   chat_badges_enabled: true,
   chat_badge_image_map: "",

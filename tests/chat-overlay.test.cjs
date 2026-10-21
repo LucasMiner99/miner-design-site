@@ -6,7 +6,7 @@ class Element{
  remove(){if(this.parent)this.parent.children=this.parent.children.filter(c=>c!==this);}
  replaceWith(other){const index=this.parent.children.indexOf(this);this.parent.children[index]=other;other.parent=this.parent;}
  replaceChildren(){this.children=[];}
- querySelector(selector){return this.children.find(e=>e.classList?.contains(selector.slice(1)));}
+ querySelector(selector){for(const child of this.children){if(child.classList?.contains(selector.slice(1)))return child;const nested=child.querySelector?.(selector);if(nested)return nested;}}
 }
 async function fixture(search='',config={}){
  const root=new Element('div'),listeners={},intervals=[],sockets=[];
@@ -16,7 +16,7 @@ async function fixture(search='',config={}){
 }
 (async()=>{
  const f=await fixture();assert.equal(f.root.style['--font'],'32.00px');assert.equal(f.root.style['--gap'],'3.00px');assert.equal(f.root.style['--chat-width'],undefined);f.scope.innerWidth=320;f.listeners.resize();assert.equal(f.root.style['--font'],'32.00px','OBS width does not change approved font size');
- f.message({id:'first',content:'Hola [emote:123:KickSmile] KEKW',badges:[{type:'moderator'}]});const row=f.root.children[0];assert.deepEqual(row.children.map(c=>c.className),['badges','username','body']);assert.equal(row.querySelector('.username').style.color,'#abcdef');assert.equal(row.querySelector('.body').children.filter(c=>c.tagName==='img').length,2,'Kick and 7TV remain images');assert.equal(row.querySelector('.badges').children[0].children[0].src,'https://cpwemotes.co.uk/kick/kickBadges/moderator.svg');
+ f.message({id:'first',content:'Hola [emote:123:KickSmile] KEKW',badges:[{type:'moderator'}]});const row=f.root.children[0];assert.deepEqual(row.querySelector('.message-content').children.map(c=>c.className),['badges','username','body']);assert.equal(row.querySelector('.username').style.color,'#abcdef');assert.equal(row.querySelector('.body').children.filter(c=>c.tagName==='img').length,2,'Kick and 7TV remain images');assert.equal(row.querySelector('.badges').children[0].children[0].src,'https://cpwemotes.co.uk/kick/kickBadges/moderator.svg');
  f.message({id:'first'});assert.equal(f.root.children.length,1,'Replay is ignored');
  const image=row.querySelector('.body').children.find(c=>c.tagName==='img');image.onerror();assert(row.querySelector('.body').children.some(c=>c.textContent==='KickSmile'),'Failed emotes keep their text');
  f.config({chat_font_size:26,chat_gap:0,chat_hide_commands:true,chat_badges_enabled:false,chat_kick_emotes_enabled:false,chat_7tv_enabled:false});await f.refresh();assert.equal(f.root.style['--font'],'26.00px');assert.equal(f.root.style['--gap'],'0.00px');f.message({content:'!entrar'});assert.equal(f.root.children.length,1);f.message({content:'<script>alert(1)</script> [emote:123:KickSmile] KEKW',badges:[{type:'vip'}]});const safe=f.root.children.at(-1);assert(!safe.querySelector('.badges'));assert(!safe.querySelector('.body').children.some(c=>c.tagName==='img'));assert(safe.querySelector('.body').children.some(c=>c.textContent.includes('<script>')),'Messages remain text, not HTML');

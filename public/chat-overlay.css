@@ -4,7 +4,7 @@
   --font:32px;
   --gap:3px;
   --scale:1;
-  --enter:195ms;
+  --enter:300ms;
 }
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;color:#fff}
@@ -31,9 +31,8 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
   transition:opacity .14s ease,transform .14s ease;
   will-change:transform,opacity;
 }
-.message.enter{animation:mb-chat-enter var(--enter) cubic-bezier(.15,.9,.22,1.04) both}
+.message-content{transform-origin:left bottom}
 .message.leaving{opacity:0;transform:translateX(-8px) translateY(-5px);pointer-events:none}
-@keyframes mb-chat-enter{0%{opacity:0;transform:translate3d(-8px,13px,0) scale(.962)}70%{opacity:1}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 /* Todo el contenido fluye en un solo renglón y continúa abajo si no entra. */
 .username{display:inline;font:inherit;letter-spacing:0;overflow-wrap:anywhere;margin-right:.24em}
 .badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:.19em}
@@ -47,4 +46,4 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
 .emote{display:inline-block;vertical-align:-.24em;width:auto;height:1.2em;max-width:min(95%,140px);object-fit:contain;margin:0 1px}
 /* Emote-only messages keep the same size and line spacing as mixed messages. */
 #chat[hidden]{display:none}
-@media(prefers-reduced-motion:reduce){.message.enter{animation:none}.message.leaving{transition:none}}
+@media(prefers-reduced-motion:reduce){.message.leaving{transition:none}}

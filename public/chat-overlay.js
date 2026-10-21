@@ -14,6 +14,46 @@
   let emotes = Object.create(null);
   let badgeOverrides = Object.create(null);
   let fontScale = 1;
+  const shifts = new WeakMap();
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+
+  function motionEnabled() {
+    return !reducedMotion?.matches && typeof root.animate === 'function';
+  }
+  function capturePositions() {
+    if(!motionEnabled())return null;
+    const positions = new Map([...entries.values()].map(el=>[el,el.getBoundingClientRect().top]));
+    for(const el of positions.keys())shifts.get(el)?.cancel();
+    return positions;
+  }
+  function animateArrival(el, positions, duration) {
+    if(!positions)return;
+    // Read the current visual positions before cancelling an interrupted move.
+    // A new burst continues from there while each message keeps its own entry animation.
+    for(const [row,top] of positions){
+      if(!row.isConnected)continue;
+      const delta = top-row.getBoundingClientRect().top;
+      if(Math.abs(delta)>.1)shifts.set(row,row.animate([
+        {transform:`translateY(${delta}px)`},{transform:'translateY(0)'}
+      ],{duration,easing:'cubic-bezier(.2,.8,.2,1)'}));
+    }
+    // Keep the horizontal overshoot inside the source even for a full-width message.
+    const available = root.clientWidth-el.offsetLeft-parseFloat(getComputedStyle(root).paddingRight||0);
+    const peakX = Math.min(1.025,Math.max(1,available/Math.max(1,el.offsetWidth)));
+    el.querySelector('.message-content').animate([
+      {opacity:0,transform:'translateY(18px) scale(.9)',offset:0},
+      {opacity:1,offset:.2},
+      {opacity:1,transform:`translateY(-3px) scale(${peakX},1.025)`,offset:.58},
+      {opacity:1,transform:'translateY(1px) scale(.995)',offset:.82},
+      {opacity:1,transform:'translateY(0) scale(1)',offset:1}
+    ],{duration,easing:'cubic-bezier(.22,.65,.25,1)'});
+  }
+  function stopMotion() {
+    for(const el of entries.values()){
+      shifts.get(el)?.cancel();
+      el.querySelector('.message-content')?.getAnimations?.().forEach(animation=>animation.cancel());
+    }
+  }
 
   function finiteParam(name, fallback, min, max) {
     const raw = params.get(name);
@@ -24,7 +64,7 @@
     return {
       font: finiteParam('font', config.chat_font_size || 32, 11, 38),
       seconds: finiteParam('duration', config.chat_message_seconds ?? 35, 0, 180),
-      speed: finiteParam('speed', config.chat_animation_ms || 195, 100, 450),
+      speed: finiteParam('speed', config.chat_animation_ms || 300, 100, 450),
       gap: finiteParam('gap', config.chat_gap ?? 3, 0, 24),
     };
   }
@@ -125,9 +165,11 @@
     const name = shortNames[type] || String(b.text || b.type || 'BADGE').toUpperCase().slice(0,15);
     return name + (Number(b.count) > 0 ? ` ${Math.floor(b.count)}` : '');
   }
-  function createMessage(m, animate = true) {
+  function createMessage(m) {
     const el = document.createElement('div');
-    el.className = 'message'+(animate?' enter':'');
+    el.className = 'message';
+    const content = document.createElement('div');content.className='message-content';
+    el.append(content);
     el.dataset.id = String(m.id || '');
     const name = document.createElement('span');name.className='username';
     name.textContent=String(m.username || 'Viewer');
@@ -155,12 +197,12 @@
         } else tag.textContent=badgeText(b);
         holder.append(tag);
       }
-      el.append(holder);
+      content.append(holder);
     }
     const body=document.createElement('span');body.className='body';
     drawContent(body,m.content);
     // Badges + username + texto comparten la misma línea; el texto se ajusta al ancho del overlay.
-    el.append(name,body);
+    content.append(name,body);
     return el;
   }
   function deleteEntry(id, immediate = false) {
@@ -168,6 +210,7 @@
     if (!el) return;
     entries.delete(id);
     messageData.delete(id);
+    shifts.get(el)?.cancel();
     if(immediate){el.remove();return;}
     el.classList.add('leaving');
     setTimeout(() => el.remove(), 160);
@@ -184,6 +227,7 @@
     if(root.clientHeight > 0){
       for(const [id,el] of entries){
         if(entries.size <= 1 || el.offsetTop + el.offsetHeight > 0) break;
+        if(shifts.get(el)?.playState==='running' && el.getBoundingClientRect().bottom>root.getBoundingClientRect().top)break;
         deleteEntry(id,true);
       }
     }
@@ -193,13 +237,15 @@
     if (config.chat_hide_commands && String(m.content||'').startsWith('!')) return;
     const lim = currentLimits();
     if(lim.seconds && Date.now()-(Number(m.createdAt)||Date.now())>lim.seconds*1000) return;
-    const el=createMessage(m,animate);
+    const positions=animate?capturePositions():null;
+    const el=createMessage(m);
     el.dataset.time=String(Number(m.createdAt)||Date.now());
     seen.add(m.id);
     if (seen.size > 600) seen.delete(seen.values().next().value);
     entries.set(m.id,el);
     messageData.set(m.id,m);
     root.append(el);
+    animateArrival(el,positions,lim.speed);
     prune();
   }
   async function fetchJson(route){
@@ -250,7 +296,8 @@
   }
   if(!key){console.warn('Falta key en URL del chat de MinerBot');return;}
   refreshState(true).then(loadEmotes);
-  window.addEventListener('resize', () => {styleConfig();prune();}, {passive:true});
+  window.addEventListener('resize', () => {stopMotion();styleConfig();prune();}, {passive:true});
+  reducedMotion?.addEventListener?.('change',stopMotion);
   connect();
   // Fallback and emote updates. WebSocket is the normal low-latency path.
   setInterval(prune,1000);
