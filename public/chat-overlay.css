@@ -25,7 +25,7 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
   font-size:var(--font);
   font-weight:600;
   line-height:1.22;
-  text-shadow:0.072em 0.072em 0.024em rgba(0,0,0,.9);
+  text-shadow:0.09em 0.09em 0.02em #000,0 0 0.06em rgba(0,0,0,.95);
   overflow-wrap:anywhere;
   word-break:normal;
   transition:opacity .14s ease,transform .14s ease;
@@ -44,7 +44,7 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
 /* Los badges predeterminados de Kick se muestran blancos; los personalizados mantienen su color original. */
 .badge.badge-image.badge-default img{filter:brightness(0) invert(1)}
 .body{display:inline;font:inherit;color:#fff;white-space:pre-wrap;overflow-wrap:anywhere}
-.emote{display:inline-block;vertical-align:middle;width:auto;height:1.55em;max-width:min(95%,140px);object-fit:contain;margin:0 1px}
-.emote-only .emote{height:2.5em}
+.emote{display:inline-block;vertical-align:-.24em;width:auto;height:1.2em;max-width:min(95%,140px);object-fit:contain;margin:0 1px}
+/* Emote-only messages keep the same size and line spacing as mixed messages. */
 #chat[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.message.enter{animation:none}.message.leaving{transition:none}}
