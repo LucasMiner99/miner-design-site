@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),crypto=require('node:crypto');
 (async()=>{
- const {C,CATALOG}=await import('../src/hub-rules.mjs'),{openExchange,exchangeItem}=await import('../src/hub-exchange.mjs');
+ const {C,CATALOG}=await import('../src/hub-rules.mjs'),{openExchange,exchangeItem,exchangeRewardPool,drawExchangeReward}=await import('../src/hub-exchange.mjs');
  const {transferItemCopies,migrateExchangeProvenance}=await import('../src/hub-item-provenance.mjs');
  const initial=()=>({id:'2',name:'Player',appearance:{hair:0,face:0,top:0,bottom:0,shoes:0},inventory:{'object:0':4,'object:1':2,'look:top:1':2,'environment:wall:1':2},collected:{'object:0':true,'object:1':true,'look:top:1':true,'environment:wall:1':true},credits:5000});
  function fixture(){const data=new Map(),user=initial(),own={id:'2',ownerId:'2',scene:{...C.initial(),items:[]}},host={id:'1',ownerId:'1',scene:{...C.initial(),items:[{id:10,type:83,x:2,y:2}]}};data.set('room:1',host);data.set('user:2',structuredClone(user));let live=true,failCommit=false;
@@ -42,13 +42,24 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
  await migrateExchangeProvenance(storage);assert.equal(legacy.get('user:3').exchangeLocked['object:9'],1);assert.equal(legacy.get('user:2').exchangeUsed['object:0'],'old','Historical receipts/usage preserved without blocking future copies');assert.equal(lists,3,'All paginated transfer history read');
  await migrateExchangeProvenance(storage);assert.equal(lists,3,'Migration idempotent and skipped on subsequent starts');
  const plants=fixture();plants.user.inventory={'object:90':3};plants.user.collected={'object:90':true};
+ const common=CATALOG.find(i=>i.id==='object:90'),config={weights:[80,17,3]},mixedUser=structuredClone(plants.user);
+ for(const item of CATALOG)if(item.kind==='object'&&!item.plantation&&!['object:10','object:11'].includes(item.id))mixedUser.collected[item.id]=true;
+ const mixed=exchangeRewardPool(mixedUser,common,config),counts={};
+ for(let n=0;n<240;n++){const item=drawExchangeReward(mixed,array=>array[0]=n);counts[item.id]=(counts[item.id]||0)+1;}
+ assert.deepEqual(counts,{'object:10':100,'object:11':100,'object:91':34,'object:92':6},'Mixed draw preserves rarity weights without redirecting owned common weight into rare plants');
+ const custom=exchangeRewardPool(mixedUser,common,{weights:[50,40,10]});assert.equal(custom.find(e=>e.item.id==='object:91').weight,80);assert.equal(custom.find(e=>e.item.id==='object:92').weight,20,'Dashboard rarity changes alter the pool');
+ let fills=0;assert.equal(drawExchangeReward(mixed,array=>array[0]=fills++?0:4294967295).id,mixed[0].item.id);assert.equal(fills,2,'Rejection sampling avoids modulo bias');
+ mixedUser.inventory['object:91']=1;delete mixedUser.collected['object:91'];assert(!exchangeRewardPool(mixedUser,common,config).some(e=>e.item.id==='object:91'),'Owned copies are excluded even without collection history');
+ for(const item of CATALOG)if(item.kind==='object'&&!item.plantation)plants.user.collected[item.id]=true;
  let available=(await openExchange(plants.world,plants.user,table)).items;assert.equal(available[0].available,2);assert(available[0].plantation);assert(!available[0].complete);
  plants.own.scene.items=[{id:1,type:90,x:1,y:1},{id:2,type:90,x:2,y:1},{id:3,type:90,x:3,y:1}];assert.equal((await openExchange(plants.world,plants.user,table)).items.length,0,'Placed plants cannot be consumed');plants.own.scene.items=[];
  const plantRequest=input('object:90'),plantReward=await exchangeItem(plants.world,plants.user,plantRequest);assert(['object:91','object:92'].includes(plantReward.rewardId));assert(plantReward.plantation);assert.equal(plants.user.inventory['object:90'],2);assert.equal(plants.user.exchangeLocked[plantReward.rewardId],1);assert.deepEqual(await exchangeItem(plants.world,plants.user,plantRequest),plantReward);
  await assert.rejects(exchangeItem(plants.world,plants.user,input(plantReward.rewardId)),/copia repetida/);
  plants.user.inventory[plantReward.rewardId]++;assert.equal((await openExchange(plants.world,plants.user,table)).items.find(i=>i.id===plantReward.rewardId).available,1,'Fresh plant duplicate can be exchanged while machine copy stays locked');
  const secondPlant=await exchangeItem(plants.world,plants.user,input(plantReward.rewardId));assert(['object:91','object:92'].includes(secondPlant.rewardId));assert.notEqual(secondPlant.rewardId,plantReward.rewardId);assert.equal(plants.user.inventory[plantReward.rewardId],1);
- assert((await openExchange(plants.world,plants.user,table)).items.find(i=>i.id==='object:90').complete);await assert.rejects(exchangeItem(plants.world,plants.user,input('object:90')),/completaste/);assert.equal(plants.user.inventory['object:90'],2,'Complete plant collection is never consumed');
+ assert((await openExchange(plants.world,plants.user,table)).items.find(i=>i.id==='object:90').complete);await assert.rejects(exchangeItem(plants.world,plants.user,input('object:90')),/completaste/);assert.equal(plants.user.inventory['object:90'],2,'Completed mixed collection is never consumed');
+ delete plants.user.collected['object:10'];assert(!(await openExchange(plants.world,plants.user,table)).items.find(i=>i.id==='object:90').complete,'Owning all plants still allows new decoration');
+ const decoration=await exchangeItem(plants.world,plants.user,input('object:90'));assert.equal(decoration.rewardId,'object:10');assert(!decoration.plantation);assert.equal(plants.user.exchangeLocked['object:10'],1);assert.equal(plants.user.inventory['object:90'],1);
  assert(!CATALOG.find(i=>i.id===receipt.rewardId).plantation,'Decoration exchange stays separate from plantations');
- console.log('PASS exchange: plant duplicates, category isolation, completed collection, kept/placed copies, fresh versus machine copies, transfers, migration, replay and atomic failure.');
+ console.log('PASS exchange: mixed plant/decoration pool, configurable rarity weights, completed collection, kept/placed copies, fresh versus machine copies, transfers, migration, replay and atomic failure.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
