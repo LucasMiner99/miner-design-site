@@ -2,6 +2,7 @@ import { hubRewardAdmin, ensureCreditRewards } from './hub-reward-admin.js';
 import { enqueueHubEvent, drainHubInbox } from './hub-gateway.js';
 import { alertFromKick, manualAlert, publicAlertConfig, allowedAlert, publishAlert, readAlertState } from "./alerts.js";
 import { normalizeKickChat, storeChatMessage, recentChatMessages, sevenTvMap } from "./chat.js";
+import { compactChatRows } from './chat-style.mjs';
 import { ensureCleaningTable, getCleaningSnapshot, applyCleaningFollow, changeCleaningState, mutateCleaning, cleaningSnapshot } from "./cleaning.js";
 
 const KICK_API = "https://api.kick.com/public/v1";
@@ -61,10 +62,10 @@ const DEFAULT_CONFIG = {
   // Chat OBS (V16). Cada fuente de OBS ajusta su ancho de forma independiente.
   chat_overlay_enabled: true,
   chat_max_messages: 5,
-  chat_font_size: 18,
+  chat_font_size: 21,
   chat_message_seconds: 35,
   chat_animation_ms: 195,
-  chat_gap: 8,
+  chat_gap: 2,
   chat_badges_enabled: true,
   chat_badge_image_map: "",
   chat_7tv_enabled: true,
@@ -440,7 +441,7 @@ function publicChatConfig(config) {
 
 async function getConfig(env) {
   const result = await env.STREAMBOT_DB.prepare("SELECT key, value FROM streambot_settings").all();
-  return ensureOverlayKey(env, parseConfigRows(result.results || []));
+  return ensureOverlayKey(env, parseConfigRows(await compactChatRows(env.STREAMBOT_DB,result.results || [])));
 }
 
 async function updateConfig(request, env) {

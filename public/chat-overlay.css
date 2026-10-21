@@ -1,28 +1,32 @@
-/* Chat OBS — tipografía Zalando Sans Expanded, estilo de alertas */
-@import url('https://fonts.googleapis.com/css2?family=Zalando+Sans:wght@300;400;600;700;900&family=Zalando+Sans+Expanded:wght@300;400;700;800;900&display=swap');
+/* Compact transparent OBS chat. Font is served locally, including Spanish accents. */
+@font-face{font-family:'DM Sans';src:url('/assets/fonts/dm-sans-600-latin.woff2') format('woff2');font-style:normal;font-weight:600;font-display:swap}
 :root{
-  --font:18px;
-  --gap:8px;
+  --font:21px;
+  --gap:2px;
+  --scale:1;
+  --chat-width:480px;
   --enter:195ms;
 }
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;color:#fff}
-body{font-family:'Zalando Sans Expanded','Zalando Sans',Arial,sans-serif;-webkit-font-smoothing:antialiased}
-#chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:100%;padding:8px 13px 13px 10px;overflow:hidden}
+body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothing:antialiased}
+#chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:var(--gap);height:100%;width:min(100%,var(--chat-width));padding:2px 3px 3px 2px;overflow:hidden}
 .message{
   position:relative;
   flex:0 0 auto;
   width:max-content;
   max-width:100%;
   min-width:0;
-  padding:calc(var(--font)*.26) calc(var(--font)*.50);
+  padding:0;
   border:none;
-  border-radius:12px;
-  background:linear-gradient(180deg,rgba(8,10,15,.98),rgba(5,7,11,.98));
-  box-shadow:0 10px 24px rgba(0,0,0,.30);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
   color:#fff;
   font-size:var(--font);
-  line-height:1.26;
+  font-weight:600;
+  line-height:1.22;
+  text-shadow:calc(1.5px * var(--scale)) calc(1.5px * var(--scale)) calc(.5px * var(--scale)) rgba(0,0,0,.9);
   overflow-wrap:anywhere;
   word-break:normal;
   transition:opacity .14s ease,transform .14s ease;
@@ -32,16 +36,15 @@ body{font-family:'Zalando Sans Expanded','Zalando Sans',Arial,sans-serif;-webkit
 .message.leaving{opacity:0;transform:translateX(-8px) translateY(-5px);pointer-events:none}
 @keyframes mb-chat-enter{0%{opacity:0;transform:translate3d(-8px,13px,0) scale(.962)}70%{opacity:1}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 /* Todo el contenido fluye en un solo renglón y continúa abajo si no entra. */
-.username{display:inline;font-weight:900;letter-spacing:-.01em;overflow-wrap:anywhere;text-shadow:0 1px 2px rgba(0,0,0,.18)}
-.separator{font-weight:300;color:#f7f6fa;white-space:pre}
-.badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:calc(var(--font)*.32)}
-.badge{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:calc(var(--font)*.73);padding:1px 4px;background:#5b4a91;border:0;border-radius:3px;color:#fff;font:800 calc(var(--font)*.47)/1.1 'Zalando Sans Expanded','Zalando Sans',Arial,sans-serif;letter-spacing:.02em;white-space:nowrap}
+.username{display:inline;font:inherit;letter-spacing:0;overflow-wrap:anywhere;margin-right:calc(5px * var(--scale))}
+.badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:calc(4px * var(--scale))}
+.badge{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:calc(var(--font)*.73);padding:1px 4px;background:#5b4a91;border:0;border-radius:3px;color:#fff;font:600 calc(var(--font)*.47)/1.1 'DM Sans',Arial,sans-serif;letter-spacing:.02em;white-space:nowrap}
 .badge.moderator{background:#31577e}.badge.vip{background:#74489e}.badge.subscriber{background:#483e86}.badge.verified{background:#256ab0}.badge.og{background:#b18441}.badge.broadcaster{background:#6051b1}.badge.sub-gifter{background:#735493}
 .badge.badge-image{padding:0;border:0;background:transparent;min-height:0;line-height:1;flex:0 0 auto}
 .badge.badge-image img{display:block;width:auto;height:calc(var(--font)*.95);max-width:calc(var(--font)*1.65);object-fit:contain}
 /* Los badges predeterminados de Kick se muestran blancos; los personalizados mantienen su color original. */
 .badge.badge-image.badge-default img{filter:brightness(0) invert(1)}
-.body{display:inline;font-size:1em;line-height:inherit;font-weight:300;color:#f7f6fa;white-space:pre-wrap;overflow-wrap:anywhere}
+.body{display:inline;font:inherit;color:#fff;white-space:pre-wrap;overflow-wrap:anywhere}
 .emote{display:inline-block;vertical-align:middle;width:auto;height:1.55em;max-width:min(95%,140px);object-fit:contain;margin:0 1px}
 .emote-only .emote{height:2.5em}
 #chat[hidden]{display:none}

@@ -23,22 +23,24 @@
   function currentLimits() {
     return {
       max: finiteParam('max', config.chat_max_messages || 5, 1, 10),
-      font: finiteParam('font', config.chat_font_size || 18, 11, 38),
+      font: finiteParam('font', config.chat_font_size || 21, 11, 38),
       seconds: finiteParam('duration', config.chat_message_seconds ?? 35, 0, 180),
       speed: finiteParam('speed', config.chat_animation_ms || 195, 100, 450),
-      gap: finiteParam('gap', config.chat_gap ?? 8, 0, 24),
+      gap: finiteParam('gap', config.chat_gap ?? 2, 0, 24),
+      width: finiteParam('width', 480, 180, 1920),
     };
   }
   function styleConfig() {
     const lim = currentLimits();
-    // Browser sources may use the exact same URL at different OBS sizes.
-    // Scale CSS-sized typography relative to viewport width while preserving crisp rendering.
-    const autoScale = Math.max(0.78, Math.min(3.2, window.innerWidth / 420));
+    // Match the approved preview in CSS pixels regardless of OBS source width.
+    // An explicit scale remains available for sources rendered at higher resolution.
     const explicitScale = Number(params.get('scale'));
-    fontScale = params.has('scale') && Number.isFinite(explicitScale) && explicitScale >= .5 && explicitScale <= 4 ? explicitScale : autoScale;
+    fontScale = params.has('scale') && Number.isFinite(explicitScale) && explicitScale >= .5 && explicitScale <= 4 ? explicitScale : 1;
     root.style.setProperty('--font', `${(lim.font * fontScale).toFixed(2)}px`);
     root.style.setProperty('--gap', `${(lim.gap * fontScale).toFixed(2)}px`);
     root.style.setProperty('--enter', `${lim.speed}ms`);
+    root.style.setProperty('--scale', String(fontScale));
+    root.style.setProperty('--chat-width', `${lim.width * fontScale}px`);
   }
   function makeImage(src, title) {
     const img = document.createElement('img');
@@ -157,11 +159,10 @@
       }
       el.append(holder);
     }
-    const separator=document.createElement('span');separator.className='separator';separator.textContent=': ';
     const body=document.createElement('span');body.className='body';
     drawContent(body,m.content);
     // Badges + username + texto comparten la misma línea; el texto se ajusta al ancho del overlay.
-    el.append(name,separator,body);
+    el.append(name,body);
     return el;
   }
   function deleteEntry(id) {
