@@ -27,7 +27,6 @@
       seconds: finiteParam('duration', config.chat_message_seconds ?? 35, 0, 180),
       speed: finiteParam('speed', config.chat_animation_ms || 195, 100, 450),
       gap: finiteParam('gap', config.chat_gap ?? 3, 0, 24),
-      width: finiteParam('width', 480, 180, 1920),
     };
   }
   function styleConfig() {
@@ -40,7 +39,7 @@
     root.style.setProperty('--gap', `${(lim.gap * fontScale).toFixed(2)}px`);
     root.style.setProperty('--enter', `${lim.speed}ms`);
     root.style.setProperty('--scale', String(fontScale));
-    root.style.setProperty('--chat-width', `${lim.width * fontScale}px`);
+    // The OBS browser source owns the width, including URLs with a legacy width parameter.
   }
   function makeImage(src, title) {
     const img = document.createElement('img');
