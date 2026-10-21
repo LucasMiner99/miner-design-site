@@ -17,7 +17,7 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
   assert.equal((await start(null)).status,401);assert.equal((await req('2','blackjack/start','POST',{}, {Origin:'https://evil.test'})).status,403);
   assert.equal((await start('2')).status,403);assert.equal((await req('2','blackjack/open','POST',null)).status,400);
   const connect=async id=>{const r=await req(id,'ws','GET',undefined,{Upgrade:'websocket'});assert.equal(r.status,101);const ws=r.webSocket;ws.accept();ws.send(JSON.stringify({type:'join',roomId:'1'}));await new Promise(r=>setTimeout(r,90));return ws;};const sockets=await Promise.all(['1','2','3'].map(connect));
-  assert.equal((await start('2')).status,409);for(const amount of [-1,0,.5,101,'50',1e20])assert.equal((await start('2',{amount})).status,400);
+  assert.equal((await start('2')).status,409);for(const amount of [-1,0,.5,'50',1e20])assert.equal((await start('2',{amount})).status,400);
   assert.equal((await start('2',{requestId:'bad'})).status,400);assert.equal((await start('2',{itemId:99})).status,409);
   await req('1','admin/credits','PUT',{rewards:{5000:'blackjack-credits'}});const ns=await mf.getDurableObjectNamespace('HUB_WORLD'),stub=ns.get(ns.idFromName('minerarg-beta-v1'));
   for(const uid of ['2','3'])await stub.fetch('https://hub/kick',{method:'POST',headers:{'X-Hub-Broadcaster':'1'},body:JSON.stringify({type:'channel.reward.redemption.updated',payload:{id:'bj-fund-'+uid,status:'accepted',reward:{id:'blackjack-credits'},redeemer:{user_id:Number(uid),username:'Player'+uid},broadcaster:{user_id:1}}})});
@@ -43,7 +43,10 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare'),esbuild=require
    const stand={...action,requestId:uuid(),revision:1,action:'stand'},rs=await Promise.all([req('2','blackjack/play','POST',stand),req('2','blackjack/play','POST',stand)]);assert(rs.every(r=>r.status===200));game=(await rs[0].json()).game;assert.deepEqual(game,(await rs[1].json()).game);
   }
   assert.equal(game.status,'finished');assert(!game.dealer.includes(null));const finalBalance=(await state('2')).credits;assert.equal(finalBalance,initialBalance-100+game.payout);
-  const another=await start('3');assert.equal(another.status,200,'Players have independent hands');
+  assert.equal((await start('3',{amount:5001})).status,409,'Cannot bet above actual wallet');
+  const allInId=uuid(),another=await start('3',{amount:5000,requestId:allInId});assert.equal(another.status,200,'Full available wallet above 100 is accepted');const allIn=(await another.json()).game;assert.equal(allIn.amount,5000);assert.equal((await state('3')).credits,allIn.payout||0);
+  assert.equal((await start('3',{amount:5000,requestId:allInId})).status,200,'Retry large wager does not debit again');
+  if(allIn.status==='playing'){assert.equal(allIn.canDouble,false);assert.equal((await req('3','blackjack/play','POST',{...input,handId:allIn.id,revision:0,requestId:uuid(),action:'double'})).status,409);const settled=await req('3','blackjack/play','POST',{...input,handId:allIn.id,revision:0,requestId:uuid(),action:'stand'});assert.equal(settled.status,200);assert.equal((await state('3')).credits,(await settled.json()).game.payout);}
   const room=(await state('1')).room;assert.equal((await req('1','room','PUT',{scene:{...scene,items:[]},revision:room.revision})).status,200);
   assert.equal((await req('2','blackjack/open','POST',input)).status,409);assert.equal((await start('2',{requestId})).status,200,'Safe receipt recovery after table removal');assert.equal((await state('2')).credits,finalBalance);
   for(const ws of sockets)ws.close();console.log('PASS blackjack server: auth, ownership, presence, inventory, limits, secret cards/shoe, atomic bet/action retries, stale revisions, reconnect, independent players and removal recovery.');

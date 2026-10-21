@@ -10,5 +10,6 @@ const scope={document:{getElementById:get,createElement:element},MINER_HUB_ONLIN
  get('hubExchangeClose').onclick();await scope.HubExchange.open({id:20});assert(!get('hubExchangeSwap').disabled);await get('hubExchangeSwap').onclick();assert.equal(requests[0].requestId,requests[1].requestId);assert.equal(requests[1].itemId,10,'Recover the original machine request, not a new roll');assert.equal(saved.size,0);assert.equal(get('hubExchangeResultName').textContent,'Sillón');assert(!get('hubExchangeResult').hidden);assert(get('hubExchangeAnimation').hidden);
  get('hubExchangeAgain').onclick();await new Promise(r=>setImmediate(r));assert(get('hubExchangeEmpty').hidden===false);assert(get('hubExchangeSwap').disabled);
  scope.HubExchange.close();assert(!get('hubExchangeDialog').open);
+ used=false;source.plantation=true;await scope.HubExchange.open({id:10});assert.equal(get('hubExchangeItems').children[0].children[2].textContent,'Planta · 2 para cambiar');scope.HubExchange.close();
  console.log('PASS exchange UI: selection, ambiguous failure/reopen recovery with same request ID, reduced-motion reveal, empty state and close.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

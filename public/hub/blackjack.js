@@ -16,7 +16,7 @@ function cards(id,list){
 function controls(){
  const playing=game?.status==='playing',disabled=busy||animating;
  $('hubBlackjackBalance').textContent=fmt(bridge().ledger.credits())+' créditos';
- $('hubBlackjackWager').textContent=game?'En la mesa · '+fmt(game.stake):'Apostá de 1 a 100 créditos';
+ $('hubBlackjackWager').textContent=game?'En la mesa · '+fmt(game.stake):'Apostá desde 1 crédito, hasta tu saldo disponible';
  amount.disabled=disabled||!!pending||playing;
  $('hubBlackjackStart').hidden=playing&&!pending;$('hubBlackjackStart').disabled=disabled||!machine;
  $('hubBlackjackStart').textContent=pending?'Recuperar jugada':game?'Nueva mano':'Repartir cartas';
@@ -57,7 +57,7 @@ async function open(item){
  }catch(e){if(token===generation){machine=null;status(e.message);}}
  finally{busy=false;if(token===generation)controls();}
 }
-$('hubBlackjackForm').onsubmit=e=>{e.preventDefault();if(busy||animating||!machine)return;if(pending)return request(pending.route,pending.input);const value=Number(amount.value);if(!Number.isSafeInteger(value)||value<BLACKJACK.min||value>BLACKJACK.max){status('Apostá entre 1 y 100 créditos enteros.');return;}if(value>bridge().ledger.credits()){status('No tenés créditos suficientes.');return;}request('start',{...machine,amount:value,requestId:crypto.randomUUID()});};
+$('hubBlackjackForm').onsubmit=e=>{e.preventDefault();if(busy||animating||!machine)return;if(pending)return request(pending.route,pending.input);const value=Number(amount.value);if(!Number.isSafeInteger(value)||value<BLACKJACK.min){status('Apostá al menos 1 crédito entero.');return;}if(value>bridge().ledger.credits()){status('No tenés créditos suficientes.');return;}request('start',{...machine,amount:value,requestId:crypto.randomUUID()});};
 function play(action){if(busy||animating||pending||!machine||game?.status!=='playing')return;request('play',{...machine,handId:game.id,revision:game.revision,action,requestId:crypto.randomUUID()});}
 $('hubBlackjackHit').onclick=()=>play('hit');$('hubBlackjackStand').onclick=()=>play('stand');$('hubBlackjackDouble').onclick=()=>play('double');
 $('hubBlackjackClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;clearTimeout(timer);animating=false;machine=null;});

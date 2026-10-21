@@ -1,4 +1,4 @@
-export const BLACKJACK={min:1,max:100,decks:6,dealerStand:17};
+export const BLACKJACK={min:1,decks:6,dealerStand:17};
 export function handValue(cards){
  let total=0,aces=0;
  for(const card of cards){const rank=card%13;if(rank===0){total+=11;aces++;}else total+=Math.min(rank+1,10);}

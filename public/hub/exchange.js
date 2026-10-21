@@ -13,7 +13,7 @@
   for(const item of items){
    const button=document.createElement('button');button.type='button';button.className='hub-exchange-item';button.dataset.complete=String(item.complete);button.setAttribute('aria-pressed','false');
    const cv=document.createElement('canvas');cv.width=120;cv.height=110;paint(cv.getContext('2d'),item,0,0,120,110);
-   const name=document.createElement('strong');name.textContent=item.name;const detail=document.createElement('small');detail.textContent=item.complete?'Categoría completa':labels[item.kind]+' · '+item.available+' para cambiar';
+   const name=document.createElement('strong');name.textContent=item.name;const detail=document.createElement('small');detail.textContent=item.complete?'Categoría completa':(item.plantation?'Planta':labels[item.kind])+' · '+item.available+' para cambiar';
    button.append(cv,name,detail);button.onclick=()=>{if(busy||spin||pending||item.complete)return;selected=item;for(const b of list.children)b.setAttribute('aria-pressed',String(b===button));status('Entregás 1 '+item.name+'. Conservás al menos una copia.');controls();};list.append(button);
   }
   $('hubExchangeEmpty').hidden=!!items.length;controls();
@@ -31,7 +31,7 @@
  function animate(receipt){
   const catalog=window.VeredaRewards.catalog(window.VeredaCore,window.VeredaPeople),item=bridge().ledger.item(receipt.rewardId);
   // Environment definitions live in the authoritative inventory, which now includes the prize.
-  const pool=(receipt.kind==='environment'?bridge().ledger.inventory():catalog).filter(i=>i.kind===receipt.kind&&!i.starter);
+  const pool=(receipt.kind==='environment'?bridge().ledger.inventory():catalog).filter(i=>i.kind===receipt.kind&&!i.starter&&!!i.plantation===!!item.plantation);
   const entries=Array.from({length:39},()=>pool[Math.floor(Math.random()*pool.length)]||item);entries[32]=item;
   spin={item,entries,at:performance.now()};$('hubExchangePick').hidden=true;$('hubExchangeResult').hidden=true;$('hubExchangeAnimation').hidden=false;$('hubExchangeReel').setAttribute('aria-busy','true');status('Intercambiando…');
   if(matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return;}

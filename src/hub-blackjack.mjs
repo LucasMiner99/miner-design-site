@@ -32,7 +32,7 @@ export function playHand(original,action){
  while(handValue(h.dealer).total<BLACKJACK.dealerStand)h.dealer.push(h.deck[h.cursor++]);
  return finish(h);
 }
-export function publicHand(h,user){if(!h)return null;return {id:h.id,amount:h.amount,stake:h.stake,player:h.player,dealer:h.status==='finished'?h.dealer:[h.dealer[0],null],status:h.status,revision:h.revision,outcome:h.outcome||null,payout:h.payout??null,canDouble:h.status==='playing'&&h.player.length===2&&balance(user)>=h.amount};}
+export function publicHand(h,user){if(!h)return null;return {id:h.id,amount:h.amount,stake:h.stake,player:h.player,dealer:h.status==='finished'?h.dealer:[h.dealer[0],null],status:h.status,revision:h.revision,outcome:h.outcome||null,payout:h.payout??null,canDouble:h.status==='playing'&&h.player.length===2&&balance(user)>=h.amount&&balance(user)+h.amount*3<=2000000000};}
 async function table(world,user,input){
  if(!validRoomId(input?.roomId)||!Number.isSafeInteger(input.itemId))fail('Mesa inválida.');
  if(!world.ownSockets(user.id).some(ws=>ws.deserializeAttachment()?.roomId===input.roomId))fail('Entrá a la sala y tocá una mesa de blackjack.',403);
@@ -51,14 +51,14 @@ export async function blackjack(world,user,action,input){
  if(action==='open'){await table(world,user,input);return {game:publicHand(await current(world,user),user),rules:BLACKJACK};}
  if(!uuid(input.requestId))fail('Solicitud inválida.');
  if(action==='start'){
-  if(!Number.isSafeInteger(input.amount)||input.amount<BLACKJACK.min||input.amount>BLACKJACK.max)fail('Apostá entre 1 y 100 créditos enteros.');
+  if(!Number.isSafeInteger(input.amount)||input.amount<BLACKJACK.min)fail('Apostá al menos 1 crédito entero.');
   const prior=await world.ctx.storage.get(key(user.id,input.requestId));
   if(prior){if(prior.amount!==input.amount||prior.roomId!==input.roomId||prior.itemId!==input.itemId)fail('Ese intento corresponde a otra apuesta.',409);return {game:publicHand(prior,user)};}
   await table(world,user,input);const previous=await current(world,user);
   if(previous?.status==='playing')fail('Terminá tu mano pendiente antes de apostar otra vez.',409);
   if(previous&&Date.now()-previous.at<1200)fail('Esperá un instante antes de repartir otra mano.',429);
   if(balance(user)<input.amount)fail('No tenés créditos suficientes.',409);
-  if(balance(user)+input.amount*3>2000000000)fail('Tu saldo está demasiado cerca del límite para apostar.',409);
+  if(balance(user)+Math.floor(input.amount*1.5)>2000000000)fail('Tu saldo está demasiado cerca del límite para cobrar el posible premio.',409);
   const hand={...newHand(input.requestId,input.amount),roomId:input.roomId,itemId:input.itemId};return commit(world,user,hand,input.amount,hand.payout||0);
  }
  if(action!=='play'||!uuid(input.handId)||!Number.isSafeInteger(input.revision)||input.revision<0||!['hit','stand','double'].includes(input.action))fail('Jugada inválida.');
@@ -68,5 +68,6 @@ export async function blackjack(world,user,action,input){
  await table(world,user,input);
  if(hand.status!=='playing'||hand.revision!==input.revision)fail('La mano cambió. Cerrá y abrí la mesa para retomarla.',409);
  const debit=input.action==='double'?hand.amount:0;if(balance(user)<debit)fail('No tenés créditos suficientes para doblar.',409);
+ if(debit&&balance(user)+hand.amount*3>2000000000)fail('Tu saldo está demasiado cerca del límite para doblar. Podés pedir carta o plantarte.',409);
  const next=playHand(hand,input.action);next.actions=[...hand.actions,{id:input.requestId,fingerprint}];return commit(world,user,next,debit,next.payout||0);
 }
