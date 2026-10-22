@@ -16,7 +16,7 @@ const fields = [
   "cleaning_boost_seconds","cleaning_celebration_seconds","cleaning_normal_fps","cleaning_boost_fps",
   "cleaning_viewers_mode","cleaning_manual_viewers",
   "chat_overlay_enabled","chat_font_size","chat_message_seconds","chat_animation_ms","chat_gap",
-  "chat_badges_enabled","chat_badge_image_map","chat_7tv_enabled","chat_kick_emotes_enabled","chat_hide_commands",
+  "chat_7tv_enabled","chat_kick_emotes_enabled","chat_hide_commands",
   "alerts_enabled","alerts_follow","alerts_sub","alerts_renewal","alerts_gift","alerts_kicks","alerts_raid","alerts_host",
   "alerts_sound_enabled","alerts_volume","alerts_duration_seconds","alerts_scale_percent",
   "alerts_gap",

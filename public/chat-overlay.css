@@ -35,13 +35,6 @@ body{font-family:'DM Sans',Arial,sans-serif;font-weight:600;-webkit-font-smoothi
 .message.leaving{opacity:0;transform:translateX(-8px) translateY(-5px);pointer-events:none}
 /* Todo el contenido fluye en un solo renglón y continúa abajo si no entra. */
 .username{display:inline;font:inherit;letter-spacing:0;overflow-wrap:anywhere;margin-right:.24em}
-.badges{display:inline-flex;align-items:center;gap:3px;vertical-align:-.11em;margin-right:.19em}
-.badge{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:calc(var(--font)*.73);padding:1px 4px;background:#5b4a91;border:0;border-radius:3px;color:#fff;font:600 calc(var(--font)*.47)/1.1 'DM Sans',Arial,sans-serif;letter-spacing:.02em;white-space:nowrap}
-.badge.moderator{background:#31577e}.badge.vip{background:#74489e}.badge.subscriber{background:#483e86}.badge.verified{background:#256ab0}.badge.og{background:#b18441}.badge.broadcaster{background:#6051b1}.badge.sub-gifter{background:#735493}
-.badge.badge-image{padding:0;border:0;background:transparent;min-height:0;line-height:1;flex:0 0 auto}
-.badge.badge-image img{display:block;width:auto;height:calc(var(--font)*.95);max-width:calc(var(--font)*1.65);object-fit:contain}
-/* Los badges predeterminados de Kick se muestran blancos; los personalizados mantienen su color original. */
-.badge.badge-image.badge-default img{filter:brightness(0) invert(1)}
 .body{display:inline;font:inherit;color:#fff;white-space:pre-wrap;overflow-wrap:anywhere}
 .emote{display:inline-block;vertical-align:-.24em;width:auto;height:1.2em;max-width:min(95%,140px);object-fit:contain;margin:0 1px}
 /* Emote-only messages keep the same size and line spacing as mixed messages. */

@@ -12,7 +12,7 @@
   let reconnectMs = 850;
   let reloadTimer = null;
   let emotes = Object.create(null);
-  let badgeOverrides = Object.create(null);
+  let emotePattern = null;
   let fontScale = 1;
   const shifts = new WeakMap();
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -93,77 +93,39 @@
   }
   function drawContent(container, content) {
     const text = String(content || '');
-    const native = /\[emote:(\d+):([^\]]+)\]|([^\s]+)|(\s+)/g;
-    let match, emoteCount = 0, otherCount = 0;
-    while ((match = native.exec(text))) {
-      if (match[1] && config.chat_kick_emotes_enabled !== false) {
-        container.append(makeImage(`https://files.kick.com/emotes/${match[1]}/fullsize`, match[2]));
-        emoteCount += 1;
-      } else if (match[1]) {
-        container.append(document.createTextNode(match[2]));otherCount++;
-      } else if (match[3] && config.chat_7tv_enabled !== false && Object.hasOwn(emotes,match[3])) {
-        container.append(makeImage(emotes[match[3]], match[3]));
-        emoteCount++;
-      } else {
-        container.append(document.createTextNode(match[3] || match[4] || ''));
-        if (match[3]) otherCount++;
+    let emoteCount = 0, otherCount = 0;
+    const appendText = value => {
+      if (!value) return;
+      container.append(document.createTextNode(value));
+      if (/\S/.test(value)) otherCount++;
+    };
+    const appendPlain = value => {
+      if (config.chat_7tv_enabled === false || !emotePattern) { appendText(value); return; }
+      // Prefer the longest exact emote name; spaces are not required. Keep URLs intact.
+      emotePattern.lastIndex = 0;
+      let match, end = 0;
+      while ((match = emotePattern.exec(value))) {
+        appendText(value.slice(end, match.index));
+        if (match[1]) appendText(match[0]);
+        else { container.append(makeImage(emotes[match[0]], match[0])); emoteCount++; }
+        end = emotePattern.lastIndex;
       }
+      appendText(value.slice(end));
+    };
+    // Match native markers first: a greedy word token used to swallow a marker
+    // when it followed text or another emote without whitespace.
+    const native = /\[emote:(\d+):([^\]]+)\]/g;
+    let match, end = 0;
+    while ((match = native.exec(text))) {
+      appendPlain(text.slice(end, match.index));
+      if (config.chat_kick_emotes_enabled !== false) {
+        container.append(makeImage(`https://files.kick.com/emotes/${match[1]}/fullsize`, match[2]));
+        emoteCount++;
+      } else appendText(match[2]);
+      end = native.lastIndex;
     }
+    appendPlain(text.slice(end));
     if (emoteCount && !otherCount) container.classList.add('emote-only');
-  }
-  // Kick's official chat webhook contains badge types/counts, not original image URLs.
-  // Default icons mirror publicly available Kick badge assets; channel subscriber tiers
-  // can be overridden using public image URLs configured in MinerBot's dashboard.
-  const badgeAssetBase = 'https://cpwemotes.co.uk/kick/kickBadges/';
-  const globalBadgeFiles = Object.freeze({
-    broadcaster:'broadcaster.svg', owner:'broadcaster.svg', founder:'founder.svg',
-    moderator:'moderator.svg', mod:'moderator.svg', vip:'vip.svg', og:'og.svg',
-    verified:'verified.svg', staff:'staff.svg', sidekick:'sidekick.svg',
-    subscriber:'subscriber.svg', sub_gifter:'subGifter.svg', subgifter:'subGifter.svg',
-    trainwreckstv:'trainwreckstv.svg'
-  });
-  function badgeType(b) {
-    return String(b.type || '').toLowerCase().replace(/[\s-]+/g,'_').replace(/[^a-z0-9_]/g,'');
-  }
-  function parseBadgeOverrides(source){
-    const result=Object.create(null);
-    for(const line of String(source||'').split(/\r?\n/).slice(0,50)){
-      const at=line.indexOf('=');if(at<1)continue;
-      const key=line.slice(0,at).trim().toLowerCase();
-      const url=line.slice(at+1).trim();
-      if(/^[a-z0-9_]+(?::\d{1,5})?$/.test(key) && /^https:\/\/[^\s<>\"']{1,500}$/i.test(url))result[key]=url;
-    }
-    return result;
-  }
-  function badgeImageUrl(b){
-    const type=badgeType(b);
-    const count=Number(b.count)||0;
-    if(count>0 && badgeOverrides[`${type}:${Math.floor(count)}`])return badgeOverrides[`${type}:${Math.floor(count)}`];
-    // For month-based subscriber milestones use the highest configured tier <= months.
-    if(type==='subscriber' && count>0){
-      const tiers=Object.keys(badgeOverrides).filter(k=>k.startsWith('subscriber:')).map(k=>Number(k.slice(11))).filter(n=>Number.isInteger(n)&&n<=count).sort((a,b)=>b-a);
-      if(tiers.length)return badgeOverrides[`subscriber:${tiers[0]}`];
-    }
-    if(badgeOverrides[type])return badgeOverrides[type];
-    if(type==='sub_gifter'||type==='subgifter'){
-      const level=[200,100,50,25].find(n=>count>=n);
-      return badgeAssetBase+(level?`subGifter${level}.svg`:'subGifter.svg');
-    }
-    return globalBadgeFiles[type]?badgeAssetBase+globalBadgeFiles[type]:null;
-  }
-  function isDefaultBadgeUrl(url){
-    return url.startsWith(badgeAssetBase) || url.startsWith('/assets/kick-badges/');
-  }
-  function badgeFallbackIcon(b){
-    const t=badgeType(b);
-    const base=(t==='mod'?'moderator':t==='owner'?'broadcaster':t==='subgifter'?'sub_gifter':t);
-    return ['moderator','vip','og','verified','broadcaster','subscriber','sub_gifter','founder','staff','sidekick'].includes(base) ? `/assets/kick-badges/${base}.svg` : null;
-  }
-  function badgeText(b) {
-    const type = String(b.type || '').toLowerCase();
-    const shortNames = { moderator:'MOD',vip:'VIP',subscriber:'SUB',sub_gifter:'GIFT',verified:'✓',broadcaster:'LIVE',og:'OG',founder:'FOUNDER' };
-    const name = shortNames[type] || String(b.text || b.type || 'BADGE').toUpperCase().slice(0,15);
-    return name + (Number(b.count) > 0 ? ` ${Math.floor(b.count)}` : '');
   }
   function createMessage(m) {
     const el = document.createElement('div');
@@ -174,34 +136,9 @@
     const name = document.createElement('span');name.className='username';
     name.textContent=String(m.username || 'Viewer');
     name.style.color=/^#[0-9A-Fa-f]{6}$/.test(m.color) ? m.color : '#c9b4ff';
-    if (config.chat_badges_enabled !== false && Array.isArray(m.badges) && m.badges.length) {
-      const holder = document.createElement('span');holder.className='badges';
-      for(const b of m.badges){
-        const tag=document.createElement('span');
-        tag.className='badge '+badgeType(b).replaceAll('_','-');
-        const description=String(b.text || b.type || 'Badge')+(Number(b.count)>0?` · ${b.count}`:'');
-        tag.title=description;
-        const src=badgeImageUrl(b);
-        if(src){
-          tag.classList.add('badge-image');
-          if(isDefaultBadgeUrl(src))tag.classList.add('badge-default');
-          const img=document.createElement('img');img.alt=description;img.title=description;
-          img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';img.src=src;
-          img.onerror=()=>{
-            const fallback=badgeFallbackIcon(b);
-            if(fallback && !img.dataset.fallback){
-              img.dataset.fallback='1';tag.classList.add('badge-default');img.src=fallback;
-            }else{tag.classList.remove('badge-image');tag.textContent=badgeText(b);}
-          };
-          tag.append(img);
-        } else tag.textContent=badgeText(b);
-        holder.append(tag);
-      }
-      content.append(holder);
-    }
     const body=document.createElement('span');body.className='body';
     drawContent(body,m.content);
-    // Badges + username + texto comparten la misma línea; el texto se ajusta al ancho del overlay.
+    // Username and message share a line; badges are intentionally omitted in OBS.
     content.append(name,body);
     return el;
   }
@@ -257,7 +194,6 @@
     try{
       const data=await fetchJson('/state');
       config=data.config||{};
-      badgeOverrides=parseBadgeOverrides(config.chat_badge_image_map);
       root.hidden=!data.enabled;
       styleConfig();
       if(!data.enabled){for(const id of [...entries.keys()])deleteEntry(id);return;}
@@ -267,9 +203,12 @@
   }
   async function loadEmotes(){
     try{
-      if(!config.chat_7tv_enabled){emotes=Object.create(null);return;}
+      if(!config.chat_7tv_enabled){emotes=Object.create(null);emotePattern=null;return;}
       const data=await fetchJson('/emotes');
       emotes=Object.assign(Object.create(null),data.emotes||{});
+      const names=Object.keys(emotes).filter(Boolean).sort((a,b)=>b.length-a.length);
+      const escaped=names.map(name=>name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+      emotePattern=escaped.length?new RegExp('(https?://[^\\s]+)|'+escaped.join('|'),'g'):null;
       // Messages arrived before the 7TV set finished loading: upgrade them in place.
       for(const [id,el] of entries){
         const m=messageData.get(id);
